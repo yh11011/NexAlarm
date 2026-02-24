@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.NexAlarm" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/primary_blue</item>
+        <item name="android:statusBarColor">@color/dark_background</item>
+        <item name="android:windowBackground">@color/dark_background</item>
+        <item name="android:navigationBarColor">@color/dark_background</item>
+    </style>
+</resources>
