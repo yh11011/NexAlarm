@@ -11,9 +11,12 @@ private val DarkColorScheme = darkColorScheme(
     secondary = SecondaryBlue,
     background = DarkBackground,
     onBackground = Color.White,
-    surface = DarkSurface,
+    surface = DarkBackground,
     onSurface = Color.White,
-    surfaceVariant = DarkCard
+    surfaceVariant = DarkCard,
+    onSurfaceVariant = TextSecondary,
+    surfaceContainerHighest = DarkSurface,
+    outline = DarkBorder
 )
 
 @Composable

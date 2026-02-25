@@ -26,14 +26,14 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     }
 
-    fun addFolder(name: String, color: String = "#2196F3") {
+    fun addFolder(name: String, color: String = "#1A73E8", emoji: String = "📁") {
         viewModelScope.launch {
             val count = repository.getUserFolderCount()
             if (!FeatureFlags.canCreateFolder(count)) {
                 _errorMessage.emit("Free tier limited to ${FeatureFlags.FREE_FOLDER_LIMIT} folders. Upgrade to premium for unlimited.")
                 return@launch
             }
-            repository.insert(FolderEntity(name = name, color = color))
+            repository.insert(FolderEntity(name = name, color = color, emoji = emoji))
         }
     }
 

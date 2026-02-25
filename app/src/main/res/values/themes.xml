@@ -4,5 +4,14 @@
         <item name="android:statusBarColor">@color/dark_background</item>
         <item name="android:windowBackground">@color/dark_background</item>
         <item name="android:navigationBarColor">@color/dark_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- 全螢幕鬧鐘 Activity 主題 -->
+    <style name="Theme.NexAlarm.FullScreen">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowIsTranslucent">false</item>
     </style>
 </resources>

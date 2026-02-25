@@ -1,7 +1,6 @@
-package com.nexalarm.app
+package com.nexalarm.app.ui.screens
 
 import android.app.KeyguardManager
-import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -28,21 +27,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
+import com.nexalarm.app.receiver.AlarmReceiver
 import com.nexalarm.app.service.AlarmService
 import com.nexalarm.app.ui.theme.NexAlarmTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Locale
 
+/**
+ * 全螢幕鬧鐘觸發 Activity
+ * 在鎖定螢幕或桌面上顯示全螢幕鬧鐘介面
+ */
 class AlarmRingingActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Wake + show over lock screen
+        // 喚醒螢幕 + 在鎖定畫面上方顯示
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
-            val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            val km = getSystemService(KeyguardManager::class.java)
             km.requestDismissKeyguard(this, null)
         } else {
             @Suppress("DEPRECATION")
@@ -55,7 +60,8 @@ class AlarmRingingActivity : ComponentActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        val alarmId = intent.getLongExtra(AlarmService.EXTRA_ALARM_ID, -1L)
+        val alarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1L)
+        val alarmTitle = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: "鬧鐘"
 
         setContent {
             NexAlarmTheme {
@@ -73,12 +79,13 @@ class AlarmRingingActivity : ComponentActivity() {
 
                 AlarmRingingScreen(
                     alarm = alarm,
+                    fallbackTitle = alarmTitle,
                     onDismiss = {
-                        sendAction(AlarmService.ACTION_DISMISS, alarmId)
+                        sendDismiss(alarmId)
                         finish()
                     },
                     onSnooze = {
-                        sendAction(AlarmService.ACTION_SNOOZE, alarmId)
+                        sendSnooze(alarmId)
                         finish()
                     }
                 )
@@ -86,18 +93,47 @@ class AlarmRingingActivity : ComponentActivity() {
         }
     }
 
-    private fun sendAction(action: String, alarmId: Long) {
-        val intent = Intent(this, AlarmService::class.java).apply {
-            this.action = action
-            putExtra(AlarmService.EXTRA_ALARM_ID, alarmId)
+    /**
+     * 發送關閉鬧鐘指令到 AlarmReceiver
+     */
+    private fun sendDismiss(alarmId: Long) {
+        // 先停止 AlarmService 的鈴聲/震動
+        val stopIntent = Intent(this, AlarmService::class.java).apply {
+            action = AlarmService.ACTION_STOP_ALARM
         }
-        startService(intent)
+        startService(stopIntent)
+
+        // 通知 AlarmReceiver 處理後續（刪除單次鬧鐘 / 排程重複鬧鐘）
+        val intent = Intent(this, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_DISMISS
+            putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
+        }
+        sendBroadcast(intent)
+    }
+
+    /**
+     * 發送貪睡指令到 AlarmReceiver
+     */
+    private fun sendSnooze(alarmId: Long) {
+        // 先停止 AlarmService 的鈴聲/震動
+        val stopIntent = Intent(this, AlarmService::class.java).apply {
+            action = AlarmService.ACTION_STOP_ALARM
+        }
+        startService(stopIntent)
+
+        // 通知 AlarmReceiver 排程貪睡
+        val intent = Intent(this, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_SNOOZE
+            putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
+        }
+        sendBroadcast(intent)
     }
 }
 
 @Composable
 fun AlarmRingingScreen(
     alarm: AlarmEntity?,
+    fallbackTitle: String = "鬧鐘",
     onDismiss: () -> Unit,
     onSnooze: () -> Unit
 ) {
@@ -130,6 +166,7 @@ fun AlarmRingingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // 鬧鐘圖示（脈動動畫）
             Icon(
                 Icons.Default.Alarm,
                 contentDescription = null,
@@ -139,27 +176,31 @@ fun AlarmRingingScreen(
                 tint = Color.White
             )
 
+            // 時間
             Text(
-                text = alarm?.let { String.format("%02d:%02d", it.hour, it.minute) } ?: "--:--",
+                text = alarm?.let {
+                    String.format(Locale.getDefault(), "%02d:%02d", it.hour, it.minute)
+                } ?: "--:--",
                 fontSize = 72.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
 
-            if (alarm != null && alarm.title.isNotBlank()) {
-                Text(
-                    text = alarm.title,
-                    fontSize = 24.sp,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-            }
+            // 標題
+            val title = alarm?.title?.takeIf { it.isNotBlank() } ?: fallbackTitle
+            Text(
+                text = title,
+                fontSize = 24.sp,
+                color = Color.White.copy(alpha = 0.8f)
+            )
 
             Spacer(modifier = Modifier.height(48.dp))
 
+            // 按鈕列
             Row(
                 horizontalArrangement = Arrangement.spacedBy(32.dp)
             ) {
-                // Snooze button
+                // 貪睡
                 FilledTonalButton(
                     onClick = onSnooze,
                     modifier = Modifier.size(100.dp),
@@ -170,13 +211,17 @@ fun AlarmRingingScreen(
                     )
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Snooze, contentDescription = "Snooze", modifier = Modifier.size(32.dp))
+                        Icon(
+                            Icons.Default.Snooze,
+                            contentDescription = "貪睡",
+                            modifier = Modifier.size(32.dp)
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Snooze", fontSize = 12.sp)
+                        Text("延後", fontSize = 12.sp)
                     }
                 }
 
-                // Dismiss button
+                // 關閉
                 Button(
                     onClick = onDismiss,
                     modifier = Modifier.size(100.dp),
@@ -187,12 +232,17 @@ fun AlarmRingingScreen(
                     )
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.AlarmOff, contentDescription = "Dismiss", modifier = Modifier.size(32.dp))
+                        Icon(
+                            Icons.Default.AlarmOff,
+                            contentDescription = "關閉",
+                            modifier = Modifier.size(32.dp)
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Dismiss", fontSize = 12.sp)
+                        Text("關閉", fontSize = 12.sp)
                     }
                 }
             }
         }
     }
 }
+

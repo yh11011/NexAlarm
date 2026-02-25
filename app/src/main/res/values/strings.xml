@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Nex Alarm</string>
+    <string name="meeting_mode">Meeting Mode</string>
 </resources>

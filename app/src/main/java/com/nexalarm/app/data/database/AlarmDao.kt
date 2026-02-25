@@ -34,6 +34,9 @@ interface AlarmDao {
     @Delete
     suspend fun delete(alarm: AlarmEntity)
 
+    @Delete
+    suspend fun deleteAll(alarms: List<AlarmEntity>)
+
     @Query("DELETE FROM alarms WHERE id = :id")
     suspend fun deleteById(id: Long)
 
@@ -45,4 +48,7 @@ interface AlarmDao {
 
     @Query("SELECT * FROM alarms WHERE isEnabled = 1 AND (isRecurring = 0 OR repeatDays LIKE '%' || :dayOfWeek || '%')")
     suspend fun getTodayAlarms(dayOfWeek: Int): List<AlarmEntity>
+
+    @Query("SELECT COUNT(*) FROM alarms WHERE folderId = :folderId")
+    suspend fun getAlarmCountByFolder(folderId: Long): Int
 }

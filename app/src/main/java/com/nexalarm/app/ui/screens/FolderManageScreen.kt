@@ -1,16 +1,15 @@
 package com.nexalarm.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,161 +17,171 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.model.FolderEntity
+import com.nexalarm.app.ui.components.NexToggle
+import com.nexalarm.app.ui.components.NewFolderDialog
+import com.nexalarm.app.ui.theme.*
 
-private val PRESET_COLORS = listOf(
-    "#F44336", "#E91E63", "#9C27B0", "#673AB7",
-    "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4",
-    "#009688", "#4CAF50", "#8BC34A", "#FF9800",
-    "#FF5722", "#795548", "#607D8B"
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderManageScreen(
     folders: List<FolderEntity>,
-    onAddFolder: (String, String) -> Unit,
-    onUpdateFolder: (FolderEntity) -> Unit,
-    onDeleteFolder: (FolderEntity) -> Unit,
+    alarmCountMap: Map<Long, Int>,
+    onAddFolder: (String, String, String) -> Unit,
     onToggleFolder: (Long) -> Unit,
-    onBack: () -> Unit
+    onFolderClick: (FolderEntity) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
-    var editingFolder by remember { mutableStateOf<FolderEntity?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Manage Folders") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showAddDialog = true }) {
-                        Icon(Icons.Default.CreateNewFolder, contentDescription = "Add Folder")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(folders) { folder ->
-                FolderCard(
-                    folder = folder,
-                    onToggle = { onToggleFolder(folder.id) },
-                    onEdit = { editingFolder = folder },
-                    onDelete = { onDeleteFolder(folder) }
-                )
-            }
-        }
-    }
-
-    // Add folder dialog
-    if (showAddDialog) {
-        FolderDialog(
-            title = "New Folder",
-            initialName = "",
-            initialColor = "#2196F3",
-            onDismiss = { showAddDialog = false },
-            onConfirm = { name, color ->
-                onAddFolder(name, color)
-                showAddDialog = false
-            }
-        )
-    }
-
-    // Edit folder dialog
-    editingFolder?.let { folder ->
-        FolderDialog(
-            title = "Edit Folder",
-            initialName = folder.name,
-            initialColor = folder.color,
-            onDismiss = { editingFolder = null },
-            onConfirm = { name, color ->
-                onUpdateFolder(folder.copy(name = name, color = color))
-                editingFolder = null
-            }
-        )
-    }
-}
-
-@Composable
-fun FolderCard(
-    folder: FolderEntity,
-    onToggle: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val folderColor = try {
-        Color(android.graphics.Color.parseColor(folder.color))
-    } catch (e: Exception) {
-        MaterialTheme.colorScheme.primary
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Header
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(start = 20.dp, end = 20.dp, top = 14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .background(folderColor)
+            Text(
+                text = "資料夾",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Normal,
+                color = TextPrimary,
+                letterSpacing = (-0.3).sp
             )
+        }
 
-            Spacer(modifier = Modifier.width(12.dp))
+        LazyColumn(
+            contentPadding = PaddingValues(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            items(folders) { folder ->
+                val count = alarmCountMap[folder.id] ?: 0
+                FolderListCard(
+                    folder = folder,
+                    alarmCount = count,
+                    onToggle = { onToggleFolder(folder.id) },
+                    onClick = { onFolderClick(folder) }
+                )
+            }
 
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = folder.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    if (folder.isSystem) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("System", style = MaterialTheme.typography.labelSmall) },
-                            modifier = Modifier.height(24.dp)
+            // Add folder button (dashed border)
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            width = 1.5.dp,
+                            color = Color.White.copy(alpha = 0.14f),
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                        .clip(RoundedCornerShape(18.dp))
+                        .clickable { showAddDialog = true }
+                        .padding(horizontal = 18.dp, vertical = 16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(AccentDim, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("＋", fontSize = 22.sp, color = PrimaryBlue)
+                        }
+                        Text(
+                            text = "新增資料夾",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = PrimaryBlue
                         )
                     }
                 }
             }
 
-            if (!folder.isSystem) {
-                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp))
-                }
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+            // Quota display
+            item {
+                val userCount = folders.count { !it.isSystem }
+                Text(
+                    text = "免費版：已用 $userCount / 10 個資料夾",
+                    fontSize = 12.sp,
+                    color = TextTertiary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    textAlign = TextAlign.Center
+                )
             }
 
-            Switch(
+            item { Spacer(modifier = Modifier.height(90.dp)) }
+        }
+    }
+
+    NewFolderDialog(
+        visible = showAddDialog,
+        onDismiss = { showAddDialog = false },
+        onConfirm = { name, emoji ->
+            onAddFolder(name, "#1A73E8", emoji)
+            showAddDialog = false
+        }
+    )
+}
+
+@Composable
+private fun FolderListCard(
+    folder: FolderEntity,
+    alarmCount: Int,
+    onToggle: () -> Unit,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(DarkSurface, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Emoji
+            Text(
+                text = folder.emoji,
+                fontSize = 26.sp,
+                lineHeight = 26.sp
+            )
+
+            // Name & count
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = folder.name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "$alarmCount 個鬧鐘",
+                    fontSize = 13.sp,
+                    color = TextSecondary
+                )
+            }
+
+            // Chevron
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = TextTertiary
+            )
+
+            // Toggle
+            NexToggle(
                 checked = folder.isEnabled,
                 onCheckedChange = { onToggle() }
             )
@@ -180,72 +189,3 @@ fun FolderCard(
     }
 }
 
-@Composable
-fun FolderDialog(
-    title: String,
-    initialName: String,
-    initialColor: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
-) {
-    var name by remember { mutableStateOf(initialName) }
-    var selectedColor by remember { mutableStateOf(initialColor) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Folder Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Text("Color", style = MaterialTheme.typography.labelMedium)
-
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(PRESET_COLORS) { color ->
-                        val c = try {
-                            Color(android.graphics.Color.parseColor(color))
-                        } catch (e: Exception) {
-                            Color.Gray
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(c)
-                                .clickable { selectedColor = color },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (selectedColor == color) {
-                                Icon(
-                                    Icons.Default.Check,
-                                    contentDescription = "Selected",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(name, selectedColor) },
-                enabled = name.isNotBlank()
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}

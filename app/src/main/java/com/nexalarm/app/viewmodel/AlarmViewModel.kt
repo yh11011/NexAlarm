@@ -1,101 +1,164 @@
-package com.nexalarm.app.viewmodel
+﻿package com.nexalarm.app.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
-import com.nexalarm.app.data.repository.AlarmRepository
 import com.nexalarm.app.util.AlarmScheduler
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * 鬧鐘 ViewModel
+ * 加入 AlarmScheduler 整合
+ */
 class AlarmViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository: AlarmRepository
-    val allAlarms: StateFlow<List<AlarmEntity>>
+    private val database = NexAlarmDatabase.getDatabase(application)
+    private val alarmDao = database.alarmDao()
+    private val scheduler = AlarmScheduler(application)
 
-    private val _selectedFolderId = MutableStateFlow<Long?>(null)
-    val selectedFolderId: StateFlow<Long?> = _selectedFolderId
+    // 所有鬧鐘
+    val allAlarms: StateFlow<List<AlarmEntity>> =
+        MutableStateFlow(emptyList())
 
-    val filteredAlarms: StateFlow<List<AlarmEntity>>
+    // 單次鬧鐘
+    val singleAlarms: StateFlow<List<AlarmEntity>> =
+        MutableStateFlow(emptyList())
+
+    // 重複鬧鐘
+    val repeatAlarms: StateFlow<List<AlarmEntity>> =
+        MutableStateFlow(emptyList())
 
     init {
-        val db = NexAlarmDatabase.getDatabase(application)
-        repository = AlarmRepository(db.alarmDao())
-
-        allAlarms = repository.getAllAlarms()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-        filteredAlarms = combine(allAlarms, _selectedFolderId) { alarms, folderId ->
-            if (folderId == null) alarms else alarms.filter { it.folderId == folderId }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        loadAlarms()
     }
-
-    fun setFolderFilter(folderId: Long?) {
-        _selectedFolderId.value = folderId
-    }
-
-    fun saveAlarm(alarm: AlarmEntity) {
-        viewModelScope.launch {
-            val id = repository.insert(alarm.copy(
-                folderId = alarm.folderId,
-                isEnabled = true
-            ))
-            val saved = alarm.copy(id = id, isEnabled = true)
-            AlarmScheduler.schedule(getApplication(), saved)
-        }
-    }
-
-    fun updateAlarm(alarm: AlarmEntity) {
-        viewModelScope.launch {
-            repository.update(alarm)
-            if (alarm.isEnabled) {
-                AlarmScheduler.schedule(getApplication(), alarm)
-            } else {
-                AlarmScheduler.cancel(getApplication(), alarm)
-            }
-        }
-    }
-
-    fun toggleAlarm(alarm: AlarmEntity) {
-        val toggled = alarm.copy(isEnabled = !alarm.isEnabled)
-        viewModelScope.launch {
-            repository.update(toggled)
-            if (toggled.isEnabled) {
-                AlarmScheduler.schedule(getApplication(), toggled)
-            } else {
-                AlarmScheduler.cancel(getApplication(), toggled)
-            }
-        }
-    }
-
-    fun deleteAlarm(alarm: AlarmEntity) {
-        viewModelScope.launch {
-            AlarmScheduler.cancel(getApplication(), alarm)
-            repository.delete(alarm)
-        }
-    }
-
-    suspend fun getAlarmById(id: Long): AlarmEntity? = repository.getAlarmById(id)
 
     /**
-     * Used by URI deep link handler. Deduplicates based on time+title+folder+repeat.
+     * 載入所有鬧鐘
      */
-    fun insertOrUpdateFromUri(alarm: AlarmEntity) {
+    private fun loadAlarms() {
         viewModelScope.launch {
-            val id = repository.insertOrUpdate(alarm)
-            val saved = alarm.copy(id = id, isEnabled = true)
-            AlarmScheduler.schedule(getApplication(), saved)
+            alarmDao.getAllAlarms().collect { alarms ->
+                (allAlarms as MutableStateFlow).value = alarms
+                (singleAlarms as MutableStateFlow).value = alarms.filter { !it.isRecurring }
+                (repeatAlarms as MutableStateFlow).value = alarms.filter { it.isRecurring }
+            }
         }
     }
 
-    fun deleteAlarmById(id: Long) {
+    /**
+     * 新增或更新鬧鐘
+     * ⚠️ 重點：會自動排程鬧鐘
+     */
+    fun saveAlarm(alarm: AlarmEntity) {
         viewModelScope.launch {
-            val alarm = repository.getAlarmById(id)
-            if (alarm != null) {
-                AlarmScheduler.cancel(getApplication(), alarm)
-                repository.deleteById(id)
+            if (alarm.id == 0L) {
+                // 新增
+                val newId = alarmDao.insert(alarm)
+                val newAlarm = alarm.copy(id = newId)
+                scheduler.schedule(newAlarm)
+            } else {
+                // 更新
+                alarmDao.update(alarm)
+                scheduler.schedule(alarm)
+            }
+        }
+    }
+
+    /**
+     * 切換鬧鐘啟用狀態
+     * ⚠️ 重點：會自動排程或取消排程
+     */
+    fun toggleAlarm(alarm: AlarmEntity) {
+        val updated = alarm.copy(isEnabled = !alarm.isEnabled)
+        viewModelScope.launch {
+            alarmDao.update(updated)
+
+            if (updated.isEnabled) {
+                scheduler.schedule(updated)
+            } else {
+                scheduler.cancel(updated)
+            }
+        }
+    }
+
+    /**
+     * 刪除鬧鐘
+     * ⚠️ 重點：會自動取消排程
+     */
+    fun deleteAlarm(alarm: AlarmEntity) {
+        viewModelScope.launch {
+            scheduler.cancel(alarm)
+            alarmDao.delete(alarm)
+        }
+    }
+
+    /**
+     * 批次刪除鬧鐘
+     */
+    fun deleteAlarms(alarms: List<AlarmEntity>) {
+        viewModelScope.launch {
+            alarms.forEach { alarm ->
+                scheduler.cancel(alarm)
+            }
+            alarmDao.deleteAll(alarms)
+        }
+    }
+
+    /**
+     * 取得特定資料夾的鬧鐘
+     */
+    fun getAlarmsByFolder(folderId: Long): StateFlow<List<AlarmEntity>> {
+        val flow = MutableStateFlow<List<AlarmEntity>>(emptyList())
+        viewModelScope.launch {
+            alarmDao.getAlarmsByFolder(folderId).collect { alarms ->
+                flow.value = alarms
+            }
+        }
+        return flow
+    }
+
+    /**
+     * 取得下一個要響的鬧鐘
+     */
+    fun getNextAlarm(): AlarmEntity? {
+        val enabledAlarms = allAlarms.value.filter { it.isEnabled }
+        if (enabledAlarms.isEmpty()) return null
+
+        // 找出最早要響的鬧鐘
+        return enabledAlarms.minByOrNull { alarm ->
+            scheduler.getNextTriggerTime(alarm)
+        }
+    }
+
+    /**
+     * 取得距離下次響鈴的時間文字
+     */
+    fun getTimeUntilNextAlarm(): String {
+        val nextAlarm = getNextAlarm() ?: return ""
+        return scheduler.getTimeUntilText(nextAlarm)
+    }
+
+    /**
+     * 根據 ID 取得鬧鐘
+     */
+    suspend fun getAlarmById(id: Long): AlarmEntity? {
+        return alarmDao.getAlarmById(id)
+    }
+
+    /**
+     * 更新鬧鐘（含排程）
+     */
+    fun updateAlarm(alarm: AlarmEntity) {
+        viewModelScope.launch {
+            alarmDao.update(alarm)
+            if (alarm.isEnabled) {
+                scheduler.schedule(alarm)
+            } else {
+                scheduler.cancel(alarm)
             }
         }
     }

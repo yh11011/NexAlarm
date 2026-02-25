@@ -36,6 +36,12 @@ abstract class NexAlarmDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE folders ADD COLUMN emoji TEXT NOT NULL DEFAULT '📁'")
+            }
+        }
+
         fun getDatabase(context: Context): NexAlarmDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -43,7 +49,7 @@ abstract class NexAlarmDatabase : RoomDatabase() {
                     NexAlarmDatabase::class.java,
                     "nexalarm_database"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration()
                     .addCallback(PrepopulateCallback())
                     .build()
@@ -58,10 +64,10 @@ abstract class NexAlarmDatabase : RoomDatabase() {
             super.onCreate(db)
             // Use raw SQL to avoid race condition with INSTANCE being null
             db.execSQL(
-                "INSERT INTO folders (name, isEnabled, color, isSystem) VALUES ('Single Alarm', 1, '#4CAF50', 1)"
+                "INSERT INTO folders (name, isEnabled, color, isSystem, emoji) VALUES ('Single Alarm', 1, '#4CAF50', 1, '🔔')"
             )
             db.execSQL(
-                "INSERT INTO folders (name, isEnabled, color, isSystem) VALUES ('Recurring Alarm', 1, '#FF9800', 1)"
+                "INSERT INTO folders (name, isEnabled, color, isSystem, emoji) VALUES ('Recurring Alarm', 1, '#FF9800', 1, '🔁')"
             )
         }
     }

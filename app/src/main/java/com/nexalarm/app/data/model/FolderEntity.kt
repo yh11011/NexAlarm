@@ -9,6 +9,7 @@ data class FolderEntity(
     val id: Long = 0,
     val name: String,
     val isEnabled: Boolean = true,
-    val color: String = "#2196F3",
-    val isSystem: Boolean = false
+    val color: String = "#1A73E8",
+    val isSystem: Boolean = false,
+    val emoji: String = "📁"
 )
