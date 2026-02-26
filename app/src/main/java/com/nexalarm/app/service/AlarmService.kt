@@ -16,6 +16,7 @@ import androidx.core.app.NotificationCompat
 import com.nexalarm.app.R
 import com.nexalarm.app.receiver.AlarmReceiver
 import com.nexalarm.app.ui.screens.AlarmRingingActivity
+import com.nexalarm.app.util.AlarmTestHook
 import com.nexalarm.app.util.NotificationHelper
 
 /**
@@ -33,6 +34,7 @@ class AlarmService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private var aliveTimer: java.util.Timer? = null
 
     private var alarmId: Long = -1
     private var alarmTitle: String = "鬧鐘"
@@ -51,7 +53,16 @@ class AlarmService : Service() {
                 vibrateOnly = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, false)
 
                 startForeground(NOTIFICATION_ID, createNotification())
+
+                // ===== 測試 Hook: Level 1 - Service 啟動 =====
+                AlarmTestHook.onServiceStarted(this, alarmId)
+                AlarmTestHook.onNotificationShown(this, alarmId)
+                AlarmTestHook.recordStreamVolume(this, alarmId)
+
                 startAlarm()
+
+                // ===== 測試 Hook: Level 2 - 啟動存活心跳 =====
+                startAliveHeartbeat()
             }
             ACTION_STOP_ALARM -> {
                 stopAlarm()
@@ -100,8 +111,13 @@ class AlarmService : Service() {
                 start()
             }
 
+            // ===== 測試 Hook: Level 1 - 鈴聲播放開始 =====
+            AlarmTestHook.onMediaPlayStarted(this, alarmId)
+
             android.util.Log.d("AlarmService", "Ringtone started")
         } catch (e: Exception) {
+            // ===== 測試 Hook: 記錄 crash =====
+            AlarmTestHook.onCrashDetected(this, alarmId, "ringtone_failed: ${e.message}")
             android.util.Log.e("AlarmService", "Failed to start ringtone", e)
         }
     }
@@ -123,6 +139,9 @@ class AlarmService : Service() {
         }
 
         android.util.Log.d("AlarmService", "Vibration started")
+
+        // ===== 測試 Hook: Level 1 - 震動開始 =====
+        AlarmTestHook.onVibrationStarted(this, alarmId)
     }
 
     /**
@@ -197,7 +216,23 @@ class AlarmService : Service() {
     }
 
     override fun onDestroy() {
+        aliveTimer?.cancel()
+        aliveTimer = null
         stopAlarm()
         super.onDestroy()
+    }
+
+    /**
+     * 每秒更新存活心跳，用於驗證 Service 持續存活 ≥5 秒
+     */
+    private fun startAliveHeartbeat() {
+        aliveTimer?.cancel()
+        aliveTimer = java.util.Timer().apply {
+            scheduleAtFixedRate(object : java.util.TimerTask() {
+                override fun run() {
+                    AlarmTestHook.onServiceStillAlive(this@AlarmService, alarmId)
+                }
+            }, 0L, 1000L)
+        }
     }
 }

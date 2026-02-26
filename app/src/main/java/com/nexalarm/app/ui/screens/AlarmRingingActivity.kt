@@ -30,6 +30,7 @@ import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.receiver.AlarmReceiver
 import com.nexalarm.app.service.AlarmService
 import com.nexalarm.app.ui.theme.NexAlarmTheme
+import com.nexalarm.app.util.AlarmTestHook
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -62,6 +63,9 @@ class AlarmRingingActivity : ComponentActivity() {
 
         val alarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1L)
         val alarmTitle = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: "鬧鐘"
+
+        // ===== 測試 Hook: Level 2 - 全螢幕顯示 =====
+        AlarmTestHook.onFullScreenShown(this, alarmId)
 
         setContent {
             NexAlarmTheme {

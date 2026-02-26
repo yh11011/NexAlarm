@@ -9,6 +9,7 @@ import com.nexalarm.app.data.repository.AlarmRepository
 import com.nexalarm.app.service.AlarmService
 import com.nexalarm.app.ui.screens.AlarmRingingActivity
 import com.nexalarm.app.util.AlarmScheduler
+import com.nexalarm.app.util.AlarmTestHook
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,6 +47,9 @@ class AlarmReceiver : BroadcastReceiver() {
         val alarmId = intent.getLongExtra(EXTRA_ALARM_ID, -1)
         val title = intent.getStringExtra(EXTRA_ALARM_TITLE) ?: "鬧鐘"
         val vibrateOnly = intent.getBooleanExtra(EXTRA_ALARM_VIBRATE_ONLY, false)
+
+        // ===== 測試 Hook: Level 0 =====
+        AlarmTestHook.onReceiverTriggered(context, alarmId)
 
         Log.d("AlarmReceiver", "Alarm triggered: ID=$alarmId, Title=$title")
 
