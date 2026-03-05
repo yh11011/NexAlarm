@@ -1,12 +1,22 @@
 package com.nexalarm.app.ui.components
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import com.nexalarm.app.data.model.AlarmEntity
+import kotlinx.coroutines.delay
 
 @Composable
 fun rememberCountdownText(alarms: List<AlarmEntity>): String {
-    return remember(alarms) {
+    var tick by remember { mutableLongStateOf(0L) }
+
+    // 每 30 秒刷新一次倒數
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000L)
+            tick++
+        }
+    }
+
+    return remember(alarms, tick) {
         val now = java.util.Calendar.getInstance()
         val nowMinutes = now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE)
         val enabled = alarms.filter { it.isEnabled }

@@ -44,7 +44,7 @@ fun AlarmCard(
                 Spacer(modifier = Modifier.height(5.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = alarm.title.ifBlank { "Alarm" },
+                        text = alarm.title.ifBlank { "鬧鐘" },
                         fontSize = 13.sp,
                         color = TextSecondary
                     )
@@ -79,10 +79,10 @@ fun AlarmCard(
 }
 fun formatRepeatDays(alarm: AlarmEntity): String {
     val days = alarm.repeatDays
-    if (days.isEmpty()) return "One-time"
-    if (days.sorted() == listOf(1, 2, 3, 4, 5, 6, 7)) return "Every day"
-    if (days.sorted() == listOf(1, 2, 3, 4, 5)) return "Weekdays"
-    if (days.sorted() == listOf(6, 7)) return "Weekends"
-    val labels = listOf("", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-    return days.sorted().joinToString(", ") { labels.getOrElse(it) { "?" } }
+    if (days.isEmpty()) return "單次"
+    if (days.sorted() == listOf(1, 2, 3, 4, 5, 6, 7)) return "每天"
+    if (days.sorted() == listOf(1, 2, 3, 4, 5)) return "平日"
+    if (days.sorted() == listOf(6, 7)) return "週末"
+    val labels = listOf("", "週一", "週二", "週三", "週四", "週五", "週六", "週日")
+    return days.sorted().joinToString("、") { labels.getOrElse(it) { "?" } }
 }

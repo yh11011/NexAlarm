@@ -21,16 +21,16 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     private val scheduler = AlarmScheduler(application)
 
     // 所有鬧鐘
-    val allAlarms: StateFlow<List<AlarmEntity>> =
-        MutableStateFlow(emptyList())
+    private val _allAlarms = MutableStateFlow<List<AlarmEntity>>(emptyList())
+    val allAlarms: StateFlow<List<AlarmEntity>> = _allAlarms
 
     // 單次鬧鐘
-    val singleAlarms: StateFlow<List<AlarmEntity>> =
-        MutableStateFlow(emptyList())
+    private val _singleAlarms = MutableStateFlow<List<AlarmEntity>>(emptyList())
+    val singleAlarms: StateFlow<List<AlarmEntity>> = _singleAlarms
 
     // 重複鬧鐘
-    val repeatAlarms: StateFlow<List<AlarmEntity>> =
-        MutableStateFlow(emptyList())
+    private val _repeatAlarms = MutableStateFlow<List<AlarmEntity>>(emptyList())
+    val repeatAlarms: StateFlow<List<AlarmEntity>> = _repeatAlarms
 
     init {
         loadAlarms()
@@ -42,9 +42,9 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadAlarms() {
         viewModelScope.launch {
             alarmDao.getAllAlarms().collect { alarms ->
-                (allAlarms as MutableStateFlow).value = alarms
-                (singleAlarms as MutableStateFlow).value = alarms.filter { !it.isRecurring }
-                (repeatAlarms as MutableStateFlow).value = alarms.filter { it.isRecurring }
+                _allAlarms.value = alarms
+                _singleAlarms.value = alarms.filter { !it.isRecurring }
+                _repeatAlarms.value = alarms.filter { it.isRecurring }
             }
         }
     }

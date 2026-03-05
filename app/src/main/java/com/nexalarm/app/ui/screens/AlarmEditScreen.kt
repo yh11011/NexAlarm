@@ -1,4 +1,5 @@
 ﻿package com.nexalarm.app.ui.screens
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,7 @@ import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.ui.components.NexToggle
 import com.nexalarm.app.ui.components.TimePickerSheet
 import com.nexalarm.app.ui.theme.*
+
 @Composable
 fun AlarmEditScreen(
     alarm: AlarmEntity?,
@@ -32,10 +34,15 @@ fun AlarmEditScreen(
     val isEditing = alarm != null
     key(alarm) { AlarmEditContent(alarm, isEditing, folders, onSave, onBack, onDelete) }
 }
+
 @Composable
 private fun AlarmEditContent(
-    alarm: AlarmEntity?, isEditing: Boolean, folders: List<FolderEntity>,
-    onSave: (AlarmEntity) -> Unit, onBack: () -> Unit, onDelete: ((AlarmEntity) -> Unit)?
+    alarm: AlarmEntity?,
+    isEditing: Boolean,
+    folders: List<FolderEntity>,
+    onSave: (AlarmEntity) -> Unit,
+    onBack: () -> Unit,
+    onDelete: ((AlarmEntity) -> Unit)?
 ) {
     var hour by remember { mutableIntStateOf(alarm?.hour ?: 7) }
     var minute by remember { mutableIntStateOf(alarm?.minute ?: 0) }
@@ -49,24 +56,78 @@ private fun AlarmEditContent(
     var showTimePicker by remember { mutableStateOf(false) }
     var showFolderPicker by remember { mutableStateOf(false) }
     val isAm = hour < 12
+
     Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextPrimary, modifier = Modifier.size(22.dp)) }
+            // 頂部導航列
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack, "返回",
+                        tint = TextPrimary, modifier = Modifier.size(22.dp)
+                    )
+                }
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(if (isEditing) "Edit Alarm" else "New Alarm", fontSize = 20.sp, fontWeight = FontWeight.Medium, color = TextPrimary, modifier = Modifier.weight(1f))
+                Text(
+                    if (isEditing) "編輯鬧鐘" else "新增鬧鐘",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
                 TextButton(onClick = {
-                    onSave(AlarmEntity(id = alarm?.id ?: 0, hour = hour, minute = minute, title = title, isEnabled = true,
-                        isRecurring = isRecurring, repeatDays = if (isRecurring) repeatDays else emptyList(),
-                        folderId = selectedFolderId, vibrateOnly = vibrateOnly, volume = alarm?.volume ?: 80,
-                        snoozeDelay = snoozeDelay, maxSnoozeCount = alarm?.maxSnoozeCount ?: 3,
-                        keepAfterRinging = alarm?.keepAfterRinging ?: false, createdAt = alarm?.createdAt ?: System.currentTimeMillis()))
-                }) { Text("Save", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue) }
+                    onSave(
+                        AlarmEntity(
+                            id = alarm?.id ?: 0,
+                            hour = hour,
+                            minute = minute,
+                            title = title,
+                            isEnabled = true,
+                            isRecurring = isRecurring,
+                            repeatDays = if (isRecurring) repeatDays else emptyList(),
+                            folderId = selectedFolderId,
+                            vibrateOnly = vibrateOnly,
+                            volume = alarm?.volume ?: 80,
+                            snoozeDelay = snoozeDelay,
+                            maxSnoozeCount = alarm?.maxSnoozeCount ?: 3,
+                            keepAfterRinging = alarm?.keepAfterRinging ?: false,
+                            createdAt = alarm?.createdAt ?: System.currentTimeMillis()
+                        )
+                    )
+                }) {
+                    Text("儲存", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
+                }
             }
-            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).background(DarkSurface, RoundedCornerShape(18.dp)).clickable { showTimePicker = true }.padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // 時間選擇區
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .background(DarkSurface, RoundedCornerShape(18.dp))
+                        .clickable { showTimePicker = true }
+                        .padding(vertical = 28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(String.format("%02d:%02d", hour, minute), fontSize = 80.sp, fontWeight = FontWeight.Light, color = TextPrimary, letterSpacing = (-4).sp, lineHeight = 80.sp)
+                        Text(
+                            String.format("%02d:%02d", hour, minute),
+                            fontSize = 80.sp,
+                            fontWeight = FontWeight.Light,
+                            color = TextPrimary,
+                            letterSpacing = (-4).sp,
+                            lineHeight = 80.sp
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             EditAmPmPill("AM", isAm) { if (!isAm) hour -= 12 }
@@ -74,39 +135,220 @@ private fun AlarmEditContent(
                         }
                     }
                 }
+
                 Spacer(modifier = Modifier.height(20.dp))
-                OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("Alarm title (optional)", color = TextTertiary) }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = DarkSurface, focusedContainerColor = DarkSurface, unfocusedBorderColor = Color.Transparent, focusedBorderColor = PrimaryBlue, cursorColor = PrimaryBlue, focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary))
+
+                // 標題輸入
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = { Text("鬧鐘標題（選填）", color = TextTertiary) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = DarkSurface,
+                        focusedContainerColor = DarkSurface,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = PrimaryBlue,
+                        cursorColor = PrimaryBlue,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    )
+                )
+
                 Spacer(modifier = Modifier.height(14.dp))
-                EditLabel("REPEAT DAYS")
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    listOf("Mo","Tu","We","Th","Fr","Sa","Su").forEachIndexed { i, lbl -> val day = i + 1; val sel = day in repeatDays
-                        Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (sel) AccentDim else DarkSurface).clickable { repeatDays = if (day in repeatDays) repeatDays - day else repeatDays + day; isRecurring = repeatDays.isNotEmpty() }.padding(vertical = 9.dp), contentAlignment = Alignment.Center) {
-                            Text(lbl, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = if (sel) SecondaryBlue else TextSecondary) } } }
-                Spacer(modifier = Modifier.height(14.dp))
-                EditLabel("SETTINGS")
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).background(DarkSurface, RoundedCornerShape(18.dp))) {
-                    EditRow("Folder", folders.find { it.id == selectedFolderId }?.name ?: "None", true) { showFolderPicker = !showFolderPicker }
-                    if (showFolderPicker) { Column(modifier = Modifier.fillMaxWidth().background(DarkCard).padding(horizontal = 18.dp, vertical = 8.dp)) {
-                        Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { selectedFolderId = null; showFolderPicker = false }.padding(vertical = 10.dp)) { Text("None", fontSize = 14.sp, color = TextSecondary) }
-                        folders.forEach { f -> Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { selectedFolderId = f.id; showFolderPicker = false }.padding(vertical = 10.dp)) { Text(f.emoji + " " + f.name, fontSize = 14.sp, color = if (selectedFolderId == f.id) SecondaryBlue else TextSecondary) } } } }
-                    EditDiv()
-                    EditToggleRow("Snooze", "Delay ringing", snoozeEnabled) { snoozeEnabled = it }
-                    EditDiv()
-                    EditRow("Snooze delay", snoozeDelay.toString() + " min", true) { snoozeDelay = if (snoozeDelay >= 10) 5 else snoozeDelay + 1 }
-                    EditDiv()
-                    EditToggleRow("Vibrate only", "Vibrate even in silent", vibrateOnly) { vibrateOnly = it }
+
+                // 重複日選擇
+                EditLabel("重複日")
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    listOf("一", "二", "三", "四", "五", "六", "日").forEachIndexed { i, lbl ->
+                        val day = i + 1
+                        val sel = day in repeatDays
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (sel) AccentDim else DarkSurface)
+                                .clickable {
+                                    repeatDays = if (day in repeatDays) repeatDays - day else repeatDays + day
+                                    isRecurring = repeatDays.isNotEmpty()
+                                }
+                                .padding(vertical = 9.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                lbl, fontSize = 12.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (sel) SecondaryBlue else TextSecondary
+                            )
+                        }
+                    }
                 }
-                if (isEditing && onDelete != null && alarm != null) { Spacer(modifier = Modifier.height(16.dp))
-                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).background(DangerRed.copy(alpha = 0.1f), RoundedCornerShape(14.dp)).clickable { onDelete(alarm) }.padding(vertical = 15.dp), contentAlignment = Alignment.Center) { Text("Delete Alarm", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DangerRed) } }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 設定區塊
+                EditLabel("設定")
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .background(DarkSurface, RoundedCornerShape(18.dp))
+                ) {
+                    EditRow("資料夾", folders.find { it.id == selectedFolderId }?.name ?: "無", true) {
+                        showFolderPicker = !showFolderPicker
+                    }
+                    if (showFolderPicker) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(DarkCard)
+                                .padding(horizontal = 18.dp, vertical = 8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { selectedFolderId = null; showFolderPicker = false }
+                                    .padding(vertical = 10.dp)
+                            ) {
+                                Text("無", fontSize = 14.sp, color = TextSecondary)
+                            }
+                            folders.forEach { f ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { selectedFolderId = f.id; showFolderPicker = false }
+                                        .padding(vertical = 10.dp)
+                                ) {
+                                    Text(
+                                        f.emoji + " " + f.name,
+                                        fontSize = 14.sp,
+                                        color = if (selectedFolderId == f.id) SecondaryBlue else TextSecondary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    EditDiv()
+                    EditToggleRow("貪睡", "延後響鈴", snoozeEnabled) { snoozeEnabled = it }
+                    EditDiv()
+                    EditRow("貪睡間隔", snoozeDelay.toString() + " 分鐘", true) {
+                        snoozeDelay = if (snoozeDelay >= 10) 5 else snoozeDelay + 1
+                    }
+                    EditDiv()
+                    EditToggleRow("僅震動", "靜音時仍震動", vibrateOnly) { vibrateOnly = it }
+                }
+
+                // 刪除按鈕
+                if (isEditing && onDelete != null && alarm != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .background(DangerRed.copy(alpha = 0.1f), RoundedCornerShape(14.dp))
+                            .clickable { onDelete(alarm) }
+                            .padding(vertical = 15.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("刪除鬧鐘", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DangerRed)
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
-        TimePickerSheet(visible = showTimePicker, initialHour = hour, initialMinute = minute, onDismiss = { showTimePicker = false }, onConfirm = { h, m -> hour = h; minute = m; showTimePicker = false })
+
+        TimePickerSheet(
+            visible = showTimePicker,
+            initialHour = hour,
+            initialMinute = minute,
+            onDismiss = { showTimePicker = false },
+            onConfirm = { h, m -> hour = h; minute = m; showTimePicker = false }
+        )
     }
 }
-@Composable private fun EditAmPmPill(text: String, selected: Boolean, onClick: () -> Unit) { Box(modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(if (selected) PrimaryBlue else Color.Transparent).clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 5.dp)) { Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else TextSecondary) } }
-@Composable private fun EditLabel(text: String) { Text(text, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.09.sp, color = TextTertiary, modifier = Modifier.padding(start = 18.dp, bottom = 8.dp)) }
-@Composable private fun EditRow(label: String, value: String, showArrow: Boolean = false, onClick: (() -> Unit)? = null) { Row(modifier = Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 18.dp, vertical = 15.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(label, fontSize = 15.sp, color = TextPrimary); Text(if (showArrow) value + " >" else value, fontSize = 14.sp, color = TextSecondary) } }
-@Composable private fun EditToggleRow(label: String, subtitle: String? = null, checked: Boolean, onCheckedChange: (Boolean) -> Unit) { Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 15.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column { Text(label, fontSize = 15.sp, color = TextPrimary); if (subtitle != null) { Spacer(modifier = Modifier.height(2.dp)); Text(subtitle, fontSize = 12.sp, color = TextSecondary) } }; NexToggle(checked = checked, onCheckedChange = onCheckedChange) } }
-@Composable private fun EditDiv() { HorizontalDivider(color = DarkBorder, thickness = 1.dp) }
+
+@Composable
+private fun EditAmPmPill(text: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (selected) PrimaryBlue else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text, fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (selected) Color.White else TextSecondary
+        )
+    }
+}
+
+@Composable
+private fun EditLabel(text: String) {
+    Text(
+        text, fontSize = 11.5.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.09.sp,
+        color = TextTertiary,
+        modifier = Modifier.padding(start = 18.dp, bottom = 8.dp)
+    )
+}
+
+@Composable
+private fun EditRow(
+    label: String,
+    value: String,
+    showArrow: Boolean = false,
+    onClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 18.dp, vertical = 15.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, fontSize = 15.sp, color = TextPrimary)
+        Text(if (showArrow) "$value >" else value, fontSize = 14.sp, color = TextSecondary)
+    }
+}
+
+@Composable
+private fun EditToggleRow(
+    label: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 15.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(label, fontSize = 15.sp, color = TextPrimary)
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+            }
+        }
+        NexToggle(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun EditDiv() {
+    HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+}

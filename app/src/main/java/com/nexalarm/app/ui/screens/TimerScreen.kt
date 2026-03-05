@@ -1,5 +1,11 @@
 package com.nexalarm.app.ui.screens
 
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +41,14 @@ fun TimerScreen(
     val progress = if (totalSec > 0) remainingSec.toFloat() / totalSec.toFloat() else 1f
     val arcColor = if (isFinished) LapFast else PrimaryBlue
     val trackColor = DarkSurface
+
+    // 計時結束時播放提示音 + 震動
+    val context = LocalContext.current
+    LaunchedEffect(isFinished) {
+        if (isFinished) {
+            playTimerFinishAlert(context)
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Header
@@ -199,3 +214,28 @@ fun TimerScreen(
     }
 }
 
+private fun playTimerFinishAlert(context: Context) {
+    try {
+        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val ringtone = RingtoneManager.getRingtone(context, uri)
+        ringtone?.apply {
+            audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            play()
+        }
+    } catch (_: Exception) { }
+
+    try {
+        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(
+                VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300), -1)
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(longArrayOf(0, 300, 200, 300), -1)
+        }
+    } catch (_: Exception) { }
+}

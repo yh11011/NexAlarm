@@ -1,6 +1,6 @@
 package com.nexalarm.app.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,8 +22,8 @@ fun NexToggle(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val thumbOffset by animateFloatAsState(
-        targetValue = if (checked) 20f else 0f,
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 20.dp else 0.dp,
         animationSpec = tween(250),
         label = "thumb"
     )
@@ -43,7 +43,7 @@ fun NexToggle(
     ) {
         Box(
             modifier = Modifier
-                .padding(start = (3 + thumbOffset).dp)
+                .offset(x = 3.dp + thumbOffset)
                 .size(25.dp)
                 .clip(CircleShape)
                 .background(Color.White)
