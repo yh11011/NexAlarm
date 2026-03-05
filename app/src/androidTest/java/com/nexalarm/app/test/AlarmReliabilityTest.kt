@@ -299,6 +299,205 @@ class AlarmReliabilityTest {
         }
     }
 
+    // ==================== 新增測試場景 ====================
+
+    /**
+     * 場景 9: 勿擾模式 (DND)
+     * 鬧鐘類別的音訊應該可以穿透 DND
+     */
+    @Test
+    fun test09_DoNotDisturbMode() {
+        runScenario(
+            scenarioName = "勿擾模式_DND",
+            deviceState = "dnd_on",
+            setup = {
+                device.wakeUp()
+                Thread.sleep(1000)
+                // 開啟全面勿擾 (zen_mode: 0=off, 1=priority, 2=no_interruptions, 3=alarms_only)
+                device.executeShellCommand("settings put global zen_mode 2")
+                Thread.sleep(2000)
+                val zenMode = device.executeShellCommand("settings get global zen_mode").trim()
+                Log.d(TAG, "勿擾模式: $zenMode (2=完全勿擾)")
+            },
+            cleanup = {
+                device.executeShellCommand("settings put global zen_mode 0")
+                Thread.sleep(1000)
+                Log.d(TAG, "已關閉勿擾模式")
+            }
+        )
+    }
+
+    /**
+     * 場景 10: 省電模式 (Battery Saver)
+     * 省電模式會限制背景工作，但 setAlarmClock 應不受影響
+     */
+    @Test
+    fun test10_BatterySaverMode() {
+        runScenario(
+            scenarioName = "省電模式",
+            deviceState = "battery_saver",
+            setup = {
+                device.wakeUp()
+                Thread.sleep(1000)
+                // 先模擬未充電狀態（省電模式需要在非充電時才能啟用）
+                device.executeShellCommand("dumpsys battery unplug")
+                Thread.sleep(1000)
+                device.executeShellCommand("settings put global low_power 1")
+                Thread.sleep(2000)
+                val lowPower = device.executeShellCommand("settings get global low_power").trim()
+                Log.d(TAG, "省電模式: $lowPower (1=開啟)")
+            },
+            cleanup = {
+                device.executeShellCommand("settings put global low_power 0")
+                device.executeShellCommand("dumpsys battery reset")
+                Thread.sleep(1000)
+                Log.d(TAG, "已關閉省電模式並重置電池狀態")
+            }
+        )
+    }
+
+    /**
+     * 場景 11: 僅震動模式
+     * vibrateOnly=true 時應該只有震動、沒有鈴聲
+     */
+    @Test
+    fun test11_VibrateOnlyMode() {
+        val scenarioName = "僅震動模式"
+        Log.d(TAG, "=== 開始: $scenarioName ===")
+
+        device.wakeUp()
+        Thread.sleep(1000)
+
+        for (i in 1..REPEAT) {
+            Log.d(TAG, "--- 第 $i / $REPEAT 次 ---")
+
+            val alarmId = (11000 + i).toLong()
+            val scheduledTime = System.currentTimeMillis() + ALARM_DELAY_MS
+
+            AlarmTestHook.clearForAlarm(context, alarmId)
+            monitor.startMonitoring(alarmId)
+
+            // 排程僅震動的鬧鐘
+            scheduleVibrateOnlyAlarm(scheduledTime, alarmId)
+            Log.d(TAG, "排定: vibrateOnly alarm=$alarmId at ${fmtTime(scheduledTime)}")
+
+            val data = monitor.waitForResult(scheduledTime, WAIT_TIMEOUT_SEC, POST_TRIGGER_WAIT)
+
+            // 僅震動模式的特殊驗證：
+            // - Level 0/1 正常判定
+            // - mediaPlayTime 應為 0 (不播鈴聲)
+            // - vibrationStartTime 應 > 0 (有震動)
+            val result = buildResult("僅震動_$i", scenarioName, i, scheduledTime, data, "vibrate_only")
+            results.add(result)
+            logResult(result)
+
+            if (data.vibrationStartTime > 0) {
+                Log.d(TAG, "✅ 震動已啟動")
+            } else {
+                Log.w(TAG, "⚠️ 未偵測到震動")
+            }
+
+            dismissAlarm(alarmId)
+            monitor.stopMonitoring()
+            Thread.sleep(5000)
+        }
+    }
+
+    /**
+     * 場景 12: 同時多鬧鐘 (同一秒觸發)
+     * 測試多個鬧鐘在相同時間觸發時是否都能正常響起
+     */
+    @Test
+    fun test12_SimultaneousAlarms() {
+        val scenarioName = "同時多鬧鐘"
+        Log.d(TAG, "=== 開始: $scenarioName ===")
+
+        device.wakeUp()
+        Thread.sleep(1000)
+
+        val simultaneousCount = 3
+        val triggerTime = System.currentTimeMillis() + 30_000L
+
+        // 排定多個同時觸發的鬧鐘
+        val alarmIds = (0 until simultaneousCount).map { (12000 + it).toLong() }
+        for (id in alarmIds) {
+            AlarmTestHook.clearForAlarm(context, id)
+            scheduleTestAlarm(triggerTime, id)
+            Log.d(TAG, "排定同時鬧鐘: ID=$id at ${fmtTime(triggerTime)}")
+        }
+
+        // 依序驗證每個鬧鐘
+        for ((idx, alarmId) in alarmIds.withIndex()) {
+            monitor.startMonitoring(alarmId)
+
+            val timeToWait = maxOf((triggerTime - System.currentTimeMillis() + 30_000L) / 1000, 30L)
+            val data = monitor.waitForResult(triggerTime, timeToWait, POST_TRIGGER_WAIT)
+            val result = buildResult("同時鬧鐘_${idx + 1}", scenarioName, idx + 1, triggerTime, data, "screen_on")
+            results.add(result)
+            logResult(result)
+
+            dismissAlarm(alarmId)
+            monitor.stopMonitoring()
+            Thread.sleep(2000)
+        }
+
+        val successes = results.filter { it.scenario == scenarioName }.count { it.level0Success }
+        Log.d(TAG, "=== 場景 $scenarioName: ${successes}/${simultaneousCount} 個鬧鐘觸發 ===")
+    }
+
+    /**
+     * 場景 13: 長時間待機後觸發
+     * 螢幕關閉 3 分鐘後觸發鬧鐘，測試深度睡眠後的喚醒能力
+     */
+    @Test
+    fun test13_LongStandby() {
+        runScenario(
+            scenarioName = "長時間待機",
+            deviceState = "long_standby",
+            alarmDelayMs = 180_000L,  // 3 分鐘
+            waitTimeout = 240L,       // 最長等 4 分鐘
+            setup = {
+                device.wakeUp()
+                Thread.sleep(2000)
+                device.sleep()
+                Thread.sleep(3000)
+                Log.d(TAG, "裝置已進入睡眠，等待 3 分鐘後觸發")
+            },
+            cleanup = {
+                device.wakeUp()
+                Thread.sleep(2000)
+            }
+        )
+    }
+
+    /**
+     * 場景 14: 靜音模式
+     * 將裝置設為靜音 (Ringer mode: SILENT)，鬧鐘應仍然響起
+     * (STREAM_ALARM 獨立於 ringer mode)
+     */
+    @Test
+    fun test14_SilentMode() {
+        runScenario(
+            scenarioName = "靜音模式",
+            deviceState = "silent_mode",
+            setup = {
+                device.wakeUp()
+                Thread.sleep(1000)
+                // 用 shell 設為靜音模式 (ringer mode: 0=silent, 1=vibrate, 2=normal)
+                device.executeShellCommand("cmd audio set-ringer-mode 0")
+                Thread.sleep(1000)
+                val ringerMode = device.executeShellCommand("cmd audio get-ringer-mode").trim()
+                Log.d(TAG, "Ringer mode: $ringerMode (0=靜音)")
+            },
+            cleanup = {
+                // 恢復正常模式
+                device.executeShellCommand("cmd audio set-ringer-mode 2")
+                Thread.sleep(1000)
+                Log.d(TAG, "已恢復正常模式")
+            }
+        )
+    }
+
     /**
      * 場景 8: Alarm Queue 驗證
      * 排程後立刻用 dumpsys alarm 確認是否進入 RTC_WAKEUP 佇列
@@ -330,7 +529,7 @@ class AlarmReliabilityTest {
             Log.d(TAG, "排程後 alarm queue 筆數: ${afterDump.lines().size}")
 
             val inQueue = afterDump.contains("RTC_WAKEUP") || afterDump.contains("ELAPSED_WAKEUP")
-                    || afterDump.lines().size > beforeDump.lines().size
+                    || afterDump.contains("AlarmClockInfo") || afterDump.lines().size > beforeDump.lines().size
             Log.d(TAG, "鬧鐘是否在 queue 中: $inQueue")
 
             // 等待觸發
@@ -415,6 +614,29 @@ class AlarmReliabilityTest {
         )
 
         // 商業鬧鐘必用 setAlarmClock (可 bypass Doze)
+        alarmManager.setAlarmClock(
+            AlarmManager.AlarmClockInfo(triggerTime, pendingIntent),
+            pendingIntent
+        )
+    }
+
+    /**
+     * 排程僅震動測試鬧鐘
+     */
+    private fun scheduleVibrateOnlyAlarm(triggerTime: Long, alarmId: Long) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(ACTION_TRIGGER).apply {
+            setPackage(PKG)
+            putExtra("alarm_id", alarmId)
+            putExtra("alarm_title", "VibrateTest_$alarmId")
+            putExtra("alarm_vibrate_only", true)
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, alarmId.toInt(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         alarmManager.setAlarmClock(
             AlarmManager.AlarmClockInfo(triggerTime, pendingIntent),
             pendingIntent

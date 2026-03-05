@@ -58,10 +58,14 @@ class AlarmScheduler(private val context: Context) {
             }
         }
 
-        // 設定精確鬧鐘（即使在 Doze 模式也能觸發）
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            triggerTime,
+        // 設定鬧鐘（使用 setAlarmClock 可 bypass Doze，是商業鬧鐘的標準做法）
+        val showIntent = PendingIntent.getActivity(
+            context, alarm.id.toInt(),
+            Intent(context, com.nexalarm.app.MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.setAlarmClock(
+            AlarmManager.AlarmClockInfo(triggerTime, showIntent),
             pendingIntent
         )
 
@@ -111,9 +115,14 @@ class AlarmScheduler(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            triggerTime,
+        // 貪睡也用 setAlarmClock，確保 bypass Doze
+        val showIntent = PendingIntent.getActivity(
+            context, alarm.id.toInt(),
+            Intent(context, com.nexalarm.app.MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.setAlarmClock(
+            AlarmManager.AlarmClockInfo(triggerTime, showIntent),
             pendingIntent
         )
 
