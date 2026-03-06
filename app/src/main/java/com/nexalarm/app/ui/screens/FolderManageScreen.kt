@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +34,7 @@ fun FolderManageScreen(
     onToggleFolder: (Long) -> Unit,
     onFolderClick: (FolderEntity) -> Unit
 ) {
+    val openMenu = LocalMenuAction.current
     var showAddDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -40,14 +42,25 @@ fun FolderManageScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 14.dp)
+                .padding(horizontal = 4.dp, vertical = 10.dp)
         ) {
+            IconButton(
+                onClick = openMenu,
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = S.menu,
+                    tint = TextPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Text(
-                text = "資料夾",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Normal,
+                text = S.folders,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium,
                 color = TextPrimary,
-                letterSpacing = (-0.3).sp
+                modifier = Modifier.align(Alignment.Center)
             )
         }
 
@@ -93,7 +106,7 @@ fun FolderManageScreen(
                             Text("＋", fontSize = 22.sp, color = PrimaryBlue)
                         }
                         Text(
-                            text = "新增資料夾",
+                            text = S.newFolder,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = PrimaryBlue
@@ -106,7 +119,7 @@ fun FolderManageScreen(
             item {
                 val userCount = folders.count { !it.isSystem }
                 Text(
-                    text = "免費版：已用 $userCount / 10 個資料夾",
+                    text = S.folderQuota(userCount, 10),
                     fontSize = 12.sp,
                     color = TextTertiary,
                     modifier = Modifier
@@ -166,7 +179,7 @@ private fun FolderListCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "$alarmCount 個鬧鐘",
+                    text = S.alarmCount(alarmCount),
                     fontSize = 13.sp,
                     color = TextSecondary
                 )

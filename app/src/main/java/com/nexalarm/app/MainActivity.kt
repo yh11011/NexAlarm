@@ -16,7 +16,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
@@ -29,6 +31,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.model.FolderEntity
@@ -47,6 +50,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestPermissions()
         handleDeepLink(intent)
+
+        val settings = SettingsManager(this)
+        isDarkTheme = settings.isDarkMode
+        isAppEnglish = settings.isEnglish
 
         setContent {
             NexAlarmTheme {
@@ -140,14 +147,26 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ── Bottom Nav Items ──
+// ── Bottom Nav Items (4 tabs) ──
 enum class BottomTab(val label: String, val icon: ImageVector, val route: String) {
-    SINGLE("單次", Icons.Default.Notifications, "single"),
-    REPEAT("多次", Icons.Default.NotificationsActive, "repeat"),
+    ALARM("鬧鐘", Icons.Default.Notifications, "alarm"),
     FOLDERS("資料夾", Icons.Default.Folder, "folders"),
     STOPWATCH("碼錶", Icons.Default.Timer, "stopwatch"),
-    TIMER("計時器", Icons.Default.HourglassBottom, "timer")
+    TIMER("計時", Icons.Default.HourglassBottom, "timer")
 }
+
+// ── All nav items for side drawer ──
+private data class DrawerNavItem(val label: String, val icon: ImageVector, val route: String)
+
+private val allDrawerItems get() = listOf(
+    DrawerNavItem(S.home, Icons.Default.Home, "home"),
+    DrawerNavItem(S.alarm, Icons.Default.Notifications, "alarm"),
+    DrawerNavItem(S.folders, Icons.Default.Folder, "folders"),
+    DrawerNavItem(S.stopwatch, Icons.Default.Timer, "stopwatch"),
+    DrawerNavItem(S.timer, Icons.Default.HourglassBottom, "timer"),
+    DrawerNavItem(S.settings, Icons.Default.Settings, "settings"),
+    DrawerNavItem(S.account, Icons.Default.Person, "account")
+)
 
 @Composable
 fun NexAlarmMainContent() {
@@ -161,164 +180,241 @@ fun NexAlarmMainContent() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Show bottom bar only on main tabs
-    val showBottomBar = currentRoute in BottomTab.entries.map { it.route }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-    Scaffold(
-        containerColor = DarkBackground,
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar(
-                    containerColor = DarkBackground,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier.background(DarkBackground)
+    // Show bottom bar on all main screens
+    val allMainRoutes = BottomTab.entries.map { it.route } + listOf("home", "settings", "account")
+    val showBottomBar = currentRoute in allMainRoutes
+
+    val openMenu: () -> Unit = { scope.launch { drawerState.open() } }
+
+    CompositionLocalProvider(LocalMenuAction provides openMenu) {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    drawerContainerColor = DarkSurface
                 ) {
-                    BottomTab.entries.forEach { tab ->
-                        val selected = currentRoute == tab.route
-                        NavigationBarItem(
-                            selected = selected,
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        "NexAlarm",
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider(color = DarkCard)
+                    Spacer(Modifier.height(8.dp))
+
+                    allDrawerItems.forEach { item ->
+                        NavigationDrawerItem(
+                            icon = {
+                                Icon(
+                                    item.icon,
+                                    contentDescription = item.label,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+                            label = { Text(item.label, fontSize = 14.sp) },
+                            selected = currentRoute == item.route,
                             onClick = {
-                                if (currentRoute != tab.route) {
-                                    navController.navigate(tab.route) {
+                                scope.launch { drawerState.close() }
+                                if (currentRoute != item.route) {
+                                    navController.navigate(item.route) {
                                         popUpTo(navController.graph.startDestinationId) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
                                 }
                             },
-                            icon = {
-                                Icon(
-                                    tab.icon,
-                                    contentDescription = tab.label,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            },
-                            label = { Text(tab.label, fontSize = 10.sp) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = TextPrimary,
-                                selectedTextColor = TextPrimary,
-                                unselectedIconColor = TextSecondary.copy(alpha = 0.45f),
-                                unselectedTextColor = TextSecondary.copy(alpha = 0.45f),
-                                indicatorColor = DarkBackground
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            colors = NavigationDrawerItemDefaults.colors(
+                                selectedContainerColor = AccentDim,
+                                unselectedContainerColor = Color.Transparent,
+                                selectedIconColor = PrimaryBlue,
+                                unselectedIconColor = TextSecondary,
+                                selectedTextColor = PrimaryBlue,
+                                unselectedTextColor = TextSecondary
                             )
                         )
                     }
                 }
             }
-        }
-    ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = BottomTab.SINGLE.route,
-            modifier = Modifier.padding(padding)
         ) {
-            // Tab: Single alarms
-            composable(BottomTab.SINGLE.route) {
-                SingleAlarmScreen(
-                    alarms = alarms,
-                    folders = folders,
-                    onAddClick = { navController.navigate("alarm_edit/-1") },
-                    onAlarmClick = { alarm -> navController.navigate("alarm_edit/${alarm.id}") },
-                    onAlarmToggle = { alarm -> alarmViewModel.toggleAlarm(alarm) }
-                )
-            }
-
-            // Tab: Repeat alarms
-            composable(BottomTab.REPEAT.route) {
-                RepeatAlarmScreen(
-                    alarms = alarms,
-                    folders = folders,
-                    onAddClick = { navController.navigate("alarm_edit/-1") },
-                    onAlarmClick = { alarm -> navController.navigate("alarm_edit/${alarm.id}") },
-                    onAlarmToggle = { alarm -> alarmViewModel.toggleAlarm(alarm) }
-                )
-            }
-
-            // Tab: Folders
-            composable(BottomTab.FOLDERS.route) {
-                // Build alarm count map
-                val alarmCountMap = remember(alarms, folders) {
-                    folders.associate { folder ->
-                        folder.id to alarms.count { it.folderId == folder.id }
-                    }
-                }
-                FolderManageScreen(
-                    folders = folders,
-                    alarmCountMap = alarmCountMap,
-                    onAddFolder = { name, color, emoji -> folderViewModel.addFolder(name, color, emoji) },
-                    onToggleFolder = { id -> folderViewModel.toggleFolder(id) },
-                    onFolderClick = { folder -> navController.navigate("folder_detail/${folder.id}") }
-                )
-            }
-
-            // Tab: Stopwatch
-            composable(BottomTab.STOPWATCH.route) {
-                StopwatchScreen()
-            }
-
-            // Tab: Timer
-            composable(BottomTab.TIMER.route) {
-                TimerScreen()
-            }
-
-            // Alarm Edit (push screen)
-            composable(
-                route = "alarm_edit/{alarmId}",
-                arguments = listOf(navArgument("alarmId") { type = NavType.LongType })
-            ) { backStackEntry ->
-                val alarmId = backStackEntry.arguments?.getLong("alarmId") ?: -1L
-                var alarm by remember { mutableStateOf<AlarmEntity?>(null) }
-                var isLoading by remember { mutableStateOf(alarmId > 0) }
-
-                LaunchedEffect(alarmId) {
-                    if (alarmId > 0) {
-                        alarm = kotlinx.coroutines.withContext(Dispatchers.IO) {
-                            alarmViewModel.getAlarmById(alarmId)
-                        }
-                    }
-                    isLoading = false
-                }
-
-                if (!isLoading) {
-                    AlarmEditScreen(
-                        alarm = if (alarmId > 0) alarm else null,
-                        folders = folders,
-                        onSave = { result ->
-                            if (alarmId > 0) {
-                                alarmViewModel.updateAlarm(result)
-                            } else {
-                                alarmViewModel.saveAlarm(result)
+            Scaffold(
+                containerColor = DarkBackground,
+                bottomBar = {
+                    if (showBottomBar) {
+                        NavigationBar(
+                            containerColor = DarkBackground,
+                            tonalElevation = 0.dp,
+                            modifier = Modifier.background(DarkBackground)
+                        ) {
+                            BottomTab.entries.forEach { tab ->
+                                val selected = currentRoute == tab.route
+                                val localLabel = when (tab) {
+                                    BottomTab.ALARM -> S.alarm
+                                    BottomTab.FOLDERS -> S.folders
+                                    BottomTab.STOPWATCH -> S.stopwatch
+                                    BottomTab.TIMER -> S.timer
+                                }
+                                NavigationBarItem(
+                                    selected = selected,
+                                    onClick = {
+                                        if (currentRoute != tab.route) {
+                                            navController.navigate(tab.route) {
+                                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    },
+                                    icon = {
+                                        Icon(
+                                            tab.icon,
+                                            contentDescription = localLabel,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    },
+                                    label = { Text(localLabel, fontSize = 10.sp) },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = TextPrimary,
+                                        selectedTextColor = TextPrimary,
+                                        unselectedIconColor = TextSecondary.copy(alpha = 0.45f),
+                                        unselectedTextColor = TextSecondary.copy(alpha = 0.45f),
+                                        indicatorColor = DarkBackground
+                                    )
+                                )
                             }
-                            navController.popBackStack()
-                        },
-                        onBack = { navController.popBackStack() },
-                        onDelete = { alarmToDelete ->
-                            alarmViewModel.deleteAlarm(alarmToDelete)
-                            navController.popBackStack()
                         }
-                    )
+                    }
                 }
-            }
+            ) { padding ->
+                NavHost(
+                    navController = navController,
+                    startDestination = "alarm",
+                    modifier = Modifier.padding(padding)
+                ) {
+                    // Home (drawer-only)
+                    composable("home") {
+                        HomeScreen()
+                    }
 
-            // Folder Detail (push screen)
-            composable(
-                route = "folder_detail/{folderId}",
-                arguments = listOf(navArgument("folderId") { type = NavType.LongType })
-            ) { backStackEntry ->
-                val folderId = backStackEntry.arguments?.getLong("folderId") ?: -1L
-                val folder = folders.find { it.id == folderId }
+                    // Tab: Alarm (merged single + repeat)
+                    composable("alarm") {
+                        AlarmScreen(
+                            alarms = alarms,
+                            folders = folders,
+                            onAddClick = { navController.navigate("alarm_edit/-1") },
+                            onAlarmClick = { alarm -> navController.navigate("alarm_edit/${alarm.id}") },
+                            onAlarmToggle = { alarm -> alarmViewModel.toggleAlarm(alarm) }
+                        )
+                    }
 
-                FolderDetailScreen(
-                    folder = folder,
-                    alarms = alarms,
-                    onBack = { navController.popBackStack() },
-                    onToggleFolder = {
-                        if (folder != null) folderViewModel.toggleFolder(folder.id)
-                    },
-                    onAddAlarm = { navController.navigate("alarm_edit/-1") },
-                    onAlarmClick = { alarm -> navController.navigate("alarm_edit/${alarm.id}") },
-                    onAlarmToggle = { alarm -> alarmViewModel.toggleAlarm(alarm) }
-                )
+                    // Tab: Folders
+                    composable("folders") {
+                        val alarmCountMap = remember(alarms, folders) {
+                            folders.associate { folder ->
+                                folder.id to alarms.count { it.folderId == folder.id }
+                            }
+                        }
+                        FolderManageScreen(
+                            folders = folders,
+                            alarmCountMap = alarmCountMap,
+                            onAddFolder = { name, color, emoji -> folderViewModel.addFolder(name, color, emoji) },
+                            onToggleFolder = { id -> folderViewModel.toggleFolder(id) },
+                            onFolderClick = { folder -> navController.navigate("folder_detail/${folder.id}") }
+                        )
+                    }
+
+                    // Tab: Stopwatch
+                    composable("stopwatch") {
+                        StopwatchScreen()
+                    }
+
+                    // Tab: Timer
+                    composable("timer") {
+                        TimerScreen()
+                    }
+
+                    // Settings (drawer-only)
+                    composable("settings") {
+                        SettingsScreen()
+                    }
+
+                    // Account (drawer-only)
+                    composable("account") {
+                        AccountScreen()
+                    }
+
+                    // Alarm Edit (push screen)
+                    composable(
+                        route = "alarm_edit/{alarmId}?folderId={folderId}",
+                        arguments = listOf(
+                            navArgument("alarmId") { type = NavType.LongType },
+                            navArgument("folderId") { type = NavType.LongType; defaultValue = -1L }
+                        )
+                    ) { backStackEntry ->
+                        val alarmId = backStackEntry.arguments?.getLong("alarmId") ?: -1L
+                        val folderIdArg = backStackEntry.arguments?.getLong("folderId") ?: -1L
+                        val defaultFolderId = if (folderIdArg > 0) folderIdArg else null
+                        var alarm by remember { mutableStateOf<AlarmEntity?>(null) }
+                        var isLoading by remember { mutableStateOf(alarmId > 0) }
+
+                        LaunchedEffect(alarmId) {
+                            if (alarmId > 0) {
+                                alarm = kotlinx.coroutines.withContext(Dispatchers.IO) {
+                                    alarmViewModel.getAlarmById(alarmId)
+                                }
+                            }
+                            isLoading = false
+                        }
+
+                        if (!isLoading) {
+                            AlarmEditScreen(
+                                alarm = if (alarmId > 0) alarm else null,
+                                folders = folders,
+                                defaultFolderId = defaultFolderId,
+                                onSave = { result ->
+                                    if (alarmId > 0) {
+                                        alarmViewModel.updateAlarm(result)
+                                    } else {
+                                        alarmViewModel.saveAlarm(result)
+                                    }
+                                    navController.popBackStack()
+                                },
+                                onBack = { navController.popBackStack() },
+                                onDelete = { alarmToDelete ->
+                                    alarmViewModel.deleteAlarm(alarmToDelete)
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                    }
+
+                    // Folder Detail (push screen)
+                    composable(
+                        route = "folder_detail/{folderId}",
+                        arguments = listOf(navArgument("folderId") { type = NavType.LongType })
+                    ) { backStackEntry ->
+                        val folderId = backStackEntry.arguments?.getLong("folderId") ?: -1L
+                        val folder = folders.find { it.id == folderId }
+
+                        FolderDetailScreen(
+                            folder = folder,
+                            alarms = alarms,
+                            onBack = { navController.popBackStack() },
+                            onToggleFolder = {
+                                if (folder != null) folderViewModel.toggleFolder(folder.id)
+                            },
+                            onAddAlarm = { navController.navigate("alarm_edit/-1?folderId=${folderId}") },
+                            onAlarmClick = { alarm -> navController.navigate("alarm_edit/${alarm.id}") },
+                            onAlarmToggle = { alarm -> alarmViewModel.toggleAlarm(alarm) }
+                        )
+                    }
+                }
             }
         }
     }

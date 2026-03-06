@@ -20,19 +20,20 @@ import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.ui.components.NexToggle
-import com.nexalarm.app.ui.components.TimePickerSheet
+import com.nexalarm.app.ui.components.WheelPicker
 import com.nexalarm.app.ui.theme.*
 
 @Composable
 fun AlarmEditScreen(
     alarm: AlarmEntity?,
     folders: List<FolderEntity>,
+    defaultFolderId: Long? = null,
     onSave: (AlarmEntity) -> Unit,
     onBack: () -> Unit,
     onDelete: ((AlarmEntity) -> Unit)? = null
 ) {
     val isEditing = alarm != null
-    key(alarm) { AlarmEditContent(alarm, isEditing, folders, onSave, onBack, onDelete) }
+    key(alarm) { AlarmEditContent(alarm, isEditing, folders, defaultFolderId, onSave, onBack, onDelete) }
 }
 
 @Composable
@@ -40,6 +41,7 @@ private fun AlarmEditContent(
     alarm: AlarmEntity?,
     isEditing: Boolean,
     folders: List<FolderEntity>,
+    defaultFolderId: Long?,
     onSave: (AlarmEntity) -> Unit,
     onBack: () -> Unit,
     onDelete: ((AlarmEntity) -> Unit)?
@@ -49,13 +51,11 @@ private fun AlarmEditContent(
     var title by remember { mutableStateOf(alarm?.title ?: "") }
     var isRecurring by remember { mutableStateOf(alarm?.isRecurring ?: false) }
     var repeatDays by remember { mutableStateOf(alarm?.repeatDays ?: emptyList()) }
-    var selectedFolderId by remember { mutableStateOf(alarm?.folderId) }
+    var selectedFolderId by remember { mutableStateOf(alarm?.folderId ?: defaultFolderId) }
     var vibrateOnly by remember { mutableStateOf(alarm?.vibrateOnly ?: false) }
     var snoozeEnabled by remember { mutableStateOf(true) }
     var snoozeDelay by remember { mutableIntStateOf(alarm?.snoozeDelay ?: 5) }
-    var showTimePicker by remember { mutableStateOf(false) }
     var showFolderPicker by remember { mutableStateOf(false) }
-    val isAm = hour < 12
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -109,30 +109,38 @@ private fun AlarmEditContent(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
             ) {
-                // 時間選擇區
+                // 時間選擇區（滾輪）
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .background(DarkSurface, RoundedCornerShape(18.dp))
-                        .clickable { showTimePicker = true }
-                        .padding(vertical = 28.dp),
+                        .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            String.format("%02d:%02d", hour, minute),
-                            fontSize = 80.sp,
-                            fontWeight = FontWeight.Light,
-                            color = TextPrimary,
-                            letterSpacing = (-4).sp,
-                            lineHeight = 80.sp
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        WheelPicker(
+                            items = (0..23).toList(),
+                            selectedItem = hour,
+                            onItemSelected = { hour = it },
+                            label = "小時"
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            EditAmPmPill("AM", isAm) { if (!isAm) hour -= 12 }
-                            EditAmPmPill("PM", !isAm) { if (isAm) hour += 12 }
-                        }
+                        Text(
+                            text = ":",
+                            fontSize = 36.sp,
+                            fontWeight = FontWeight.Light,
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        )
+                        WheelPicker(
+                            items = (0..59).toList(),
+                            selectedItem = minute,
+                            onItemSelected = { minute = it },
+                            label = "分鐘"
+                        )
                     }
                 }
 
@@ -159,6 +167,68 @@ private fun AlarmEditContent(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                // 資料夾（與重複互斥）
+                val repeatDisabled = selectedFolderId != null
+                val folderDisabled = !repeatDisabled && repeatDays.isNotEmpty()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .background(DarkSurface, RoundedCornerShape(18.dp))
+                        .then(if (!folderDisabled) Modifier.clickable { showFolderPicker = !showFolderPicker } else Modifier)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 15.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("資料夾", fontSize = 15.sp, color = if (folderDisabled) TextTertiary else TextPrimary)
+                        Text(
+                            (folders.find { it.id == selectedFolderId }?.name ?: "無") + " >",
+                            fontSize = 14.sp,
+                            color = if (folderDisabled) TextTertiary else TextSecondary
+                        )
+                    }
+                }
+                if (showFolderPicker && !folderDisabled) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .background(DarkCard, RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
+                            .padding(horizontal = 18.dp, vertical = 8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { selectedFolderId = null; showFolderPicker = false }
+                                .padding(vertical = 10.dp)
+                        ) {
+                            Text("無", fontSize = 14.sp, color = TextSecondary)
+                        }
+                        folders.forEach { f ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { selectedFolderId = f.id; showFolderPicker = false }
+                                    .padding(vertical = 10.dp)
+                            ) {
+                                Text(
+                                    f.emoji + " " + f.name,
+                                    fontSize = 14.sp,
+                                    color = if (selectedFolderId == f.id) SecondaryBlue else TextSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
                 // 重複日選擇
                 EditLabel("重複日")
                 Row(
@@ -172,18 +242,22 @@ private fun AlarmEditContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (sel) AccentDim else DarkSurface)
-                                .clickable {
+                                .background(if (sel && !repeatDisabled) AccentDim else DarkSurface)
+                                .then(if (!repeatDisabled) Modifier.clickable {
                                     repeatDays = if (day in repeatDays) repeatDays - day else repeatDays + day
                                     isRecurring = repeatDays.isNotEmpty()
-                                }
+                                } else Modifier)
                                 .padding(vertical = 9.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 lbl, fontSize = 12.5.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (sel) SecondaryBlue else TextSecondary
+                                color = when {
+                                    repeatDisabled -> TextTertiary
+                                    sel -> SecondaryBlue
+                                    else -> TextSecondary
+                                }
                             )
                         }
                     }
@@ -199,43 +273,6 @@ private fun AlarmEditContent(
                         .padding(horizontal = 16.dp)
                         .background(DarkSurface, RoundedCornerShape(18.dp))
                 ) {
-                    EditRow("資料夾", folders.find { it.id == selectedFolderId }?.name ?: "無", true) {
-                        showFolderPicker = !showFolderPicker
-                    }
-                    if (showFolderPicker) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(DarkCard)
-                                .padding(horizontal = 18.dp, vertical = 8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { selectedFolderId = null; showFolderPicker = false }
-                                    .padding(vertical = 10.dp)
-                            ) {
-                                Text("無", fontSize = 14.sp, color = TextSecondary)
-                            }
-                            folders.forEach { f ->
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { selectedFolderId = f.id; showFolderPicker = false }
-                                        .padding(vertical = 10.dp)
-                                ) {
-                                    Text(
-                                        f.emoji + " " + f.name,
-                                        fontSize = 14.sp,
-                                        color = if (selectedFolderId == f.id) SecondaryBlue else TextSecondary
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    EditDiv()
                     EditToggleRow("貪睡", "延後響鈴", snoozeEnabled) { snoozeEnabled = it }
                     EditDiv()
                     EditRow("貪睡間隔", snoozeDelay.toString() + " 分鐘", true) {
@@ -265,30 +302,6 @@ private fun AlarmEditContent(
             }
         }
 
-        TimePickerSheet(
-            visible = showTimePicker,
-            initialHour = hour,
-            initialMinute = minute,
-            onDismiss = { showTimePicker = false },
-            onConfirm = { h, m -> hour = h; minute = m; showTimePicker = false }
-        )
-    }
-}
-
-@Composable
-private fun EditAmPmPill(text: String, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) PrimaryBlue else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 5.dp)
-    ) {
-        Text(
-            text, fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = if (selected) Color.White else TextSecondary
-        )
     }
 }
 

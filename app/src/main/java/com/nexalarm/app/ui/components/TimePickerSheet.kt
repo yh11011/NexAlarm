@@ -134,12 +134,13 @@ fun TimePickerSheet(
 }
 
 @Composable
-private fun WheelPicker(
+fun WheelPicker(
     items: List<Int>,
     selectedItem: Int,
     onItemSelected: (Int) -> Unit,
-    label: String
-) {
+    label: String,
+    backgroundColor: Color = DarkSurface
+){
     val itemHeight = 44.dp
     val visibleItems = 5
     val scope = rememberCoroutineScope()
@@ -227,7 +228,7 @@ private fun WheelPicker(
                         drawContent()
                         drawRect(
                             Brush.verticalGradient(
-                                listOf(DarkSurface, Color.Transparent)
+                                listOf(backgroundColor, Color.Transparent)
                             )
                         )
                     }
@@ -241,7 +242,7 @@ private fun WheelPicker(
                         drawContent()
                         drawRect(
                             Brush.verticalGradient(
-                                listOf(Color.Transparent, DarkSurface)
+                                listOf(Color.Transparent, backgroundColor)
                             )
                         )
                     }
