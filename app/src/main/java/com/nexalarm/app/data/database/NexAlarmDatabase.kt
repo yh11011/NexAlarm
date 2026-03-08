@@ -29,7 +29,7 @@ abstract class NexAlarmDatabase : RoomDatabase() {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE alarms ADD COLUMN ringtoneUri TEXT NOT NULL DEFAULT ''")
-                db.execSQL("ALTER TABLE alarms ADD COLUMN snoozeDelay INTEGER NOT NULL DEFAULT 5")
+                db.execSQL("ALTER TABLE alarms ADD COLUMN snoozeDelay INTEGER NOT NULL DEFAULT 10")
                 db.execSQL("ALTER TABLE alarms ADD COLUMN maxSnoozeCount INTEGER NOT NULL DEFAULT 3")
                 db.execSQL("ALTER TABLE alarms ADD COLUMN keepAfterRinging INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE folders ADD COLUMN isSystem INTEGER NOT NULL DEFAULT 0")

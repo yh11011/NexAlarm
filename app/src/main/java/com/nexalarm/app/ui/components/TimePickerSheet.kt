@@ -144,17 +144,25 @@ fun WheelPicker(
     val itemHeight = 44.dp
     val visibleItems = 5
     val scope = rememberCoroutineScope()
+
+    // Infinite scroll: repeat items many times, start in the middle
+    val itemCount = items.size
+    val multiplier = 1000  // enough loops for "infinite" feel
+    val totalCount = itemCount * multiplier
+    val middleBase = (multiplier / 2) * itemCount
+    // Find the starting virtual index that corresponds to selectedItem
+    val initialIndex = middleBase + items.indexOf(selectedItem).coerceAtLeast(0)
+
     val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = selectedItem
+        initialFirstVisibleItemIndex = initialIndex
     )
 
     // Snap to nearest item when scrolling stops
     LaunchedEffect(listState.isScrollInProgress) {
         if (!listState.isScrollInProgress) {
-            val centerIndex = listState.firstVisibleItemIndex +
-                    (visibleItems / 2)
-            val adjustedIndex = (centerIndex - 2).coerceIn(0, items.lastIndex)
-            onItemSelected(items[adjustedIndex])
+            val centerVirtualIndex = listState.firstVisibleItemIndex + (visibleItems / 2)
+            val realIndex = ((centerVirtualIndex - 2) % itemCount + itemCount) % itemCount
+            onItemSelected(items[realIndex])
         }
     }
 
@@ -174,8 +182,9 @@ fun WheelPicker(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = itemHeight * 2)
             ) {
-                items(items.size) { index ->
-                    val item = items[index]
+                items(totalCount) { virtualIndex ->
+                    val realIndex = ((virtualIndex % itemCount) + itemCount) % itemCount
+                    val item = items[realIndex]
                     val isSelected = item == selectedItem
                     Box(
                         modifier = Modifier
@@ -185,7 +194,7 @@ fun WheelPicker(
                                 onItemSelected(item)
                                 scope.launch {
                                     listState.animateScrollToItem(
-                                        index.coerceAtLeast(0)
+                                        virtualIndex.coerceAtLeast(0)
                                     )
                                 }
                             },

@@ -20,7 +20,7 @@ data class AlarmEntity(
     val vibrateOnly: Boolean = false,
     val volume: Int = 80,
     val ringtoneUri: String = "",
-    val snoozeDelay: Int = 5,
+    val snoozeDelay: Int = 10,
     val maxSnoozeCount: Int = 3,
     val keepAfterRinging: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()

@@ -22,6 +22,7 @@ import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.ui.components.NexToggle
 import com.nexalarm.app.ui.components.WheelPicker
 import com.nexalarm.app.ui.theme.*
+import java.util.Calendar
 
 @Composable
 fun AlarmEditScreen(
@@ -46,15 +47,16 @@ private fun AlarmEditContent(
     onBack: () -> Unit,
     onDelete: ((AlarmEntity) -> Unit)?
 ) {
-    var hour by remember { mutableIntStateOf(alarm?.hour ?: 7) }
-    var minute by remember { mutableIntStateOf(alarm?.minute ?: 0) }
+    val now = remember { Calendar.getInstance() }
+    var hour by remember { mutableIntStateOf(alarm?.hour ?: now.get(Calendar.HOUR_OF_DAY)) }
+    var minute by remember { mutableIntStateOf(alarm?.minute ?: now.get(Calendar.MINUTE)) }
     var title by remember { mutableStateOf(alarm?.title ?: "") }
     var isRecurring by remember { mutableStateOf(alarm?.isRecurring ?: false) }
     var repeatDays by remember { mutableStateOf(alarm?.repeatDays ?: emptyList()) }
     var selectedFolderId by remember { mutableStateOf(alarm?.folderId ?: defaultFolderId) }
     var vibrateOnly by remember { mutableStateOf(alarm?.vibrateOnly ?: false) }
     var snoozeEnabled by remember { mutableStateOf(true) }
-    var snoozeDelay by remember { mutableIntStateOf(alarm?.snoozeDelay ?: 5) }
+    var snoozeDelay by remember { mutableIntStateOf(alarm?.snoozeDelay ?: 10) }
     var showFolderPicker by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {

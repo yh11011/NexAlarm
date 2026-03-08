@@ -8,7 +8,9 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -165,8 +167,10 @@ fun TimerScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                            .horizontalScroll(rememberScrollState())
+                            .padding(start = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         listOf(1 to 60, 5 to 300, 10 to 600, 30 to 1800, 60 to 3600).forEach { (mins, seconds) ->
                             Box(
@@ -176,9 +180,16 @@ fun TimerScreen(
                                     .clickable { viewModel.setDuration(seconds) }
                                     .padding(horizontal = 16.dp, vertical = 7.dp)
                             ) {
-                                Text(S.timerPreset(mins), fontSize = 13.sp, color = TextPrimary)
+                                Text(
+                                    S.timerPreset(mins),
+                                    fontSize = 13.sp,
+                                    color = TextPrimary,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
+                        Spacer(modifier = Modifier.width(16.dp))
                     }
                 }
             }
