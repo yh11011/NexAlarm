@@ -4,8 +4,11 @@
 
     <!-- ==================== 權限聲明 ==================== -->
 
-    <!-- 精確鬧鐘權限（Android 12+） -->
+    <!-- 精確鬧鐘權限（Android 12 = API 31-32） -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- 精確鬧鐘權限（Android 13+ = API 33+，不須使用者手動授權） -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <!-- 通知權限（Android 13+） -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -26,6 +29,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
         android:minSdkVersion="34" />
+
+    <!-- 電池優化白名單請求（直接跳出系統對話框詢問使用者） -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:name=".NexAlarmApp"
@@ -88,6 +94,18 @@
             android:foregroundServiceType="mediaPlayback"
             tools:targetApi="34" />
 
+        <!-- 會議模式快速設定磚片 -->
+        <service
+            android:name=".service.MeetingModeTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_meeting_mode"
+            android:label="@string/meeting_mode"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- ==================== Receivers ==================== -->
 
         <!-- 鬧鐘觸發接收器 -->
@@ -106,27 +124,12 @@
         <receiver
             android:name=".receiver.BootReceiver"
             android:enabled="true"
-            android:exported="true"
-            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
-
-        <!-- 會議模式 Quick Settings Tile (未來實作) -->
-        <!--
-        <service
-            android:name=".service.MeetingModeTileService"
-            android:exported="true"
-            android:icon="@drawable/ic_meeting_mode"
-            android:label="@string/meeting_mode"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
-            <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
-            </intent-filter>
-        </service>
-        -->
 
     </application>
 

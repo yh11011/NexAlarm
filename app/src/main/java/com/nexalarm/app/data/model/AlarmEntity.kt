@@ -23,6 +23,7 @@ data class AlarmEntity(
     val snoozeDelay: Int = 10,
     val maxSnoozeCount: Int = 3,
     val keepAfterRinging: Boolean = false,
+    val snoozeEnabled: Boolean = true,
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -32,5 +33,5 @@ class RepeatDaysConverter {
 
     @TypeConverter
     fun toList(data: String): List<Int> =
-        if (data.isBlank()) emptyList() else data.split(",").map { it.trim().toInt() }
+        if (data.isBlank()) emptyList() else data.split(",").mapNotNull { it.trim().toIntOrNull() }
 }

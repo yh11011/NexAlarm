@@ -5,11 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.nexalarm.app.data.database.NexAlarmDatabase
+import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.repository.AlarmRepository
 import com.nexalarm.app.service.AlarmService
 import com.nexalarm.app.ui.screens.AlarmRingingActivity
 import com.nexalarm.app.util.AlarmScheduler
-import com.nexalarm.app.util.AlarmTestHook
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,6 +28,9 @@ class AlarmReceiver : BroadcastReceiver() {
         const val EXTRA_ALARM_ID = "alarm_id"
         const val EXTRA_ALARM_TITLE = "alarm_title"
         const val EXTRA_ALARM_VIBRATE_ONLY = "alarm_vibrate_only"
+        const val EXTRA_ALARM_SNOOZE_ENABLED = "alarm_snooze_enabled"
+
+        private const val SNOOZE_PREFS = "nexalarm_snooze_counts"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -45,27 +48,22 @@ class AlarmReceiver : BroadcastReceiver() {
      */
     private fun handleAlarmTrigger(context: Context, intent: Intent) {
         val alarmId = intent.getLongExtra(EXTRA_ALARM_ID, -1)
-        val title = intent.getStringExtra(EXTRA_ALARM_TITLE) ?: "鬧鐘"
+        val title = intent.getStringExtra(EXTRA_ALARM_TITLE) ?: ""
         val vibrateOnly = intent.getBooleanExtra(EXTRA_ALARM_VIBRATE_ONLY, false)
-
-        // ===== 測試 Hook: Level 0 =====
-        AlarmTestHook.onReceiverTriggered(context, alarmId)
+        val snoozeEnabled = intent.getBooleanExtra(EXTRA_ALARM_SNOOZE_ENABLED, true)
 
         Log.d("AlarmReceiver", "Alarm triggered: ID=$alarmId, Title=$title")
 
-        // 啟動 AlarmService 播放鈴聲/震動
         val serviceIntent = Intent(context, AlarmService::class.java).apply {
             action = AlarmService.ACTION_START_ALARM
             putExtra(EXTRA_ALARM_ID, alarmId)
             putExtra(EXTRA_ALARM_TITLE, title)
             putExtra(EXTRA_ALARM_VIBRATE_ONLY, vibrateOnly)
+            putExtra(EXTRA_ALARM_SNOOZE_ENABLED, snoozeEnabled)
         }
 
         context.startForegroundService(serviceIntent)
 
-        // 判斷是否顯示全螢幕 Activity
-        // 螢幕鎖定或在桌面時 → 全螢幕
-        // 在使用其他 App 時 → 僅通知（AlarmService 已含 fullScreenIntent）
         if (isScreenLocked(context) || isLauncherApp(context)) {
             startFullScreenActivity(context, alarmId, title)
         }
@@ -81,24 +79,21 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra(EXTRA_ALARM_ID, alarmId)
             putExtra(EXTRA_ALARM_TITLE, title)
         }
-
         context.startActivity(activityIntent)
     }
 
     /**
-     * 處理貪睡
+     * 處理貪睡：檢查貪睡次數，超過上限則自動關閉
      */
     private fun handleSnooze(context: Context, intent: Intent) {
         val alarmId = intent.getLongExtra(EXTRA_ALARM_ID, -1)
         Log.d("AlarmReceiver", "Snooze alarm: $alarmId")
 
-        // 停止目前的鈴聲/震動
         val stopIntent = Intent(context, AlarmService::class.java).apply {
             action = AlarmService.ACTION_STOP_ALARM
         }
         context.startService(stopIntent)
 
-        // 從 DB 查出鬧鐘，排程貪睡
         val db = NexAlarmDatabase.getDatabase(context)
         val repo = AlarmRepository(db.alarmDao())
         val pendingResult = goAsync()
@@ -107,9 +102,16 @@ class AlarmReceiver : BroadcastReceiver() {
             try {
                 val alarm = repo.getAlarmById(alarmId)
                 if (alarm != null) {
-                    val scheduler = AlarmScheduler(context)
-                    scheduler.scheduleSnooze(alarm, alarm.snoozeDelay)
-                    Log.d("AlarmReceiver", "Snoozed alarm $alarmId for ${alarm.snoozeDelay} min")
+                    val newCount = incrementSnoozeCount(context, alarmId)
+                    if (alarm.maxSnoozeCount > 0 && newCount > alarm.maxSnoozeCount) {
+                        // 超過貪睡次數上限：自動關閉鬧鐘
+                        Log.d("AlarmReceiver", "Snooze limit reached for alarm $alarmId, auto-dismissing")
+                        clearSnoozeCount(context, alarmId)
+                        handlePostDismiss(context, alarm, repo)
+                    } else {
+                        AlarmScheduler(context).scheduleSnooze(alarm, alarm.snoozeDelay)
+                        Log.d("AlarmReceiver", "Snoozed alarm $alarmId ($newCount/${alarm.maxSnoozeCount}) for ${alarm.snoozeDelay} min")
+                    }
                 }
             } finally {
                 pendingResult.finish()
@@ -124,13 +126,13 @@ class AlarmReceiver : BroadcastReceiver() {
         val alarmId = intent.getLongExtra(EXTRA_ALARM_ID, -1)
         Log.d("AlarmReceiver", "Dismiss alarm: $alarmId")
 
-        // 停止目前的鈴聲/震動
         val stopIntent = Intent(context, AlarmService::class.java).apply {
             action = AlarmService.ACTION_STOP_ALARM
         }
         context.startService(stopIntent)
 
-        // 處理單次 / 重複鬧鐘的後續
+        clearSnoozeCount(context, alarmId)
+
         val db = NexAlarmDatabase.getDatabase(context)
         val repo = AlarmRepository(db.alarmDao())
         val pendingResult = goAsync()
@@ -139,20 +141,7 @@ class AlarmReceiver : BroadcastReceiver() {
             try {
                 val alarm = repo.getAlarmById(alarmId)
                 if (alarm != null) {
-                    if (!alarm.isRecurring && !alarm.keepAfterRinging) {
-                        // 單次鬧鐘：自動刪除
-                        repo.deleteById(alarm.id)
-                        Log.d("AlarmReceiver", "Deleted one-time alarm $alarmId")
-                    } else if (!alarm.isRecurring) {
-                        // 單次但 keepAfterRinging=true：停用
-                        repo.setEnabled(alarm.id, false)
-                        Log.d("AlarmReceiver", "Disabled one-time alarm $alarmId (keepAfterRinging)")
-                    } else {
-                        // 重複鬧鐘：排程下一次
-                        val scheduler = AlarmScheduler(context)
-                        scheduler.schedule(alarm)
-                        Log.d("AlarmReceiver", "Rescheduled recurring alarm $alarmId")
-                    }
+                    handlePostDismiss(context, alarm, repo)
                 }
             } finally {
                 pendingResult.finish()
@@ -161,24 +150,50 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     /**
-     * 檢查螢幕是否鎖定
+     * 關閉後處理：刪除單次鬧鐘 / 停用 / 排程下一次
      */
+    private suspend fun handlePostDismiss(context: Context, alarm: AlarmEntity, repo: AlarmRepository) {
+        if (!alarm.isRecurring && !alarm.keepAfterRinging) {
+            repo.deleteById(alarm.id)
+            Log.d("AlarmReceiver", "Deleted one-time alarm ${alarm.id}")
+        } else if (!alarm.isRecurring) {
+            repo.setEnabled(alarm.id, false)
+            Log.d("AlarmReceiver", "Disabled one-time alarm ${alarm.id} (keepAfterRinging)")
+        } else {
+            AlarmScheduler(context).schedule(alarm)
+            Log.d("AlarmReceiver", "Rescheduled recurring alarm ${alarm.id}")
+        }
+    }
+
+    // ── Snooze count helpers ──────────────────────────────────────────────────
+
+    private fun incrementSnoozeCount(context: Context, alarmId: Long): Int {
+        val prefs = context.getSharedPreferences(SNOOZE_PREFS, Context.MODE_PRIVATE)
+        val count = prefs.getInt("alarm_$alarmId", 0) + 1
+        prefs.edit().putInt("alarm_$alarmId", count).apply()
+        return count
+    }
+
+    private fun clearSnoozeCount(context: Context, alarmId: Long) {
+        context.getSharedPreferences(SNOOZE_PREFS, Context.MODE_PRIVATE)
+            .edit().remove("alarm_$alarmId").apply()
+    }
+
+    // ── Screen / launcher detection ──────────────────────────────────────────
+
     private fun isScreenLocked(context: Context): Boolean {
         val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE)
             as android.app.KeyguardManager
         return keyguardManager.isKeyguardLocked
     }
 
-    /**
-     * 檢查當前是否在桌面（Launcher）
-     */
     private fun isLauncherApp(context: Context): Boolean {
         return try {
             val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE)
                 as android.app.ActivityManager
 
             val runningTasks = activityManager.appTasks
-            if (runningTasks.isEmpty()) return true // 無前台任務 → 當作桌面
+            if (runningTasks.isEmpty()) return true
 
             val topActivity = runningTasks[0].taskInfo.topActivity ?: return true
             val launcherIntent = Intent(Intent.ACTION_MAIN).apply {
@@ -193,7 +208,7 @@ class AlarmReceiver : BroadcastReceiver() {
             topActivity.packageName == resolveInfo?.activityInfo?.packageName
         } catch (e: Exception) {
             Log.w("AlarmReceiver", "Failed to check launcher: ${e.message}")
-            true // 出錯時預設顯示全螢幕
+            true
         }
     }
 }

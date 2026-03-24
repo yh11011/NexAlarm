@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.data.repository.FolderRepository
+import com.nexalarm.app.ui.theme.S
 import com.nexalarm.app.util.FeatureFlags
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -30,7 +31,7 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val count = repository.getUserFolderCount()
             if (!FeatureFlags.canCreateFolder(count)) {
-                _errorMessage.emit("Free tier limited to ${FeatureFlags.FREE_FOLDER_LIMIT} folders. Upgrade to premium for unlimited.")
+                _errorMessage.emit(S.folderLimitReached)
                 return@launch
             }
             repository.insert(FolderEntity(name = name, color = color, emoji = emoji))

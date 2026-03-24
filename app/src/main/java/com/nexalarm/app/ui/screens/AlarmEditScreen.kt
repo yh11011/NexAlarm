@@ -55,8 +55,10 @@ private fun AlarmEditContent(
     var repeatDays by remember { mutableStateOf(alarm?.repeatDays ?: emptyList()) }
     var selectedFolderId by remember { mutableStateOf(alarm?.folderId ?: defaultFolderId) }
     var vibrateOnly by remember { mutableStateOf(alarm?.vibrateOnly ?: false) }
-    var snoozeEnabled by remember { mutableStateOf(true) }
+    var snoozeEnabled by remember { mutableStateOf(alarm?.snoozeEnabled ?: true) }
     var snoozeDelay by remember { mutableIntStateOf(alarm?.snoozeDelay ?: 10) }
+    var maxSnoozeCount by remember { mutableIntStateOf(alarm?.maxSnoozeCount ?: 3) }
+    var keepAfterRinging by remember { mutableStateOf(alarm?.keepAfterRinging ?: false) }
     var showFolderPicker by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
@@ -70,13 +72,13 @@ private fun AlarmEditContent(
             ) {
                 IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack, "返回",
+                        Icons.AutoMirrored.Filled.ArrowBack, S.back,
                         tint = TextPrimary, modifier = Modifier.size(22.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    if (isEditing) "編輯鬧鐘" else "新增鬧鐘",
+                    if (isEditing) S.editAlarm else S.newAlarm,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Medium,
                     color = TextPrimary,
@@ -96,13 +98,14 @@ private fun AlarmEditContent(
                             vibrateOnly = vibrateOnly,
                             volume = alarm?.volume ?: 80,
                             snoozeDelay = snoozeDelay,
-                            maxSnoozeCount = alarm?.maxSnoozeCount ?: 3,
-                            keepAfterRinging = alarm?.keepAfterRinging ?: false,
+                            maxSnoozeCount = maxSnoozeCount,
+                            keepAfterRinging = keepAfterRinging,
+                            snoozeEnabled = snoozeEnabled,
                             createdAt = alarm?.createdAt ?: System.currentTimeMillis()
                         )
                     )
                 }) {
-                    Text("儲存", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
+                    Text(S.save, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
                 }
             }
 
@@ -128,7 +131,7 @@ private fun AlarmEditContent(
                             items = (0..23).toList(),
                             selectedItem = hour,
                             onItemSelected = { hour = it },
-                            label = "小時"
+                            label = S.hourFullLabel
                         )
                         Text(
                             text = ":",
@@ -141,7 +144,7 @@ private fun AlarmEditContent(
                             items = (0..59).toList(),
                             selectedItem = minute,
                             onItemSelected = { minute = it },
-                            label = "分鐘"
+                            label = S.minuteFullLabel
                         )
                     }
                 }
@@ -152,7 +155,7 @@ private fun AlarmEditContent(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    placeholder = { Text("鬧鐘標題（選填）", color = TextTertiary) },
+                    placeholder = { Text(S.alarmTitleHint, color = TextTertiary) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     shape = RoundedCornerShape(14.dp),
@@ -186,7 +189,7 @@ private fun AlarmEditContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("資料夾", fontSize = 15.sp, color = if (folderDisabled) TextTertiary else TextPrimary)
+                        Text(S.folderLabel, fontSize = 15.sp, color = if (folderDisabled) TextTertiary else TextPrimary)
                         Text(
                             (folders.find { it.id == selectedFolderId }?.name ?: "無") + " >",
                             fontSize = 14.sp,
@@ -209,7 +212,7 @@ private fun AlarmEditContent(
                                 .clickable { selectedFolderId = null; showFolderPicker = false }
                                 .padding(vertical = 10.dp)
                         ) {
-                            Text("無", fontSize = 14.sp, color = TextSecondary)
+                            Text(S.noneLabel, fontSize = 14.sp, color = TextSecondary)
                         }
                         folders.forEach { f ->
                             Box(
@@ -232,7 +235,7 @@ private fun AlarmEditContent(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // 重複日選擇
-                EditLabel("重複日")
+                EditLabel(S.repeatDaysLabel)
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(5.dp)
@@ -268,20 +271,43 @@ private fun AlarmEditContent(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // 設定區塊
-                EditLabel("設定")
+                EditLabel(S.settings)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .background(DarkSurface, RoundedCornerShape(18.dp))
                 ) {
-                    EditToggleRow("貪睡", "延後響鈴", snoozeEnabled) { snoozeEnabled = it }
+                    EditToggleRow(S.snoozeLabel, S.snoozeSubtitle, snoozeEnabled) { snoozeEnabled = it }
                     EditDiv()
-                    EditRow("貪睡間隔", snoozeDelay.toString() + " 分鐘", true) {
-                        snoozeDelay = if (snoozeDelay >= 10) 5 else snoozeDelay + 1
+                    EditRow(S.snoozeIntervalLabel, S.minutesSuffix(snoozeDelay), true) {
+                        snoozeDelay = when {
+                            snoozeDelay < 5 -> 5
+                            snoozeDelay < 10 -> 10
+                            snoozeDelay < 15 -> 15
+                            snoozeDelay < 20 -> 20
+                            snoozeDelay < 30 -> 30
+                            else -> 5
+                        }
                     }
                     EditDiv()
-                    EditToggleRow("僅震動", "靜音時仍震動", vibrateOnly) { vibrateOnly = it }
+                    EditRow(
+                        S.maxSnoozeCountLabel,
+                        if (maxSnoozeCount == 0) S.unlimited else S.times(maxSnoozeCount),
+                        true
+                    ) {
+                        maxSnoozeCount = when {
+                            maxSnoozeCount < 1 -> 1
+                            maxSnoozeCount < 3 -> 3
+                            maxSnoozeCount < 5 -> 5
+                            maxSnoozeCount < 10 -> 10
+                            else -> 0
+                        }
+                    }
+                    EditDiv()
+                    EditToggleRow(S.keepAfterRingingLabel, S.keepAfterRingingSubtitle, keepAfterRinging) { keepAfterRinging = it }
+                    EditDiv()
+                    EditToggleRow(S.vibrateOnlyLabel, S.vibrateOnlySubtitle, vibrateOnly) { vibrateOnly = it }
                 }
 
                 // 刪除按鈕
@@ -296,7 +322,7 @@ private fun AlarmEditContent(
                             .padding(vertical = 15.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("刪除鬧鐘", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DangerRed)
+                        Text(S.deleteAlarmLabel, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DangerRed)
                     }
                 }
 

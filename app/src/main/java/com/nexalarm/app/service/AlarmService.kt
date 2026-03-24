@@ -14,9 +14,11 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.app.NotificationCompat
 import com.nexalarm.app.R
+import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.receiver.AlarmReceiver
 import com.nexalarm.app.ui.screens.AlarmRingingActivity
-import com.nexalarm.app.util.AlarmTestHook
+import com.nexalarm.app.ui.theme.S
+import com.nexalarm.app.ui.theme.isAppEnglish
 import com.nexalarm.app.util.NotificationHelper
 
 /**
@@ -34,35 +36,29 @@ class AlarmService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
-    private var aliveTimer: java.util.Timer? = null
 
     private var alarmId: Long = -1
-    private var alarmTitle: String = "鬧鐘"
+    private var alarmTitle: String = ""
     private var vibrateOnly: Boolean = false
+    private var snoozeEnabled: Boolean = true
 
     override fun onCreate() {
         super.onCreate()
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        // 確保語言設定在背景服務中與使用者設定一致
+        isAppEnglish = SettingsManager(this).isEnglish
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START_ALARM -> {
                 alarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1)
-                alarmTitle = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: "鬧鐘"
+                alarmTitle = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: S.alarmDefaultTitle
                 vibrateOnly = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, false)
+                snoozeEnabled = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_SNOOZE_ENABLED, true)
 
                 startForeground(NOTIFICATION_ID, createNotification())
-
-                // ===== 測試 Hook: Level 1 - Service 啟動 =====
-                AlarmTestHook.onServiceStarted(this, alarmId)
-                AlarmTestHook.onNotificationShown(this, alarmId)
-                AlarmTestHook.recordStreamVolume(this, alarmId)
-
                 startAlarm()
-
-                // ===== 測試 Hook: Level 2 - 啟動存活心跳 =====
-                startAliveHeartbeat()
             }
             ACTION_STOP_ALARM -> {
                 stopAlarm()
@@ -79,12 +75,9 @@ class AlarmService : Service() {
      * 開始播放鬧鐘
      */
     private fun startAlarm() {
-        // 播放鈴聲（如果不是僅震動模式）
         if (!vibrateOnly) {
             startRingtone()
         }
-
-        // 震動
         startVibration()
     }
 
@@ -98,26 +91,19 @@ class AlarmService : Service() {
 
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(applicationContext, alarmUri)
-
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_ALARM)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build()
                 )
-
                 isLooping = true
                 prepare()
                 start()
             }
 
-            // ===== 測試 Hook: Level 1 - 鈴聲播放開始 =====
-            AlarmTestHook.onMediaPlayStarted(this, alarmId)
-
             android.util.Log.d("AlarmService", "Ringtone started")
         } catch (e: Exception) {
-            // ===== 測試 Hook: 記錄 crash =====
-            AlarmTestHook.onCrashDetected(this, alarmId, "ringtone_failed: ${e.message}")
             android.util.Log.e("AlarmService", "Failed to start ringtone", e)
         }
     }
@@ -126,40 +112,28 @@ class AlarmService : Service() {
      * 開始震動
      */
     private fun startVibration() {
-        // 震動模式：[等待, 震動, 等待, 震動, ...]
         val pattern = longArrayOf(0, 1000, 1000, 1000, 1000)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator?.vibrate(
-                VibrationEffect.createWaveform(pattern, 0) // 0 表示循環
-            )
+            vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
         } else {
             @Suppress("DEPRECATION")
             vibrator?.vibrate(pattern, 0)
         }
 
         android.util.Log.d("AlarmService", "Vibration started")
-
-        // ===== 測試 Hook: Level 1 - 震動開始 =====
-        AlarmTestHook.onVibrationStarted(this, alarmId)
     }
 
     /**
      * 停止鬧鐘
      */
     private fun stopAlarm() {
-        // 停止鈴聲
         mediaPlayer?.apply {
-            if (isPlaying) {
-                stop()
-            }
+            if (isPlaying) stop()
             release()
         }
         mediaPlayer = null
-
-        // 停止震動
         vibrator?.cancel()
-
         android.util.Log.d("AlarmService", "Alarm stopped")
     }
 
@@ -167,7 +141,6 @@ class AlarmService : Service() {
      * 建立前台通知
      */
     private fun createNotification(): Notification {
-        // 點擊通知開啟全螢幕 Activity
         val fullScreenIntent = Intent(this, AlarmRingingActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
@@ -175,13 +148,10 @@ class AlarmService : Service() {
         }
 
         val fullScreenPendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            fullScreenIntent,
+            this, 0, fullScreenIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // 延後按鈕
         val snoozeIntent = Intent(this, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_SNOOZE
             putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
@@ -191,7 +161,6 @@ class AlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // 關閉按鈕
         val dismissIntent = Intent(this, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_DISMISS
             putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
@@ -203,36 +172,20 @@ class AlarmService : Service() {
 
         return NotificationCompat.Builder(this, NotificationHelper.CHANNEL_ID_ALARM)
             .setContentTitle(alarmTitle)
-            .setContentText("鬧鐘響鈴中")
+            .setContentText(S.alarmRinging)
             .setSmallIcon(R.drawable.ic_alarm)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setOngoing(true) // 無法滑動移除
+            .setOngoing(true)
             .setAutoCancel(false)
-            .setFullScreenIntent(fullScreenPendingIntent, true) // 全螢幕通知
-            .addAction(0, "延後", snoozePendingIntent)
-            .addAction(0, "關閉", dismissPendingIntent)
+            .setFullScreenIntent(fullScreenPendingIntent, true)
+            .apply { if (snoozeEnabled) addAction(0, S.snoozeAction, snoozePendingIntent) }
+            .addAction(0, S.dismissAction, dismissPendingIntent)
             .build()
     }
 
     override fun onDestroy() {
-        aliveTimer?.cancel()
-        aliveTimer = null
         stopAlarm()
         super.onDestroy()
-    }
-
-    /**
-     * 每秒更新存活心跳，用於驗證 Service 持續存活 ≥5 秒
-     */
-    private fun startAliveHeartbeat() {
-        aliveTimer?.cancel()
-        aliveTimer = java.util.Timer().apply {
-            scheduleAtFixedRate(object : java.util.TimerTask() {
-                override fun run() {
-                    AlarmTestHook.onServiceStillAlive(this@AlarmService, alarmId)
-                }
-            }, 0L, 1000L)
-        }
     }
 }

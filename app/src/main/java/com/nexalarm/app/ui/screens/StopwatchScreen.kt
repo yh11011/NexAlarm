@@ -121,14 +121,40 @@ fun StopwatchScreen(
             }
         }
 
-        // Control buttons at bottom
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 56.dp, vertical = 32.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        // Control buttons at bottom — single Start pill when fresh, two buttons after started
+        val isInitial = elapsedMs == 0L && !isRunning
+        if (isInitial) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 40.dp, vertical = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .clip(CircleShape)
+                        .background(DarkSurface)
+                        .clickable { viewModel.toggle() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = S.start,
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 56.dp, vertical = 32.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
             // Left button: Lap (running) or Stop/Reset (paused with time)
             Box(
                 modifier = Modifier
@@ -178,6 +204,7 @@ fun StopwatchScreen(
                     modifier = Modifier.size(28.dp)
                 )
             }
+        }
         }
     }
 }

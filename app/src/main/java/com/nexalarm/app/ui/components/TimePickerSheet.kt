@@ -18,6 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import com.nexalarm.app.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -138,49 +142,74 @@ fun WheelPicker(
     items: List<Int>,
     selectedItem: Int,
     onItemSelected: (Int) -> Unit,
-    label: String,
-    backgroundColor: Color = DarkSurface
-){
-    val itemHeight = 44.dp
-    val visibleItems = 5
+    label: String = "",
+    backgroundColor: Color = DarkSurface,
+    itemHeightDp: Dp = 44.dp,
+    visibleItemCount: Int = 5,
+    selectedFontSize: TextUnit = 32.sp,
+    otherFontSize: TextUnit = 26.sp,
+    showDividers: Boolean = true,
+    pickerWidth: Dp = 80.dp
+) {
+    val itemHeight = itemHeightDp
+    val visibleItems = visibleItemCount
     val scope = rememberCoroutineScope()
+    val itemHeightPx = with(LocalDensity.current) { itemHeight.toPx() }
 
-    // Infinite scroll: repeat items many times, start in the middle
     val itemCount = items.size
-    val multiplier = 1000  // enough loops for "infinite" feel
+    val multiplier = 1000
     val totalCount = itemCount * multiplier
     val middleBase = (multiplier / 2) * itemCount
-    // Find the starting virtual index that corresponds to selectedItem
     val initialIndex = middleBase + items.indexOf(selectedItem).coerceAtLeast(0)
 
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = initialIndex
     )
+    val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    // Snap to nearest item when scrolling stops
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (!listState.isScrollInProgress) {
-            val centerVirtualIndex = listState.firstVisibleItemIndex + (visibleItems / 2)
-            val realIndex = ((centerVirtualIndex - 2) % itemCount + itemCount) % itemCount
-            onItemSelected(items[realIndex])
-        }
+    // Snap to nearest item when scroll stops.
+    // Must use collect (not collectLatest): collectLatest would cancel animateScrollToItem
+    // the moment it triggers isScrollInProgress=true, creating an infinite snap loop.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }
+            .collect { scrolling ->
+                if (!scrolling) {
+                    val firstIndex = listState.firstVisibleItemIndex
+                    val offset = listState.firstVisibleItemScrollOffset
+                    val targetVirtualIndex =
+                        if (offset > itemHeightPx / 2f) firstIndex + 1 else firstIndex
+                    val targetRealIndex =
+                        ((targetVirtualIndex % itemCount) + itemCount) % itemCount
+                    onItemSelected(items[targetRealIndex])
+                    // Safety-net: snapFlingBehavior handles most flings; this catches slow drags
+                    if (offset != 0) {
+                        listState.animateScrollToItem(targetVirtualIndex, scrollOffset = 0)
+                    }
+                }
+            }
     }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
-            letterSpacing = 0.06.sp
-        )
-        Spacer(modifier = Modifier.height(4.dp))
+        if (label.isNotEmpty()) {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextTertiary,
+                letterSpacing = 0.06.sp
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
 
-        Box(modifier = Modifier.height(itemHeight * visibleItems).width(80.dp)) {
+        Box(modifier = Modifier
+            .height(itemHeight * visibleItems)
+            .width(pickerWidth)
+        ) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = itemHeight * 2)
+                flingBehavior = snapFlingBehavior,
+                contentPadding = PaddingValues(vertical = itemHeight * (visibleItems / 2))
             ) {
                 items(totalCount) { virtualIndex ->
                     val realIndex = ((virtualIndex % itemCount) + itemCount) % itemCount
@@ -194,7 +223,7 @@ fun WheelPicker(
                                 onItemSelected(item)
                                 scope.launch {
                                     listState.animateScrollToItem(
-                                        virtualIndex.coerceAtLeast(0)
+                                        virtualIndex.coerceAtLeast(0), scrollOffset = 0
                                     )
                                 }
                             },
@@ -202,7 +231,7 @@ fun WheelPicker(
                     ) {
                         Text(
                             text = String.format("%02d", item),
-                            fontSize = if (isSelected) 32.sp else 26.sp,
+                            fontSize = if (isSelected) selectedFontSize else otherFontSize,
                             fontWeight = if (isSelected) FontWeight.Normal else FontWeight.Light,
                             color = if (isSelected) TextPrimary else TextSecondary
                         )
@@ -210,50 +239,44 @@ fun WheelPicker(
                 }
             }
 
-            // Selection indicator
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(itemHeight)
-                    .align(Alignment.Center)
-            ) {
-                HorizontalDivider(
-                    modifier = Modifier.align(Alignment.TopStart),
-                    color = Color.White.copy(alpha = 0.12f)
-                )
-                HorizontalDivider(
-                    modifier = Modifier.align(Alignment.BottomStart),
-                    color = Color.White.copy(alpha = 0.12f)
-                )
+            if (showDividers) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(itemHeight)
+                        .align(Alignment.Center)
+                ) {
+                    HorizontalDivider(
+                        modifier = Modifier.align(Alignment.TopStart),
+                        color = Color.White.copy(alpha = 0.12f)
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.align(Alignment.BottomStart),
+                        color = Color.White.copy(alpha = 0.12f)
+                    )
+                }
             }
 
-            // Fade gradients
+            // Top fade
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(66.dp)
+                    .height(itemHeight * (visibleItems / 2))
                     .align(Alignment.TopCenter)
                     .drawWithContent {
                         drawContent()
-                        drawRect(
-                            Brush.verticalGradient(
-                                listOf(backgroundColor, Color.Transparent)
-                            )
-                        )
+                        drawRect(Brush.verticalGradient(listOf(backgroundColor, Color.Transparent)))
                     }
             )
+            // Bottom fade
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(66.dp)
+                    .height(itemHeight * (visibleItems / 2))
                     .align(Alignment.BottomCenter)
                     .drawWithContent {
                         drawContent()
-                        drawRect(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, backgroundColor)
-                            )
-                        )
+                        drawRect(Brush.verticalGradient(listOf(Color.Transparent, backgroundColor)))
                     }
             )
         }

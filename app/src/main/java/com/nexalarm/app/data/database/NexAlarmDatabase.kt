@@ -13,8 +13,8 @@ import com.nexalarm.app.data.model.RepeatDaysConverter
 
 @Database(
     entities = [AlarmEntity::class, FolderEntity::class],
-    version = 2,
-    exportSchema = false
+    version = 4,
+    exportSchema = true
 )
 @TypeConverters(RepeatDaysConverter::class)
 abstract class NexAlarmDatabase : RoomDatabase() {
@@ -42,6 +42,12 @@ abstract class NexAlarmDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE alarms ADD COLUMN snoozeEnabled INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         fun getDatabase(context: Context): NexAlarmDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -49,8 +55,7 @@ abstract class NexAlarmDatabase : RoomDatabase() {
                     NexAlarmDatabase::class.java,
                     "nexalarm_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .addCallback(PrepopulateCallback())
                     .build()
                 INSTANCE = instance
@@ -64,10 +69,10 @@ abstract class NexAlarmDatabase : RoomDatabase() {
             super.onCreate(db)
             // Use raw SQL to avoid race condition with INSTANCE being null
             db.execSQL(
-                "INSERT INTO folders (name, isEnabled, color, isSystem, emoji) VALUES ('Single Alarm', 1, '#4CAF50', 1, '🔔')"
+                "INSERT INTO folders (name, isEnabled, color, isSystem, emoji) VALUES ('單次鬧鐘', 1, '#4CAF50', 1, '🔔')"
             )
             db.execSQL(
-                "INSERT INTO folders (name, isEnabled, color, isSystem, emoji) VALUES ('Recurring Alarm', 1, '#FF9800', 1, '🔁')"
+                "INSERT INTO folders (name, isEnabled, color, isSystem, emoji) VALUES ('重複鬧鐘', 1, '#FF9800', 1, '🔁')"
             )
         }
     }

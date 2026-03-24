@@ -1,27 +1,35 @@
 package com.nexalarm.app.ui.screens
 
 import android.app.KeyguardManager
+import android.app.WallpaperManager
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.AlarmOff
-import androidx.compose.material.icons.filled.Snooze
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,10 +38,11 @@ import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.receiver.AlarmReceiver
 import com.nexalarm.app.service.AlarmService
 import com.nexalarm.app.ui.theme.NexAlarmTheme
-import com.nexalarm.app.util.AlarmTestHook
+import com.nexalarm.app.ui.theme.S
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Locale
+import java.util.Calendar
 
 /**
  * 全螢幕鬧鐘觸發 Activity
@@ -62,10 +71,7 @@ class AlarmRingingActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         val alarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1L)
-        val alarmTitle = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: "鬧鐘"
-
-        // ===== 測試 Hook: Level 2 - 全螢幕顯示 =====
-        AlarmTestHook.onFullScreenShown(this, alarmId)
+        val alarmTitle = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: S.alarmDefaultTitle
 
         setContent {
             NexAlarmTheme {
@@ -137,115 +143,181 @@ class AlarmRingingActivity : ComponentActivity() {
 @Composable
 fun AlarmRingingScreen(
     alarm: AlarmEntity?,
-    fallbackTitle: String = "鬧鐘",
+    fallbackTitle: String = S.alarmDefaultTitle,
     onDismiss: () -> Unit,
     onSnooze: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.9f,
-        targetValue = 1.1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "scale"
-    )
+    val context = LocalContext.current
+    val density = LocalDensity.current
+
+    // Current time, ticking every second
+    var now by remember { mutableStateOf(Calendar.getInstance()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000L)
+            now = Calendar.getInstance()
+        }
+    }
+
+    // Load device wallpaper once as a blurred background
+    val wallpaperBitmap = remember {
+        try {
+            val wm = WallpaperManager.getInstance(context)
+            val drawable = wm.drawable
+            if (drawable != null) {
+                val dm = context.resources.displayMetrics
+                val w = dm.widthPixels.coerceAtLeast(1)
+                val h = dm.heightPixels.coerceAtLeast(1)
+                val bm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(bm)
+                drawable.setBounds(0, 0, w, h)
+                drawable.draw(canvas)
+                bm.asImageBitmap()
+            } else null
+        } catch (_: Exception) { null }
+    }
+
+    val snoozeMin = alarm?.snoozeDelay ?: 10
+    val snoozeEnabled = alarm?.snoozeEnabled ?: true
+    val dismissThresholdPx = with(density) { 100.dp.toPx() }
+    var swipeDelta by remember { mutableFloatStateOf(0f) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF1A237E),
-                        Color(0xFF0D47A1),
-                        Color(0xFF01579B)
-                    )
-                )
-            ),
-        contentAlignment = Alignment.Center
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragEnd = {
+                        if (swipeDelta < -dismissThresholdPx) onDismiss()
+                        swipeDelta = 0f
+                    },
+                    onDragCancel = { swipeDelta = 0f }
+                ) { _, dragAmount -> swipeDelta += dragAmount }
+            }
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // 鬧鐘圖示（脈動動畫）
-            Icon(
-                Icons.Default.Alarm,
+        // ── Background ──────────────────────────────────────────────────────
+        if (wallpaperBitmap != null) {
+            Image(
+                bitmap = wallpaperBitmap,
                 contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(96.dp)
-                    .scale(scale),
-                tint = Color.White
+                    .fillMaxSize()
+                    .blur(28.dp)
             )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFF3D2318), Color(0xFF5C3820), Color(0xFF1C0D06))
+                        )
+                    )
+            )
+        }
+        // Subtle dark overlay for text contrast
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.28f))
+        )
 
-            // 時間
+        // ── Content ──────────────────────────────────────────────────────────
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.weight(0.28f))
+
+            // Current time
+            val hour = now.get(Calendar.HOUR_OF_DAY)
+            val minute = now.get(Calendar.MINUTE)
             Text(
-                text = alarm?.let {
-                    String.format(Locale.getDefault(), "%02d:%02d", it.hour, it.minute)
-                } ?: "--:--",
-                fontSize = 72.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                text = String.format("%02d:%02d", hour, minute),
+                fontSize = 88.sp,
+                fontWeight = FontWeight.Thin,
+                color = Color.White.copy(alpha = 0.93f),
+                letterSpacing = (-2).sp
             )
 
-            // 標題
-            val title = alarm?.title?.takeIf { it.isNotBlank() } ?: fallbackTitle
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Date
+            val month = now.get(Calendar.MONTH) + 1
+            val day = now.get(Calendar.DAY_OF_MONTH)
+            val dowNames = listOf("", "日", "一", "二", "三", "四", "五", "六")
             Text(
-                text = title,
-                fontSize = 24.sp,
-                color = Color.White.copy(alpha = 0.8f)
+                text = "${month}月${day}日 星期${dowNames[now.get(Calendar.DAY_OF_WEEK)]}",
+                fontSize = 16.sp,
+                color = Color.White.copy(alpha = 0.72f)
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-            // 按鈕列
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(32.dp)
-            ) {
-                // 貪睡
-                FilledTonalButton(
+            // ── Snooze card（僅在貪睡功能啟用時顯示）────────────────────────
+            if (snoozeEnabled) {
+                Surface(
                     onClick = onSnooze,
-                    modifier = Modifier.size(100.dp),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = Color.White.copy(alpha = 0.2f),
-                        contentColor = Color.White
-                    )
+                    modifier = Modifier
+                        .padding(horizontal = 36.dp)
+                        .fillMaxWidth()
+                        .height(72.dp),
+                    shape = RoundedCornerShape(22.dp),
+                    color = Color(0xFFF2EDE6).copy(alpha = 0.88f),
+                    shadowElevation = 0.dp
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
-                            Icons.Default.Snooze,
-                            contentDescription = "貪睡",
-                            modifier = Modifier.size(32.dp)
+                            imageVector = Icons.Default.Alarm,
+                            contentDescription = null,
+                            tint = Color(0xFF1A1A1A),
+                            modifier = Modifier.size(24.dp)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("延後", fontSize = 12.sp)
-                    }
-                }
-
-                // 關閉
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(100.dp),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFD32F2F),
-                        contentColor = Color.White
-                    )
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.AlarmOff,
-                            contentDescription = "關閉",
-                            modifier = Modifier.size(32.dp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = S.snoozeReminder(snoozeMin),
+                            color = Color(0xFF1A1A1A),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("關閉", fontSize = 12.sp)
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(52.dp))
+
+            // ── Dismiss: bouncing arrow + label ──────────────────────────────
+            val infiniteTransition = rememberInfiniteTransition(label = "arrow")
+            val arrowOffset by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = -7f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(700, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "arrowBounce"
+            )
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowUp,
+                contentDescription = S.slideToClose,
+                tint = Color.White.copy(alpha = 0.82f),
+                modifier = Modifier
+                    .size(28.dp)
+                    .offset(y = arrowOffset.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = S.slideToClose,
+                color = Color.White.copy(alpha = 0.82f),
+                fontSize = 15.sp
+            )
+
+            Spacer(modifier = Modifier.height(44.dp))
         }
     }
 }

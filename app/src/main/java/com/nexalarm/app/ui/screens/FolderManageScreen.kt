@@ -25,6 +25,7 @@ import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.ui.components.NexToggle
 import com.nexalarm.app.ui.components.NewFolderDialog
 import com.nexalarm.app.ui.theme.*
+import com.nexalarm.app.util.FeatureFlags
 
 @Composable
 fun FolderManageScreen(
@@ -32,10 +33,12 @@ fun FolderManageScreen(
     alarmCountMap: Map<Long, Int>,
     onAddFolder: (String, String, String) -> Unit,
     onToggleFolder: (Long) -> Unit,
-    onFolderClick: (FolderEntity) -> Unit
+    onFolderClick: (FolderEntity) -> Unit,
+    showAddDialog: Boolean,
+    onAddDialogDismiss: () -> Unit,
+    onAddFolderClick: () -> Unit
 ) {
     val openMenu = LocalMenuAction.current
-    var showAddDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Header
@@ -90,7 +93,7 @@ fun FolderManageScreen(
                             shape = RoundedCornerShape(18.dp)
                         )
                         .clip(RoundedCornerShape(18.dp))
-                        .clickable { showAddDialog = true }
+                        .clickable { onAddFolderClick() }
                         .padding(horizontal = 18.dp, vertical = 16.dp)
                 ) {
                     Row(
@@ -119,7 +122,7 @@ fun FolderManageScreen(
             item {
                 val userCount = folders.count { !it.isSystem }
                 Text(
-                    text = S.folderQuota(userCount, 10),
+                    text = S.folderQuota(userCount, FeatureFlags.FREE_FOLDER_LIMIT),
                     fontSize = 12.sp,
                     color = TextTertiary,
                     modifier = Modifier
@@ -135,10 +138,10 @@ fun FolderManageScreen(
 
     NewFolderDialog(
         visible = showAddDialog,
-        onDismiss = { showAddDialog = false },
+        onDismiss = onAddDialogDismiss,
         onConfirm = { name, emoji ->
             onAddFolder(name, "#1A73E8", emoji)
-            showAddDialog = false
+            onAddDialogDismiss()
         }
     )
 }

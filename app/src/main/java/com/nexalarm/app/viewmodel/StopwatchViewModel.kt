@@ -1,6 +1,8 @@
 package com.nexalarm.app.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -8,7 +10,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class StopwatchViewModel : ViewModel() {
+class StopwatchViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val prefs = application.getSharedPreferences("stopwatch_state", Context.MODE_PRIVATE)
 
     private val _elapsedMs = MutableStateFlow(0L)
     val elapsedMs: StateFlow<Long> = _elapsedMs
@@ -22,20 +26,44 @@ class StopwatchViewModel : ViewModel() {
     private var tickJob: Job? = null
     private var startTime = 0L
     private var accumulatedTime = 0L
-    private var lapStartTime = 0L
+
+    init {
+        val savedAccumulated = prefs.getLong("accumulatedTime", 0L)
+        val startedAt = prefs.getLong("startedAt", 0L)
+        val wasRunning = prefs.getBoolean("isRunning", false)
+        val lapsStr = prefs.getString("laps", "") ?: ""
+
+        accumulatedTime = if (wasRunning && startedAt > 0L) {
+            savedAccumulated + (System.currentTimeMillis() - startedAt)
+        } else {
+            savedAccumulated
+        }
+        _elapsedMs.value = accumulatedTime
+
+        if (lapsStr.isNotBlank()) {
+            _laps.value = lapsStr.split(",").mapNotNull { it.toLongOrNull() }
+        }
+
+        if (wasRunning) startTicking()
+    }
 
     fun toggle() {
-        if (_isRunning.value) {
-            pause()
-        } else {
-            start()
-        }
+        if (_isRunning.value) pause() else start()
     }
 
     private fun start() {
         _isRunning.value = true
         startTime = System.currentTimeMillis()
-        if (lapStartTime == 0L) lapStartTime = startTime
+        prefs.edit()
+            .putBoolean("isRunning", true)
+            .putLong("accumulatedTime", accumulatedTime)
+            .putLong("startedAt", startTime)
+            .apply()
+        startTicking()
+    }
+
+    private fun startTicking() {
+        _isRunning.value = true
         tickJob = viewModelScope.launch {
             while (_isRunning.value) {
                 _elapsedMs.value = accumulatedTime + (System.currentTimeMillis() - startTime)
@@ -47,23 +75,34 @@ class StopwatchViewModel : ViewModel() {
     private fun pause() {
         _isRunning.value = false
         accumulatedTime += System.currentTimeMillis() - startTime
+        _elapsedMs.value = accumulatedTime
         tickJob?.cancel()
+        prefs.edit()
+            .putBoolean("isRunning", false)
+            .putLong("accumulatedTime", accumulatedTime)
+            .putLong("startedAt", 0L)
+            .apply()
     }
 
     fun lap() {
         if (!_isRunning.value) return
-        val now = System.currentTimeMillis()
-        val lapTime = accumulatedTime + (now - startTime) - _laps.value.sum()
+        val lapTime = accumulatedTime + (System.currentTimeMillis() - startTime) - _laps.value.sum()
         _laps.value = listOf(lapTime) + _laps.value
+        prefs.edit().putString("laps", _laps.value.joinToString(",")).apply()
     }
 
     fun reset() {
         _isRunning.value = false
         tickJob?.cancel()
         accumulatedTime = 0L
+        startTime = 0L
         _elapsedMs.value = 0L
         _laps.value = emptyList()
-        lapStartTime = 0L
+        prefs.edit()
+            .putBoolean("isRunning", false)
+            .putLong("accumulatedTime", 0L)
+            .putLong("startedAt", 0L)
+            .putString("laps", "")
+            .apply()
     }
 }
-

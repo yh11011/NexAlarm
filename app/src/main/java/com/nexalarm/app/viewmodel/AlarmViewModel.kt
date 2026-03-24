@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
+import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.util.AlarmScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -139,7 +140,8 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun getTimeUntilNextAlarm(): String {
         val nextAlarm = getNextAlarm() ?: return ""
-        return scheduler.getTimeUntilText(nextAlarm)
+        val isEnglish = SettingsManager(getApplication()).isEnglish
+        return scheduler.getTimeUntilText(nextAlarm, isEnglish)
     }
 
     /**

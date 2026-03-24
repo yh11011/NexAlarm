@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.provider.Settings
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.receiver.AlarmReceiver
 import java.util.*
@@ -40,6 +39,8 @@ class AlarmScheduler(private val context: Context) {
             putExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, alarm.vibrateOnly)
         }
 
+        intent.putExtra(AlarmReceiver.EXTRA_ALARM_SNOOZE_ENABLED, alarm.snoozeEnabled)
+
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             alarm.id.toInt(),
@@ -47,18 +48,17 @@ class AlarmScheduler(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // 檢查權限
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (!alarmManager.canScheduleExactAlarms()) {
-                // 引導使用者開啟權限
-                val settingsIntent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-                settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(settingsIntent)
-                return
-            }
+        // 設定鬧鐘
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+            // 無精確鬧鐘權限：使用 setAndAllowWhileIdle 作為 fallback（精度較低但鬧鐘不會消失）
+            // 權限引導由 MainActivity 在首次啟動時處理，排程器不重複彈出
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
+            android.util.Log.w("AlarmScheduler",
+                "No SCHEDULE_EXACT_ALARM permission, using inexact fallback for alarm ${alarm.id}")
+            return
         }
 
-        // 設定鬧鐘（使用 setAlarmClock 可 bypass Doze，是商業鬧鐘的標準做法）
+        // 正常路徑：使用 setAlarmClock 可 bypass Doze，是商業鬧鐘的標準做法
         val showIntent = PendingIntent.getActivity(
             context, alarm.id.toInt(),
             Intent(context, com.nexalarm.app.MainActivity::class.java),
@@ -96,6 +96,19 @@ class AlarmScheduler(private val context: Context) {
      */
     fun scheduleSnooze(alarm: AlarmEntity, snoozeMinutes: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+            // 無精確權限：fallback 到非精確鬧鐘
+            val triggerFallback = System.currentTimeMillis() + snoozeMinutes * 60 * 1000L
+            val intentFallback = Intent(context, AlarmReceiver::class.java).apply {
+                action = AlarmReceiver.ACTION_ALARM_TRIGGER
+                putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarm.id)
+                putExtra(AlarmReceiver.EXTRA_ALARM_TITLE, alarm.title)
+                putExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, alarm.vibrateOnly)
+            }
+            val piFallback = PendingIntent.getBroadcast(
+                context, alarm.id.toInt(), intentFallback,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerFallback, piFallback)
             return
         }
 
@@ -204,23 +217,32 @@ class AlarmScheduler(private val context: Context) {
      * 計算距離下次觸發的時間文字
      * @return 例如 "6小時30分鐘後"
      */
-    fun getTimeUntilText(alarm: AlarmEntity): String {
+    fun getTimeUntilText(alarm: AlarmEntity, isEnglish: Boolean = false): String {
         if (!alarm.isEnabled) return ""
 
         val triggerTime = calculateNextTriggerTime(alarm)
         val now = System.currentTimeMillis()
         val diff = triggerTime - now
 
-        if (diff <= 0) return "即將響鈴"
+        if (diff <= 0) return if (isEnglish) "Ringing now" else "即將響鈴"
 
         val hours = (diff / (1000 * 60 * 60)).toInt()
         val minutes = ((diff % (1000 * 60 * 60)) / (1000 * 60)).toInt()
 
-        return when {
-            hours > 0 && minutes > 0 -> "${hours}小時${minutes}分鐘後"
-            hours > 0 -> "${hours}小時後"
-            minutes > 0 -> "${minutes}分鐘後"
-            else -> "不到1分鐘"
+        return if (isEnglish) {
+            when {
+                hours > 0 && minutes > 0 -> "in ${hours}h ${minutes}m"
+                hours > 0 -> "in ${hours}h"
+                minutes > 0 -> "in ${minutes}m"
+                else -> "in < 1 min"
+            }
+        } else {
+            when {
+                hours > 0 && minutes > 0 -> "${hours}小時${minutes}分鐘後"
+                hours > 0 -> "${hours}小時後"
+                minutes > 0 -> "${minutes}分鐘後"
+                else -> "不到1分鐘"
+            }
         }
     }
 
