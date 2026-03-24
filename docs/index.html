@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexAlarm - 下載</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f14;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 24px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+
+    .logo {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #4f8ef7, #7c4dff);
+      border-radius: 20px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+
+    .version {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 3px 12px;
+      background: rgba(79,142,247,0.15);
+      border: 1px solid rgba(79,142,247,0.3);
+      border-radius: 20px;
+      font-size: 12px;
+      color: #4f8ef7;
+      letter-spacing: 0.5px;
+    }
+
+    .tagline {
+      margin-top: 14px;
+      font-size: 15px;
+      color: #888;
+      line-height: 1.6;
+    }
+
+    .qr-wrapper {
+      margin: 32px auto;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 16px;
+      width: fit-content;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    #qrcode canvas, #qrcode img {
+      display: block;
+    }
+
+    .qr-label {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #4f8ef7, #7c4dff);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 14px;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.1s;
+      box-shadow: 0 6px 20px rgba(79,142,247,0.35);
+    }
+
+    .download-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .download-btn:active { transform: translateY(0); }
+
+    .install-steps {
+      margin-top: 32px;
+      text-align: left;
+      background: #111118;
+      border-radius: 14px;
+      padding: 20px 22px;
+    }
+
+    .install-steps h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 14px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .step:last-child { margin-bottom: 0; }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      background: rgba(79,142,247,0.15);
+      border: 1px solid rgba(79,142,247,0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #4f8ef7;
+    }
+
+    .step p {
+      font-size: 14px;
+      color: #bbb;
+      line-height: 1.5;
+      padding-top: 2px;
+    }
+
+    .features {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .feature {
+      background: #111118;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: #aaa;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feature span:first-child { font-size: 18px; }
+
+    .req {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #555;
+    }
+
+    footer {
+      margin-top: 32px;
+      font-size: 12px;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">⏰</div>
+    <h1>NexAlarm</h1>
+    <span class="version">v1.0.0 Beta</span>
+    <p class="tagline">功能完整的智慧鬧鐘<br>精確排程 · 資料夾分類 · 雙語介面</p>
+
+    <div class="qr-wrapper">
+      <div id="qrcode"></div>
+    </div>
+    <p class="qr-label">掃描 QR Code 或點擊下方按鈕下載</p>
+
+    <a class="download-btn" href="https://github.com/yh11011/NexAlarm/releases/download/v1.0.0-beta/app-debug.apk" download>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      下載 APK
+    </a>
+
+    <div class="install-steps">
+      <h3>安裝步驟</h3>
+      <div class="step">
+        <div class="step-num">1</div>
+        <p>下載 APK 檔案到 Android 手機</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <p>前往 <strong style="color:#e0e0e0">設定 → 安全性</strong>，開啟「允許未知來源」</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <p>開啟下載的 APK 並點擊「安裝」</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <p>開啟後授予「精確鬧鐘」與「通知」權限</p>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feature"><span>⏰</span><span>精確排程</span></div>
+      <div class="feature"><span>📁</span><span>資料夾分類</span></div>
+      <div class="feature"><span>🌓</span><span>深色模式</span></div>
+      <div class="feature"><span>🌐</span><span>中英雙語</span></div>
+      <div class="feature"><span>⏱</span><span>計時器 / 碼錶</span></div>
+      <div class="feature"><span>🔕</span><span>會議模式磚片</span></div>
+    </div>
+
+    <p class="req">需要 Android 8.0 (API 26) 以上</p>
+  </div>
+
+  <footer>© 2026 NexAlarm · <a href="https://github.com/yh11011/NexAlarm" style="color:#4f8ef7;text-decoration:none;">GitHub</a></footer>
+
+  <script>
+    const apkUrl = "https://github.com/yh11011/NexAlarm/releases/download/v1.0.0-beta/app-debug.apk";
+    QRCode.toCanvas
+      ? QRCode.toCanvas(document.createElement('canvas'), apkUrl)
+      : null;
+
+    new QRCode(document.getElementById("qrcode"), {
+      text: apkUrl,
+      width: 180,
+      height: 180,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  </script>
+</body>
+</html>

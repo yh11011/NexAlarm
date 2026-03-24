@@ -366,7 +366,7 @@ private fun ColumnScope.TimerRunningContent(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 56.dp, top = 12.dp, bottom = 32.dp),
+            .padding(start = 56.dp, end = 56.dp, top = 12.dp, bottom = 32.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
