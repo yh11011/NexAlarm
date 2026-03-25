@@ -13,7 +13,7 @@ import com.nexalarm.app.data.model.RepeatDaysConverter
 
 @Database(
     entities = [AlarmEntity::class, FolderEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(RepeatDaysConverter::class)
@@ -48,6 +48,13 @@ abstract class NexAlarmDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 將系統資料夾「重複鬧鐘」的 emoji 從 🔁（Samsung 裝置上有橘色底色）改為純文字箭頭 ↻
+                db.execSQL("UPDATE folders SET emoji = '↻' WHERE name = '重複鬧鐘' AND isSystem = 1")
+            }
+        }
+
         fun getDatabase(context: Context): NexAlarmDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -55,7 +62,7 @@ abstract class NexAlarmDatabase : RoomDatabase() {
                     NexAlarmDatabase::class.java,
                     "nexalarm_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .addCallback(PrepopulateCallback())
                     .build()
                 INSTANCE = instance
@@ -72,7 +79,7 @@ abstract class NexAlarmDatabase : RoomDatabase() {
                 "INSERT INTO folders (name, isEnabled, color, isSystem, emoji) VALUES ('單次鬧鐘', 1, '#4CAF50', 1, '🔔')"
             )
             db.execSQL(
-                "INSERT INTO folders (name, isEnabled, color, isSystem, emoji) VALUES ('重複鬧鐘', 1, '#FF9800', 1, '🔁')"
+                "INSERT INTO folders (name, isEnabled, color, isSystem, emoji) VALUES ('重複鬧鐘', 1, '#FF9800', 1, '↻')"
             )
         }
     }

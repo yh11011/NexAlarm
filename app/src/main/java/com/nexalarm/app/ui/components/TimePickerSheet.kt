@@ -167,9 +167,18 @@ fun WheelPicker(
     )
     val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    // Snap to nearest item when scroll stops.
-    // Must use collect (not collectLatest): collectLatest would cancel animateScrollToItem
-    // the moment it triggers isScrollInProgress=true, creating an infinite snap loop.
+    // 從滾動位置即時推導出視覺上居中的項目，避免等待父元件重組造成卡頓
+    val centeredItem by remember(itemCount) {
+        derivedStateOf {
+            val firstIndex = listState.firstVisibleItemIndex
+            val offset = listState.firstVisibleItemScrollOffset
+            val centerIndex = if (offset > itemHeightPx / 2f) firstIndex + 1 else firstIndex
+            val realIndex = ((centerIndex % itemCount) + itemCount) % itemCount
+            items[realIndex]
+        }
+    }
+
+    // 滾動停止後回報選取值給父元件
     LaunchedEffect(listState) {
         snapshotFlow { listState.isScrollInProgress }
             .collect { scrolling ->
@@ -181,12 +190,19 @@ fun WheelPicker(
                     val targetRealIndex =
                         ((targetVirtualIndex % itemCount) + itemCount) % itemCount
                     onItemSelected(items[targetRealIndex])
-                    // Safety-net: snapFlingBehavior handles most flings; this catches slow drags
                     if (offset != 0) {
                         listState.animateScrollToItem(targetVirtualIndex, scrollOffset = 0)
                     }
                 }
             }
+    }
+
+    // 處理外部選取變更（例如預設按鈕）
+    LaunchedEffect(selectedItem) {
+        if (centeredItem != selectedItem) {
+            val targetIndex = middleBase + items.indexOf(selectedItem).coerceAtLeast(0)
+            listState.animateScrollToItem(targetIndex, scrollOffset = 0)
+        }
     }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -214,7 +230,7 @@ fun WheelPicker(
                 items(totalCount) { virtualIndex ->
                     val realIndex = ((virtualIndex % itemCount) + itemCount) % itemCount
                     val item = items[realIndex]
-                    val isSelected = item == selectedItem
+                    val isSelected = item == centeredItem
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -257,11 +273,13 @@ fun WheelPicker(
                 }
             }
 
+            // 漸層遮罩：縮小高度，避免遮住選中項目的文字
+            val fadeHeight = itemHeight * (visibleItems / 2) - itemHeight * 0.2f
             // Top fade
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(itemHeight * (visibleItems / 2))
+                    .height(fadeHeight)
                     .align(Alignment.TopCenter)
                     .drawWithContent {
                         drawContent()
@@ -272,7 +290,7 @@ fun WheelPicker(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(itemHeight * (visibleItems / 2))
+                    .height(fadeHeight)
                     .align(Alignment.BottomCenter)
                     .drawWithContent {
                         drawContent()
