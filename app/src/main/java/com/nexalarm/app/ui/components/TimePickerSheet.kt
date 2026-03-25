@@ -99,7 +99,10 @@ fun TimePickerSheet(
                     items = (0..23).toList(),
                     selectedItem = selectedHour,
                     onItemSelected = { selectedHour = it },
-                    label = "小時"
+                    label = "小時",
+                    selectedFontSize = 40.sp,
+                    otherFontSize = 18.sp,
+                    pickerWidth = 90.dp
                 )
                 Text(
                     text = ":",
@@ -112,7 +115,10 @@ fun TimePickerSheet(
                     items = (0..59).toList(),
                     selectedItem = selectedMinute,
                     onItemSelected = { selectedMinute = it },
-                    label = "分鐘"
+                    label = "分鐘",
+                    selectedFontSize = 40.sp,
+                    otherFontSize = 18.sp,
+                    pickerWidth = 90.dp
                 )
             }
 
@@ -167,7 +173,7 @@ fun WheelPicker(
     )
     val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    // 從滾動位置即時推導出視覺上居中的項目，避免等待父元件重組造成卡頓
+    // 從滾動位置即時推導出視覺上居中的項目，用於回報選取值和外部同步
     val centeredItem by remember(itemCount) {
         derivedStateOf {
             val firstIndex = listState.firstVisibleItemIndex
@@ -175,6 +181,14 @@ fun WheelPicker(
             val centerIndex = if (offset > itemHeightPx / 2f) firstIndex + 1 else firstIndex
             val realIndex = ((centerIndex % itemCount) + itemCount) % itemCount
             items[realIndex]
+        }
+    }
+
+    // 連續浮點中心位置，用於平滑漸進式縮放動畫（每個 item 依距離即時插值）
+    val centerFractional by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex.toFloat() +
+                listState.firstVisibleItemScrollOffset.toFloat() / itemHeightPx
         }
     }
 
@@ -230,7 +244,16 @@ fun WheelPicker(
                 items(totalCount) { virtualIndex ->
                     val realIndex = ((virtualIndex % itemCount) + itemCount) % itemCount
                     val item = items[realIndex]
-                    val isSelected = item == centeredItem
+
+                    // 根據到中心的連續距離計算字體大小與透明度（平滑漸進縮放）
+                    val distanceFromCenter = kotlin.math.abs(virtualIndex.toFloat() - centerFractional)
+                    val t = (distanceFromCenter / 2f).coerceIn(0f, 1f)
+                    val selectedSp = selectedFontSize.value
+                    val otherSp = otherFontSize.value
+                    val fontSize = (selectedSp + (otherSp - selectedSp) * t).sp
+                    val textAlpha = 1f - t * 0.78f
+                    val fontWeight = if (t < 0.35f) FontWeight.Normal else FontWeight.Light
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -247,9 +270,9 @@ fun WheelPicker(
                     ) {
                         Text(
                             text = String.format("%02d", item),
-                            fontSize = if (isSelected) selectedFontSize else otherFontSize,
-                            fontWeight = if (isSelected) FontWeight.Normal else FontWeight.Light,
-                            color = if (isSelected) TextPrimary else TextSecondary
+                            fontSize = fontSize,
+                            fontWeight = fontWeight,
+                            color = TextPrimary.copy(alpha = textAlpha)
                         )
                     }
                 }
