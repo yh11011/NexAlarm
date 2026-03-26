@@ -32,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.nexalarm.app.data.AuthRepository
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.util.BillingManager
@@ -83,11 +84,14 @@ fun NexAlarmMainContent() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val billingManager = remember { BillingManager(context) }
 
-    // ── 帳號狀態（從 SettingsManager 初始化，本地 state 追蹤變更）──
+    // ── 帳號狀態（單一來源：SettingsManager；本地 state 僅作 Compose 重組觸發器）──
     val settingsManager = remember { SettingsManager(context) }
     val isFirstLaunch = remember { settingsManager.isFirstLaunch }
-    var authUsername by remember { mutableStateOf(settingsManager.authUsername) }
-    var authDisplayName by remember { mutableStateOf(settingsManager.authDisplayName) }
+    // 用一個整數 tick 作為重組觸發器，避免 username/displayName 各自存一份造成不同步
+    var authTick by remember { mutableIntStateOf(0) }
+    val authUsername: String? get() = settingsManager.authUsername
+    val authDisplayName: String? get() = settingsManager.authDisplayName
+    @Suppress("UNUSED_EXPRESSION") authTick // 讓 Compose 追蹤 tick 變化
 
     // 收集資料夾錯誤訊息（例如超過免費版上限）
     LaunchedEffect(folderViewModel) {
@@ -246,27 +250,31 @@ fun NexAlarmMainContent() {
                 // - 其餘 routes → NavController push 進入的子頁面
                 NavHost(
                     navController = navController,
-                    startDestination = if (isFirstLaunch) "login" else "tabs",
+                    startDestination = if (isFirstLaunch) "login?onboarding=true" else "tabs",
                     modifier = Modifier.padding(padding)
                 ) {
                     // ── 登入 / 註冊頁 ──
-                    composable("login") {
-                        // 判斷是首次引導還是從帳號設定進入
-                        val fromOnboarding = navController.previousBackStackEntry == null
+                    // 用明確的路由參數 onboarding=true/false 取代 previousBackStackEntry 判斷，
+                    // 避免 APP 被系統回收後重建時判斷錯誤
+                    composable(
+                        route = "login?onboarding={onboarding}",
+                        arguments = listOf(
+                            navArgument("onboarding") { type = NavType.BoolType; defaultValue = false }
+                        )
+                    ) { backStackEntry ->
+                        val isOnboarding = backStackEntry.arguments?.getBoolean("onboarding") ?: false
                         LoginScreen(
-                            isOnboarding = fromOnboarding,
+                            isOnboarding = isOnboarding,
                             onSuccess = { user ->
-                                // 儲存 token 與使用者資訊
                                 settingsManager.authToken = user.token
                                 settingsManager.authUserId = user.id
                                 settingsManager.authUsername = user.username ?: user.email
                                 settingsManager.authDisplayName = user.displayName
                                 settingsManager.isFirstLaunch = false
-                                authUsername = settingsManager.authUsername
-                                authDisplayName = settingsManager.authDisplayName
-                                if (fromOnboarding) {
+                                authTick++ // 觸發帳號狀態重組
+                                if (isOnboarding) {
                                     navController.navigate("tabs") {
-                                        popUpTo("login") { inclusive = true }
+                                        popUpTo("login?onboarding=true") { inclusive = true }
                                     }
                                 } else {
                                     navController.popBackStack()
@@ -275,10 +283,10 @@ fun NexAlarmMainContent() {
                             onSkip = {
                                 settingsManager.isFirstLaunch = false
                                 navController.navigate("tabs") {
-                                    popUpTo("login") { inclusive = true }
+                                    popUpTo("login?onboarding=true") { inclusive = true }
                                 }
                             },
-                            onBack = if (!fromOnboarding) {
+                            onBack = if (!isOnboarding) {
                                 { navController.popBackStack() }
                             } else null
                         )
@@ -348,9 +356,15 @@ fun NexAlarmMainContent() {
                                 navController.navigate("login")
                             },
                             onLogout = {
+                                val token = settingsManager.authToken
+                                // 先清除本地，再通知後端（背景執行，失敗不影響本地登出）
                                 settingsManager.clearAuth()
-                                authUsername = null
-                                authDisplayName = null
+                                authTick++ // 觸發帳號狀態重組
+                                if (token != null) {
+                                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                        AuthRepository.logout(token)
+                                    }
+                                }
                             }
                         )
                     }

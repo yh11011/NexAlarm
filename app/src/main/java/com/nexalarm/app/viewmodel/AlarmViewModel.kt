@@ -9,7 +9,10 @@ import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.util.AlarmScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -31,6 +34,12 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             AlarmSyncRepository.sync(token, localAlarms)
                 .onSuccess { serverAlarms ->
                     applyServerAlarms(serverAlarms)
+                }
+                .onFailure { e ->
+                    // Token 過期（401）：自動清除登入狀態，下次操作或開啟帳號頁時提示重新登入
+                    if (e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true) {
+                        settings.clearAuth()
+                    }
                 }
         }
     }
@@ -66,6 +75,14 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     // 重複鬧鐘
     private val _repeatAlarms = MutableStateFlow<List<AlarmEntity>>(emptyList())
     val repeatAlarms: StateFlow<List<AlarmEntity>> = _repeatAlarms
+
+    // 下一個要響的鬧鐘（StateFlow，自動隨 allAlarms 更新，UI 可直接 collectAsState）
+    val nextAlarm: StateFlow<AlarmEntity?> = _allAlarms
+        .map { alarms ->
+            alarms.filter { it.isEnabled }
+                  .minByOrNull { scheduler.getNextTriggerTime(it) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     init {
         loadAlarms()
@@ -170,17 +187,9 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * 取得下一個要響的鬧鐘
+     * 取得下一個要響的鬧鐘（同步讀值，建議 UI 改用 nextAlarm StateFlow）
      */
-    fun getNextAlarm(): AlarmEntity? {
-        val enabledAlarms = allAlarms.value.filter { it.isEnabled }
-        if (enabledAlarms.isEmpty()) return null
-
-        // 找出最早要響的鬧鐘
-        return enabledAlarms.minByOrNull { alarm ->
-            scheduler.getNextTriggerTime(alarm)
-        }
-    }
+    fun getNextAlarm(): AlarmEntity? = nextAlarm.value
 
     /**
      * 取得距離下次響鈴的時間文字

@@ -65,9 +65,10 @@ object AlarmSyncRepository {
             try {
                 conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
 
-                if (conn.responseCode !in 200..299) {
-                    val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP ${conn.responseCode}"
-                    throw Exception(err)
+                val statusCode = conn.responseCode
+                if (statusCode !in 200..299) {
+                    val err = conn.errorStream?.bufferedReader()?.readText() ?: ""
+                    throw Exception("HTTP $statusCode${if (err.isNotBlank()) ": $err" else ""}")
                 }
 
                 val response = JSONObject(conn.inputStream.bufferedReader().readText())
