@@ -1,12 +1,15 @@
 package com.nexalarm.app
 
 import android.app.Application
+import androidx.work.*
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.ui.theme.isDarkTheme
 import com.nexalarm.app.ui.theme.isAppEnglish
 import com.nexalarm.app.util.CrashHandler
 import com.nexalarm.app.util.FeatureFlags
 import com.nexalarm.app.util.NotificationHelper
+import com.nexalarm.app.worker.AlarmSyncWorker
+import java.util.concurrent.TimeUnit
 
 /**
  * Application 類別
@@ -29,6 +32,25 @@ class NexAlarmApp : Application() {
         isAppEnglish = settings.isEnglish
         FeatureFlags.isPremium = settings.isPremium
 
+        // 排程背景同步（每 15 分鐘，Android WorkManager 最小間隔）
+        schedulePeriodicSync()
+
         android.util.Log.d("NexAlarmApp", "Application initialized")
+    }
+
+    private fun schedulePeriodicSync() {
+        val syncRequest = PeriodicWorkRequestBuilder<AlarmSyncWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "alarm_sync",
+            ExistingPeriodicWorkPolicy.KEEP,
+            syncRequest
+        )
     }
 }

@@ -3,6 +3,7 @@
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.nexalarm.app.data.AlarmSyncRepository
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.SettingsManager
@@ -20,6 +21,39 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     private val database = NexAlarmDatabase.getDatabase(application)
     private val alarmDao = database.alarmDao()
     private val scheduler = AlarmScheduler(application)
+    private val settings = SettingsManager(application)
+
+    /** 有操作時立即觸發與伺服器同步（僅在已登入時執行） */
+    private fun triggerSync() {
+        val token = settings.authToken ?: return
+        viewModelScope.launch {
+            val localAlarms = alarmDao.getAllAlarmsList()
+            AlarmSyncRepository.sync(token, localAlarms)
+                .onSuccess { serverAlarms ->
+                    applyServerAlarms(serverAlarms)
+                }
+        }
+    }
+
+    private suspend fun applyServerAlarms(serverAlarms: List<com.nexalarm.app.data.ServerAlarm>) {
+        for (serverAlarm in serverAlarms) {
+            val existing = alarmDao.getByClientId(serverAlarm.clientId)
+            if (serverAlarm.isDeleted) {
+                if (existing != null) { scheduler.cancel(existing); alarmDao.delete(existing) }
+            } else if (serverAlarm.updatedAt > (existing?.updatedAt ?: 0L)) {
+                val newAlarm = AlarmSyncRepository.jsonToAlarm(
+                    serverAlarm.data, serverAlarm.clientId, serverAlarm.updatedAt, existing?.id ?: 0L
+                )
+                if (existing == null) {
+                    val newId = alarmDao.insert(newAlarm)
+                    if (newAlarm.isEnabled) scheduler.schedule(newAlarm.copy(id = newId))
+                } else {
+                    alarmDao.update(newAlarm)
+                    if (newAlarm.isEnabled) scheduler.schedule(newAlarm) else scheduler.cancel(newAlarm)
+                }
+            }
+        }
+    }
 
     // 所有鬧鐘
     private val _allAlarms = MutableStateFlow<List<AlarmEntity>>(emptyList())
@@ -55,17 +89,18 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
      * ⚠️ 重點：會自動排程鬧鐘
      */
     fun saveAlarm(alarm: AlarmEntity) {
+        // 確保每次儲存都更新 updatedAt
+        val now = System.currentTimeMillis()
+        val alarmWithTime = alarm.copy(updatedAt = now)
         viewModelScope.launch {
-            if (alarm.id == 0L) {
-                // 新增
-                val newId = alarmDao.insert(alarm)
-                val newAlarm = alarm.copy(id = newId)
-                scheduler.schedule(newAlarm)
+            if (alarmWithTime.id == 0L) {
+                val newId = alarmDao.insert(alarmWithTime)
+                scheduler.schedule(alarmWithTime.copy(id = newId))
             } else {
-                // 更新
-                alarmDao.update(alarm)
-                scheduler.schedule(alarm)
+                alarmDao.update(alarmWithTime)
+                scheduler.schedule(alarmWithTime)
             }
+            triggerSync()
         }
     }
 
@@ -74,15 +109,11 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
      * ⚠️ 重點：會自動排程或取消排程
      */
     fun toggleAlarm(alarm: AlarmEntity) {
-        val updated = alarm.copy(isEnabled = !alarm.isEnabled)
+        val updated = alarm.copy(isEnabled = !alarm.isEnabled, updatedAt = System.currentTimeMillis())
         viewModelScope.launch {
             alarmDao.update(updated)
-
-            if (updated.isEnabled) {
-                scheduler.schedule(updated)
-            } else {
-                scheduler.cancel(updated)
-            }
+            if (updated.isEnabled) scheduler.schedule(updated) else scheduler.cancel(updated)
+            triggerSync()
         }
     }
 
@@ -94,6 +125,14 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             scheduler.cancel(alarm)
             alarmDao.delete(alarm)
+            // 通知伺服器刪除（以軟刪除形式同步）
+            val token = settings.authToken ?: return@launch
+            val deletedAt = System.currentTimeMillis()
+            AlarmSyncRepository.sync(
+                token = token,
+                localAlarms = alarmDao.getAllAlarmsList(),
+                deletedClientIds = listOf(alarm.clientId to deletedAt)
+            )
         }
     }
 
@@ -155,13 +194,11 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
      * 更新鬧鐘（含排程）
      */
     fun updateAlarm(alarm: AlarmEntity) {
+        val updated = alarm.copy(updatedAt = System.currentTimeMillis())
         viewModelScope.launch {
-            alarmDao.update(alarm)
-            if (alarm.isEnabled) {
-                scheduler.schedule(alarm)
-            } else {
-                scheduler.cancel(alarm)
-            }
+            alarmDao.update(updated)
+            if (updated.isEnabled) scheduler.schedule(updated) else scheduler.cancel(updated)
+            triggerSync()
         }
     }
 }
