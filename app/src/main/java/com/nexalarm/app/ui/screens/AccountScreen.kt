@@ -40,8 +40,10 @@ fun AccountScreen(
     val openMenu = LocalMenuAction.current
     val context = LocalContext.current
     val isPremium by billingManager.isPremium.collectAsState()
+    val hasPlayStorePurchase by billingManager.hasPlayStorePurchase.collectAsState()
     val isLoggedIn = authUsername != null
     var showUpgradeDialog by remember { mutableStateOf(false) }
+    var deactivateError by remember { mutableStateOf<String?>(null) }
 
     // ── 升級/優惠碼 Dialog ──
     if (showUpgradeDialog) {
@@ -258,13 +260,33 @@ fun AccountScreen(
                 }
             }
 
+            // 停用付費版錯誤提示
+            if (deactivateError != null) {
+                Text(
+                    text = deactivateError!!,
+                    color = DangerRed,
+                    fontSize = 13.sp,
+                    modifier = androidx.compose.ui.Modifier.padding(horizontal = 4.dp)
+                )
+            }
+
             // ── 升級按鈕 ──
             Button(
                 onClick = {
                     if (isPremium) {
-                        // 已付費：停用
-                        onPremiumStatusChanged(false)
+                        if (hasPlayStorePurchase) {
+                            // Google Play 有效購買 → 不允許本地停用，需由使用者到 Play Store 取消
+                            deactivateError = if (com.nexalarm.app.ui.theme.isAppEnglish)
+                                "Your purchase is managed by Google Play.\nTo cancel, go to Play Store → Subscriptions."
+                            else
+                                "付費版由 Google Play 管理，請前往 Play 商店 → 訂閱 取消"
+                        } else {
+                            // 優惠碼設定的付費版 → 允許本地停用
+                            deactivateError = null
+                            onPremiumStatusChanged(false)
+                        }
                     } else {
+                        deactivateError = null
                         // 未付費：開啟升級 dialog（可輸入優惠碼或正常購買）
                         showUpgradeDialog = true
                     }

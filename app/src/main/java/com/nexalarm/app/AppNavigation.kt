@@ -35,7 +35,6 @@ import androidx.navigation.navArgument
 import com.nexalarm.app.data.AuthRepository
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.model.AlarmEntity
-import com.nexalarm.app.util.BillingManager
 import com.nexalarm.app.util.FeatureFlags
 import com.nexalarm.app.ui.screens.*
 import com.nexalarm.app.ui.theme.*
@@ -82,7 +81,8 @@ fun NexAlarmMainContent() {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = androidx.compose.ui.platform.LocalContext.current
-    val billingManager = remember { BillingManager(context) }
+    // 使用 Application 級單例，避免每次重組重建 BillingClient 連線（修復 issue 10）
+    val billingManager = remember { (context.applicationContext as NexAlarmApp).billingManager }
 
     // ── 帳號狀態（單一來源：SettingsManager；本地 state 僅作 Compose 重組觸發器）──
     val settingsManager = remember { SettingsManager(context) }

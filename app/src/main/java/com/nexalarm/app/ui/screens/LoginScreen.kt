@@ -1,5 +1,6 @@
 package com.nexalarm.app.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.AuthRepository
 import com.nexalarm.app.data.AuthUser
 import com.nexalarm.app.ui.theme.*
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @Composable
@@ -40,6 +42,15 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    // 追蹤進行中的請求 Job，讓按返回鍵可以取消（修復 issue 7）
+    var currentJob by remember { mutableStateOf<Job?>(null) }
+
+    // 登入中按返回鍵 → 取消請求，恢復 UI（修復 issue 7）
+    BackHandler(enabled = isLoading) {
+        currentJob?.cancel()
+        isLoading = false
+        errorMessage = null
+    }
 
     Column(
         modifier = Modifier
@@ -184,10 +195,25 @@ fun LoginScreen(
                 )
             }
 
+            // 首次安裝且有網路錯誤時，顯示更明顯的跳過提示（修復 issue 12）
+            if (isOnboarding && errorMessage != null) {
+                TextButton(
+                    onClick = onSkip,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (isAppEnglish) "Skip for now and use without account"
+                        else "略過，先不登入直接使用",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+
             // 送出按鈕
             Button(
                 onClick = {
-                    scope.launch {
+                    currentJob = scope.launch {
                         isLoading = true
                         errorMessage = null
                         val result = if (selectedTab == 0) {
@@ -202,7 +228,12 @@ fun LoginScreen(
                         isLoading = false
                         result
                             .onSuccess { user -> onSuccess(user) }
-                            .onFailure { e -> errorMessage = e.message ?: S.loginError }
+                            .onFailure { e ->
+                                // CancellationException 是使用者主動取消，不顯示錯誤
+                                if (e !is kotlinx.coroutines.CancellationException) {
+                                    errorMessage = e.message ?: S.loginError
+                                }
+                            }
                     }
                 },
                 modifier = Modifier

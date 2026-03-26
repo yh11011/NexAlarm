@@ -5,6 +5,7 @@ import androidx.work.*
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.ui.theme.isDarkTheme
 import com.nexalarm.app.ui.theme.isAppEnglish
+import com.nexalarm.app.util.BillingManager
 import com.nexalarm.app.util.CrashHandler
 import com.nexalarm.app.util.FeatureFlags
 import com.nexalarm.app.util.NotificationHelper
@@ -16,6 +17,9 @@ import java.util.concurrent.TimeUnit
  * 負責 App 啟動時的初始化工作，包含背景服務場景（AlarmService 等）
  */
 class NexAlarmApp : Application() {
+
+    /** Application 級單例，避免每次重組重建 BillingClient 連線 */
+    val billingManager: BillingManager by lazy { BillingManager(this) }
 
     override fun onCreate() {
         super.onCreate()
