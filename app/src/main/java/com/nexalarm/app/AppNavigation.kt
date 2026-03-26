@@ -83,6 +83,12 @@ fun NexAlarmMainContent() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val billingManager = remember { BillingManager(context) }
 
+    // ── 帳號狀態（從 SettingsManager 初始化，本地 state 追蹤變更）──
+    val settingsManager = remember { SettingsManager(context) }
+    val isFirstLaunch = remember { settingsManager.isFirstLaunch }
+    var authUsername by remember { mutableStateOf(settingsManager.authUsername) }
+    var authDisplayName by remember { mutableStateOf(settingsManager.authDisplayName) }
+
     // 收集資料夾錯誤訊息（例如超過免費版上限）
     LaunchedEffect(folderViewModel) {
         folderViewModel.errorMessage.collect { msg ->
@@ -101,7 +107,7 @@ fun NexAlarmMainContent() {
     // Pager hoisted here so both bottom nav and drawer can drive it
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { BottomTab.entries.size })
 
-    // Bottom bar shows on tab pager and on drawer-only main screens
+    // Bottom bar shows on tab pager and on drawer-only main screens（登入頁不顯示）
     val showBottomBar = currentRoute == "tabs" || currentRoute in listOf("home", "settings", "account")
 
     val openMenu: () -> Unit = { scope.launch { drawerState.open() } }
@@ -235,13 +241,48 @@ fun NexAlarmMainContent() {
                 }
             ) { padding ->
                 // 導航圖：
+                // - "login" route → 首次安裝登入頁 / 帳號設定入口
                 // - "tabs" route → HorizontalPager（底部 4 個主頁）
                 // - 其餘 routes → NavController push 進入的子頁面
                 NavHost(
                     navController = navController,
-                    startDestination = "tabs",
+                    startDestination = if (isFirstLaunch) "login" else "tabs",
                     modifier = Modifier.padding(padding)
                 ) {
+                    // ── 登入 / 註冊頁 ──
+                    composable("login") {
+                        // 判斷是首次引導還是從帳號設定進入
+                        val fromOnboarding = navController.previousBackStackEntry == null
+                        LoginScreen(
+                            isOnboarding = fromOnboarding,
+                            onSuccess = { user ->
+                                // 儲存 token 與使用者資訊
+                                settingsManager.authToken = user.token
+                                settingsManager.authUserId = user.id
+                                settingsManager.authUsername = user.username ?: user.email
+                                settingsManager.authDisplayName = user.displayName
+                                settingsManager.isFirstLaunch = false
+                                authUsername = settingsManager.authUsername
+                                authDisplayName = settingsManager.authDisplayName
+                                if (fromOnboarding) {
+                                    navController.navigate("tabs") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                } else {
+                                    navController.popBackStack()
+                                }
+                            },
+                            onSkip = {
+                                settingsManager.isFirstLaunch = false
+                                navController.navigate("tabs") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            },
+                            onBack = if (!fromOnboarding) {
+                                { navController.popBackStack() }
+                            } else null
+                        )
+                    }
                     // 4 main tabs — HorizontalPager gives connected horizontal slide + swipe
                     composable("tabs") {
                         HorizontalPager(
@@ -299,7 +340,17 @@ fun NexAlarmMainContent() {
                             billingManager = billingManager,
                             onPremiumStatusChanged = { newValue ->
                                 FeatureFlags.isPremium = newValue
-                                SettingsManager(context).isPremium = newValue
+                                settingsManager.isPremium = newValue
+                            },
+                            authUsername = authUsername,
+                            authDisplayName = authDisplayName,
+                            onLoginClick = {
+                                navController.navigate("login")
+                            },
+                            onLogout = {
+                                settingsManager.clearAuth()
+                                authUsername = null
+                                authDisplayName = null
                             }
                         )
                     }

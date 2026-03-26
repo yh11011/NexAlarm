@@ -4,6 +4,9 @@
 
     <!-- ==================== 權限聲明 ==================== -->
 
+    <!-- 網路權限（Auth API 呼叫） -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- 精確鬧鐘權限（Android 12 = API 31-32） -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
@@ -35,6 +38,7 @@
 
     <application
         android:name=".NexAlarmApp"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
