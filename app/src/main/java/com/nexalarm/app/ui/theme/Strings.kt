@@ -142,4 +142,6 @@ object S {
     val promoSuccess: String get() = if (isAppEnglish) "Promo code applied! Premium activated." else "優惠碼套用成功，已升級付費版！"
     val promoCodeInvalid: String get() = if (isAppEnglish) "Invalid promo code." else "優惠碼無效，請確認後再試。"
     val promoCodeEmpty: String get() = if (isAppEnglish) "Please enter a promo code." else "請輸入優惠碼。"
+    val validating: String get() = if (isAppEnglish) "Validating..." else "驗證中..."
+    val promoNetworkError: String get() = if (isAppEnglish) "Network error. Please try again." else "網路錯誤，請稍後再試。"
 }

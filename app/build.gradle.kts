@@ -65,6 +65,9 @@ dependencies {
     // Google Play Billing
     implementation(libs.billing.ktx)
 
+    // 加密儲存（保護 JWT token）
+    implementation(libs.security.crypto)
+
     // Unit tests (JVM — no device needed)
     testImplementation(libs.junit)
 

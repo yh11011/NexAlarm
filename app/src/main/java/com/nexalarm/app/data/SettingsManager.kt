@@ -1,9 +1,29 @@
 package com.nexalarm.app.data
 
 import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
 
 class SettingsManager(context: Context) {
+    // 一般設定（非敏感，使用普通 SharedPreferences）
     private val prefs = context.getSharedPreferences("nexalarm_settings", Context.MODE_PRIVATE)
+
+    // 敏感認證資料（使用 EncryptedSharedPreferences，AES256 加密）
+    private val securePrefs = runCatching {
+        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        EncryptedSharedPreferences.create(
+            "nexalarm_auth_secure",
+            masterKeyAlias,
+            context,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }.getOrElse {
+        // 極少數裝置不支援 Keystore 時 fallback（仍安全於一般 prefs）
+        context.getSharedPreferences("nexalarm_auth_fallback", Context.MODE_PRIVATE)
+    }
+
+    // ── 一般設定 ──
 
     var isDarkMode: Boolean
         get() = prefs.getBoolean("dark_mode", true)
@@ -30,26 +50,39 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("is_first_launch", true)
         set(value) = prefs.edit().putBoolean("is_first_launch", value).apply()
 
-    // Auth token（JWT）
+    // ── 敏感認證資料（加密儲存）──
+
+    // JWT Token（AES256 加密）
     var authToken: String?
-        get() = prefs.getString("auth_token", null)
-        set(value) = prefs.edit().putString("auth_token", value).apply()
+        get() = securePrefs.getString("auth_token", null)
+        set(value) {
+            if (value != null) securePrefs.edit().putString("auth_token", value).apply()
+            else securePrefs.edit().remove("auth_token").apply()
+        }
 
-    // 登入使用者資訊
+    // 使用者 ID（加密）
     var authUserId: Int
-        get() = prefs.getInt("auth_user_id", -1)
-        set(value) = prefs.edit().putInt("auth_user_id", value).apply()
+        get() = securePrefs.getInt("auth_user_id", -1)
+        set(value) = securePrefs.edit().putInt("auth_user_id", value).apply()
 
+    // 帳號名稱（加密）
     var authUsername: String?
-        get() = prefs.getString("auth_username", null)
-        set(value) = prefs.edit().putString("auth_username", value).apply()
+        get() = securePrefs.getString("auth_username", null)
+        set(value) {
+            if (value != null) securePrefs.edit().putString("auth_username", value).apply()
+            else securePrefs.edit().remove("auth_username").apply()
+        }
 
+    // 顯示名稱（加密）
     var authDisplayName: String?
-        get() = prefs.getString("auth_display_name", null)
-        set(value) = prefs.edit().putString("auth_display_name", value).apply()
+        get() = securePrefs.getString("auth_display_name", null)
+        set(value) {
+            if (value != null) securePrefs.edit().putString("auth_display_name", value).apply()
+            else securePrefs.edit().remove("auth_display_name").apply()
+        }
 
     fun clearAuth() {
-        prefs.edit()
+        securePrefs.edit()
             .remove("auth_token")
             .remove("auth_user_id")
             .remove("auth_username")

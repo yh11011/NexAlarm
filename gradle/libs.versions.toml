@@ -10,6 +10,7 @@ compose-bom = "2025.01.00"
 navigation = "2.8.5"
 room = "2.6.1"
 billing = "7.1.1"
+security-crypto = "1.0.0"
 
 # Unit test (JVM)
 junit = "4.13.2"
@@ -40,6 +41,7 @@ room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 
 billing-ktx = { module = "com.android.billingclient:billing-ktx", version.ref = "billing" }
+security-crypto = { module = "androidx.security:security-crypto", version.ref = "security-crypto" }
 
 # Unit test (JVM)
 junit = { module = "junit:junit", version.ref = "junit" }

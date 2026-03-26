@@ -20,12 +20,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nexalarm.app.data.AuthRepository
 import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.util.BillingManager
 import com.nexalarm.app.util.FeatureFlags
-
-// 有效優惠碼列表（不區分大小寫）
-private val VALID_PROMO_CODES = setOf("yh0516")
+import kotlinx.coroutines.launch
 
 @Composable
 fun AccountScreen(
@@ -297,9 +296,11 @@ private fun UpgradeDialog(
     onPromoSuccess: () -> Unit,
     onPurchase: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     var promoCode by remember { mutableStateOf("") }
     var promoError by remember { mutableStateOf<String?>(null) }
     var promoSuccess by remember { mutableStateOf(false) }
+    var isValidating by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -341,6 +342,17 @@ private fun UpgradeDialog(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
+                    isValidating -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            color = TextSecondary,
+                            strokeWidth = 2.dp
+                        )
+                        Text(S.validating, color = TextSecondary, fontSize = 13.sp)
+                    }
                     promoError != null -> Text(
                         text = promoError!!,
                         color = DangerRed,
@@ -354,18 +366,36 @@ private fun UpgradeDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 套用優惠碼按鈕
+                // 套用優惠碼按鈕（呼叫伺服器驗證）
                 Button(
                     onClick = {
                         if (promoCode.isBlank()) {
                             promoError = S.promoCodeEmpty
-                        } else if (promoCode.trim().lowercase() in VALID_PROMO_CODES) {
-                            promoSuccess = true
-                            onPromoSuccess()
-                        } else {
-                            promoError = S.promoCodeInvalid
+                            return@Button
+                        }
+                        scope.launch {
+                            isValidating = true
+                            promoError = null
+                            val result = AuthRepository.validatePromoCode(promoCode.trim())
+                            isValidating = false
+                            result
+                                .onSuccess { isValid ->
+                                    if (isValid) {
+                                        promoSuccess = true
+                                        onPromoSuccess()
+                                    } else {
+                                        promoError = S.promoCodeInvalid
+                                    }
+                                }
+                                .onFailure { e ->
+                                    // 400 = 無效優惠碼；其他 = 網路錯誤
+                                    val msg = e.message ?: ""
+                                    promoError = if ("Invalid promo" in msg) S.promoCodeInvalid
+                                                 else S.promoNetworkError
+                                }
                         }
                     },
+                    enabled = !isValidating && !promoSuccess,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(

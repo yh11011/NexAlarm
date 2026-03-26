@@ -44,6 +44,27 @@ object AuthRepository {
         }
     }
 
+    /** 向伺服器驗證優惠碼，成功返回 true，無效返回 false，網路錯誤 throws */
+    suspend fun validatePromoCode(code: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val body = JSONObject().apply { put("code", code) }
+                val conn = (URL("$BASE_URL/promo/validate").openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Content-Type", "application/json")
+                    doOutput = true
+                    connectTimeout = 10_000
+                    readTimeout = 10_000
+                }
+                try {
+                    conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+                    conn.responseCode == 200
+                } finally {
+                    conn.disconnect()
+                }
+            }
+        }
+
     private fun postJson(url: String, body: JSONObject): AuthUser {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
