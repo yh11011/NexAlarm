@@ -145,6 +145,14 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                 scheduler.cancel(alarm)
             }
             alarmDao.deleteAll(alarms)
+            // 同步刪除到雲端
+            val token = settings.authToken ?: return@launch
+            val deletedAt = System.currentTimeMillis()
+            AlarmSyncRepository.sync(
+                token = token,
+                localAlarms = alarmDao.getAllAlarmsList(),
+                deletedClientIds = alarms.map { it.clientId to deletedAt }
+            )
         }
     }
 

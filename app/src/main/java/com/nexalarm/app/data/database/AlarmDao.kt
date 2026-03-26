@@ -46,8 +46,8 @@ interface AlarmDao {
     @Query("DELETE FROM alarms WHERE id = :id")
     suspend fun deleteById(id: Long)
 
-    @Query("UPDATE alarms SET isEnabled = :enabled WHERE id = :id")
-    suspend fun setEnabled(id: Long, enabled: Boolean)
+    @Query("UPDATE alarms SET isEnabled = :enabled, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setEnabled(id: Long, enabled: Boolean, updatedAt: Long = System.currentTimeMillis())
 
     @Query("UPDATE alarms SET vibrateOnly = :vibrateOnly WHERE id = :id")
     suspend fun setVibrateOnly(id: Long, vibrateOnly: Boolean)
