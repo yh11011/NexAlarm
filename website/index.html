@@ -944,7 +944,7 @@
 
   // ── Platform detection ──
   const isAndroid = /android/i.test(navigator.userAgent);
-  const PLAY_URL = 'https://github.com/yh11011/NexAlarm/releases/latest';
+  const APK_URL = 'https://github.com/yh11011/NexAlarm/releases/download/v1.0.0-beta/app-debug.apk';
 
   const hint = document.getElementById('platform-hint');
   if (isAndroid) {
@@ -953,11 +953,12 @@
     hint.textContent = '非 Android 裝置？點擊「掃描 QR Code」用手機掃描下載';
   }
 
-  // All download buttons point to Play Store
+  // All download buttons directly download the APK
   document.querySelectorAll('#hero-dl, #nav-dl, #main-dl-btn').forEach(el => {
-    el.href = PLAY_URL;
-    el.target = '_blank';
-    el.rel = 'noopener noreferrer';
+    el.href = APK_URL;
+    el.setAttribute('download', 'NexAlarm.apk');
+    el.removeAttribute('target');
+    el.removeAttribute('rel');
   });
 
   // ── QR Code ──
@@ -968,7 +969,7 @@
       const container = document.getElementById('qr-container');
       container.innerHTML = '';
       new QRCode(container, {
-        text: PLAY_URL,
+        text: APK_URL,
         width: 220,
         height: 220,
         colorDark: '#000000',
