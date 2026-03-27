@@ -1,9 +1,15 @@
 package com.nexalarm.app.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.SettingsManager
@@ -31,6 +38,7 @@ fun SettingsScreen() {
     val settingsManager = remember { SettingsManager(context) }
     var showTimezoneDialog by remember { mutableStateOf(false) }
     var selectedTimezoneId by remember { mutableStateOf(settingsManager.timeZoneId) }
+    var showAiDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Header
@@ -91,6 +99,22 @@ fun SettingsScreen() {
         TimezoneCard(
             currentTimezoneId = selectedTimezoneId,
             onClick = { showTimezoneDialog = true }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // AI Integration
+        AiIntegrationCard(onClick = { showAiDialog = true })
+    }
+
+    if (showAiDialog) {
+        AiModelPickerDialog(
+            authToken = settingsManager.authToken,
+            onDismiss = { showAiDialog = false },
+            onOpenUrl = { url ->
+                showAiDialog = false
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            }
         )
     }
 
@@ -267,6 +291,139 @@ private fun formatUtcOffset(tzId: String): String {
 
 private fun formatTimezoneDisplay(tzId: String): String {
     return "${formatUtcOffset(tzId)} $tzId"
+}
+
+// ── AI Integration ──────────────────────────────────────────
+
+private data class AiModel(val id: String, val name: String, val emoji: String)
+
+private val AI_MODELS = listOf(
+    AiModel("claude",    "Claude",        "🤖"),
+    AiModel("chatgpt",   "ChatGPT",       "💬"),
+    AiModel("gemini",    "Gemini",        "✨"),
+    AiModel("copilot",   "Copilot",       "🪟"),
+    AiModel("grok",      "Grok",          "𝕏"),
+    AiModel("cursor",    "Cursor",        "⌨️"),
+    AiModel("perplexity","Perplexity",    "🔍"),
+    AiModel("deepseek",  "DeepSeek",      "🐋"),
+    AiModel("kimi",      "Kimi",          "🌙"),
+    AiModel("doubao",    "豆包",           "🫘"),
+    AiModel("qwen",      "通義千問",       "🔮"),
+    AiModel("wenxin",    "文心一言",       "🖊️"),
+    AiModel("chatglm",   "智譜清言",       "🧠"),
+)
+
+@Composable
+private fun AiIntegrationCard(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .background(DarkSurface, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(S.aiIntegration, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(S.aiIntegrationDesc, fontSize = 13.sp, color = TextSecondary)
+        }
+        Icon(
+            Icons.Default.KeyboardArrowRight,
+            contentDescription = null,
+            tint = TextSecondary,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun AiModelPickerDialog(
+    authToken: String?,
+    onDismiss: () -> Unit,
+    onOpenUrl: (String) -> Unit
+) {
+    var selectedModel by remember { mutableStateOf<AiModel?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DarkSurface,
+        title = {
+            Text(S.aiSelectModel, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+        },
+        text = {
+            Column {
+                Text(S.aiSelectHint, color = TextSecondary, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.heightIn(max = 360.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(AI_MODELS) { model ->
+                        val isSelected = selectedModel?.id == model.id
+                        Column(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) PrimaryBlue.copy(alpha = 0.15f) else DarkCard
+                                )
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 0.dp,
+                                    color = if (isSelected) PrimaryBlue else Color.Transparent,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .clickable { selectedModel = model }
+                                .padding(vertical = 12.dp, horizontal = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(model.emoji, fontSize = 24.sp)
+                            Text(
+                                text = model.name,
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (isSelected) PrimaryBlue else TextSecondary,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
+                            )
+                        }
+                    }
+                }
+                if (authToken == null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = S.aiLoginRequired,
+                        color = DangerRed,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val model = selectedModel ?: return@Button
+                    val token = authToken ?: return@Button
+                    val url = "https://login.nex11.me/ai-setup?model=${model.id}&token=${Uri.encode(token)}"
+                    onOpenUrl(url)
+                },
+                enabled = selectedModel != null && authToken != null,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text(S.aiConfirm, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(S.cancel, color = TextSecondary)
+            }
+        }
+    )
 }
 
 @Composable

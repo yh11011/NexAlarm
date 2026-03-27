@@ -149,4 +149,12 @@ object S {
     val promoCodeEmpty: String get() = if (isAppEnglish) "Please enter a promo code." else "請輸入優惠碼。"
     val validating: String get() = if (isAppEnglish) "Validating..." else "驗證中..."
     val promoNetworkError: String get() = if (isAppEnglish) "Network error. Please try again." else "網路錯誤，請稍後再試。"
+
+    // AI 整合
+    val aiIntegration: String get() = if (isAppEnglish) "AI Integration" else "AI 整合"
+    val aiIntegrationDesc: String get() = if (isAppEnglish) "Connect your AI assistant to manage alarms" else "連接 AI 助理，讓 AI 幫你管理鬧鐘"
+    val aiSelectModel: String get() = if (isAppEnglish) "Select AI Model" else "選擇 AI 模型"
+    val aiSelectHint: String get() = if (isAppEnglish) "Choose the AI assistant you want to connect" else "選擇你想連接的 AI 助理"
+    val aiConfirm: String get() = if (isAppEnglish) "Get Setup Link" else "取得設定連結"
+    val aiLoginRequired: String get() = if (isAppEnglish) "Please sign in first to use AI integration" else "請先登入帳號才能使用 AI 整合"
 }
