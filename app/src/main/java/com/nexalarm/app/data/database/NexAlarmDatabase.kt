@@ -13,7 +13,7 @@ import com.nexalarm.app.data.model.RepeatDaysConverter
 
 @Database(
     entities = [AlarmEntity::class, FolderEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(RepeatDaysConverter::class)
@@ -59,8 +59,28 @@ abstract class NexAlarmDatabase : RoomDatabase() {
                 // 新增雲端同步欄位：clientId（UUID）和 updatedAt（Unix ms）
                 db.execSQL("ALTER TABLE alarms ADD COLUMN clientId TEXT NOT NULL DEFAULT ''")
                 db.execSQL("ALTER TABLE alarms ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
-                // 為現有鬧鐘產生 UUID 和時間戳記
+                // 為現有鬧鐘產生 UUID 和時間戳記（注意：此格式無破折號，由 MIGRATION_6_7 修復）
                 db.execSQL("UPDATE alarms SET clientId = lower(hex(randomblob(16))), updatedAt = createdAt WHERE clientId = ''")
+            }
+        }
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 修復 clientId 格式不一致問題：
+                // MIGRATION_5_6 產生的 clientId 為 32 字符無破折號（e.g. 550e8400e29b41d4a716446655440000）
+                // AlarmEntity 預設值使用 UUID.randomUUID() 產生的為 36 字符帶破折號（e.g. 550e8400-e29b-41d4-a716-446655440000）
+                // 此遷移將所有 32 字符的 clientId 轉換為標準 UUID 格式（帶破折號）
+                db.execSQL("""
+                    UPDATE alarms
+                    SET clientId = LOWER(
+                        SUBSTR(clientId, 1, 8) || '-' ||
+                        SUBSTR(clientId, 9, 4) || '-' ||
+                        SUBSTR(clientId, 13, 4) || '-' ||
+                        SUBSTR(clientId, 17, 4) || '-' ||
+                        SUBSTR(clientId, 21, 12)
+                    )
+                    WHERE LENGTH(clientId) = 32
+                """.trimIndent())
             }
         }
 
@@ -71,7 +91,7 @@ abstract class NexAlarmDatabase : RoomDatabase() {
                     NexAlarmDatabase::class.java,
                     "nexalarm_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .addCallback(PrepopulateCallback())
                     .build()
                 INSTANCE = instance

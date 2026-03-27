@@ -28,6 +28,13 @@ class AlarmSyncWorker(
         val localAlarms = alarmDao.getAllAlarmsList()
 
         val syncResult = AlarmSyncRepository.sync(token, localAlarms)
+
+        // 同步失敗時返回 retry，WorkManager 會自動重試（指數退避）
+        if (syncResult.isFailure) {
+            android.util.Log.w("AlarmSyncWorker", "同步失敗，排程重試：${syncResult.exceptionOrNull()?.message}")
+            return Result.retry()
+        }
+
         syncResult.onSuccess { serverAlarms ->
             for (serverAlarm in serverAlarms) {
                 val existing = alarmDao.getByClientId(serverAlarm.clientId)

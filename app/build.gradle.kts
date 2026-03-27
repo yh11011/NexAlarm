@@ -25,8 +25,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // BuildConfig properties for runtime environment detection
-        buildConfigField "boolean", "IS_PRODUCTION", "false"
-        buildConfigField "String", "BUILD_TIMESTAMP", "\"${System.currentTimeMillis()}\""
+        buildConfigField("boolean", "IS_PRODUCTION", "false")
+        buildConfigField("String", "BUILD_TIMESTAMP", "\"${System.currentTimeMillis()}\"")
     }
 
     compileOptions {
@@ -52,19 +52,19 @@ android {
     // Build types configuration
     buildTypes {
         debug {
-            debuggable = true
+            isDebuggable = true
             // Debug build: no obfuscation, include symbols for crash logs
-            buildConfigField "boolean", "IS_PRODUCTION", "false"
+            buildConfigField("boolean", "IS_PRODUCTION", "false")
         }
         release {
-            minifyEnabled = true
-            shrinkResources = true
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            debuggable = false
-            buildConfigField "boolean", "IS_PRODUCTION", "true"
+            isDebuggable = false
+            buildConfigField("boolean", "IS_PRODUCTION", "true")
         }
     }
 

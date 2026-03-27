@@ -21,6 +21,7 @@ import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.data.repository.AlarmRepository
 import com.nexalarm.app.data.repository.FolderRepository
+import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.ui.theme.NexAlarmTheme
 import com.nexalarm.app.util.AppSettingsProvider
 import kotlinx.coroutines.Dispatchers
