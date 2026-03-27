@@ -892,7 +892,7 @@
   <div class="dl-group" style="position:relative;">
     <a class="btn-primary" id="main-dl-btn" href="#" style="font-size:17px;padding:18px 36px;">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.341L13.854 9H14V7h-4v2h.146L6.477 15.341A2 2 0 008.337 18h7.326a2 2 0 001.86-2.659zM12 15a1 1 0 110-2 1 1 0 010 2zm0-4a1 1 0 110-2 1 1 0 010 2z"/><path d="M8.5 2.5l1 1.732M15.5 2.5l-1 1.732"/></svg>
-      下載 APK
+      從 GitHub 下載 APK
     </a>
     <button class="btn-secondary" id="qr-btn" style="font-size:15px;">
       📱 掃描 QR Code 下載
@@ -920,7 +920,7 @@
   <div class="qr-box">
     <button class="qr-close" id="qr-close" aria-label="關閉">✕</button>
     <h3>📱 掃描下載 NexAlarm</h3>
-    <p>用手機相機掃描以下 QR Code<br/>即可前往 GitHub 下載 APK</p>
+    <p>用手機相機掃描以下 QR Code<br/>即可直接下載 NexAlarm APK</p>
     <div id="qr-container" style="display:flex;justify-content:center;align-items:center;min-height:220px;"></div>
     <p class="qr-hint">需要 Android 8.0 (API 26) 以上</p>
   </div>
@@ -943,12 +943,11 @@
 
   // ── Platform detection ──
   const isAndroid = /android/i.test(navigator.userAgent);
-  const APK_URL = 'NexAlarm.apk';
-  const APK_ABS_URL = 'http://nex11.me/NexAlarm/NexAlarm.apk';
+  const APK_URL = 'https://yh11011.github.io/NexAlarm/NexAlarm.apk';
 
   const hint = document.getElementById('platform-hint');
   if (isAndroid) {
-    hint.textContent = '✓ 偵測到 Android 裝置，點擊即可下載 APK 安裝檔';
+    hint.textContent = '✓ 偵測到 Android 裝置，點擊即可直接下載 APK 安裝檔';
   } else {
     hint.textContent = '非 Android 裝置？點擊「掃描 QR Code」用手機掃描下載';
   }
@@ -956,9 +955,6 @@
   // All download buttons directly download the APK
   document.querySelectorAll('#hero-dl, #nav-dl, #main-dl-btn').forEach(el => {
     el.href = APK_URL;
-    el.download = 'NexAlarm.apk';
-    el.removeAttribute('target');
-    el.removeAttribute('rel');
   });
 
   // ── QR Code ──
@@ -969,7 +965,7 @@
       const container = document.getElementById('qr-container');
       container.innerHTML = '';
       new QRCode(container, {
-        text: APK_ABS_URL,
+        text: APK_URL,
         width: 220,
         height: 220,
         colorDark: '#000000',
