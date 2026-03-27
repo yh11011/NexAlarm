@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexAlarm — 不只是鬧鐘</title>
+  <meta name="description" content="NexAlarm 是一款現代 Android 鬧鐘應用，精準排程、資料夾分類、會議模式一鍵切換，讓每天的開始都在你掌握之中。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:      #1A73E8;
+      --blue-2:    #4CA8FF;
+      --blue-dim:  rgba(26,115,232,0.15);
+      --bg:        #000000;
+      --surface:   #1C1C1E;
+      --card:      #2C2C2E;
+      --border:    rgba(255,255,255,0.07);
+      --text:      #FFFFFF;
+      --text-2:    rgba(255,255,255,0.55);
+      --text-3:    rgba(255,255,255,0.30);
+      --red:       #F44336;
+      --green:     #34A853;
+      --radius:    20px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px;
+      height: 64px;
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 18px; font-weight: 700; color: var(--text);
+      text-decoration: none;
+    }
+    .nav-logo-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a {
+      color: var(--text-2); text-decoration: none;
+      font-size: 14px; font-weight: 500;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--blue); color: #fff;
+      padding: 8px 20px; border-radius: 40px;
+      font-size: 14px; font-weight: 600;
+      text-decoration: none;
+      transition: opacity .2s, transform .15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .nav-cta:hover { opacity: .88; transform: translateY(-1px); }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-glow {
+      position: absolute;
+      width: 900px; height: 900px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(26,115,232,0.18) 0%, transparent 65%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -58%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      background: var(--blue-dim);
+      border: 1px solid rgba(26,115,232,0.35);
+      border-radius: 40px;
+      font-size: 13px; font-weight: 600; color: var(--blue-2);
+      margin-bottom: 28px;
+      animation: fadeUp .6s ease both;
+    }
+    .hero-title {
+      font-size: clamp(40px, 7vw, 88px);
+      font-weight: 900;
+      letter-spacing: -2px;
+      line-height: 1.0;
+      margin-bottom: 24px;
+      white-space: nowrap;
+      animation: fadeUp .7s .1s ease both;
+    }
+    .hero-title span { color: var(--blue); }
+    @media (max-width: 600px) {
+      .hero-title { white-space: normal; font-size: clamp(40px, 12vw, 64px); }
+    }
+    .hero-sub {
+      font-size: clamp(16px, 2.5vw, 22px);
+      color: var(--text-2);
+      max-width: 600px;
+      margin-bottom: 48px;
+      animation: fadeUp .7s .2s ease both;
+    }
+    .hero-actions {
+      display: flex; flex-wrap: wrap; gap: 16px;
+      justify-content: center;
+      animation: fadeUp .7s .3s ease both;
+    }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--blue);
+      color: #fff;
+      padding: 16px 32px;
+      border-radius: 50px;
+      font-size: 16px; font-weight: 700;
+      text-decoration: none;
+      border: none; cursor: pointer;
+      transition: transform .15s, box-shadow .2s, opacity .2s;
+      box-shadow: 0 0 40px rgba(26,115,232,0.4);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 48px rgba(26,115,232,0.55); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--surface);
+      color: var(--text);
+      padding: 16px 32px;
+      border-radius: 50px;
+      font-size: 16px; font-weight: 600;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: background .2s, transform .15s;
+    }
+    .btn-secondary:hover { background: var(--card); transform: translateY(-2px); }
+
+    /* QR Modal */
+    #qr-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      align-items: center; justify-content: center;
+    }
+    #qr-modal.open { display: flex; }
+    .qr-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 40px;
+      text-align: center;
+      max-width: 360px; width: 90%;
+      position: relative;
+      animation: scaleIn .25s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .qr-box h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .qr-box p  { font-size: 14px; color: var(--text-2); margin-bottom: 28px; }
+    #qr-container img { width: 220px; height: 220px; border-radius: 12px; display: block; margin: 0 auto; }
+    .qr-close {
+      position: absolute; top: 16px; right: 16px;
+      background: var(--card); border: none; cursor: pointer;
+      color: var(--text-2); font-size: 18px;
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      transition: color .2s;
+    }
+    .qr-close:hover { color: var(--text); }
+    .qr-hint { margin-top: 20px; font-size: 13px; color: var(--text-3); }
+
+    /* ─── PHONE MOCKUP ─── */
+    .hero-phone-wrap {
+      margin-top: 72px;
+      animation: fadeUp .8s .4s ease both;
+      position: relative;
+    }
+    .phone {
+      width: 260px;
+      background: var(--surface);
+      border-radius: 44px;
+      border: 2px solid var(--border);
+      padding: 16px;
+      position: relative;
+      box-shadow: 0 40px 120px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05);
+      margin: 0 auto;
+    }
+    .phone-notch {
+      width: 80px; height: 24px;
+      background: var(--bg);
+      border-radius: 0 0 16px 16px;
+      margin: 0 auto 12px;
+    }
+    .phone-screen {
+      background: #000;
+      border-radius: 28px;
+      overflow: hidden;
+      padding: 20px 16px;
+      min-height: 420px;
+    }
+    .app-time {
+      font-size: 42px; font-weight: 300;
+      color: var(--text);
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .app-date {
+      font-size: 12px; color: var(--text-2);
+      text-align: center; margin-bottom: 20px;
+    }
+    .app-alarm-card {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      border: 1px solid var(--border);
+    }
+    .alarm-info .alarm-time { font-size: 22px; font-weight: 600; }
+    .alarm-info .alarm-label { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+    .alarm-toggle {
+      width: 40px; height: 24px;
+      border-radius: 12px;
+      position: relative;
+    }
+    .alarm-toggle.on  { background: var(--blue); }
+    .alarm-toggle.off { background: var(--card); }
+    .toggle-dot {
+      position: absolute; top: 3px;
+      width: 18px; height: 18px;
+      border-radius: 50%; background: #fff;
+      transition: left .2s;
+    }
+    .alarm-toggle.on  .toggle-dot { left: 19px; }
+    .alarm-toggle.off .toggle-dot { left: 3px; }
+    .app-folder-row {
+      display: flex; gap: 8px; margin-top: 14px;
+    }
+    .folder-chip {
+      flex: 1;
+      background: var(--card);
+      border-radius: 10px;
+      padding: 8px 6px;
+      text-align: center;
+      font-size: 10px; color: var(--text-2);
+    }
+    .folder-chip .fi { font-size: 16px; display: block; margin-bottom: 3px; }
+
+    /* floating badges */
+    .float-badge {
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-size: 12px; font-weight: 600;
+      white-space: nowrap;
+      backdrop-filter: blur(12px);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .float-badge.left  { left: -100px; top: 30%; animation: floatY 3s ease-in-out infinite; }
+    .float-badge.right { right: -110px; bottom: 30%; animation: floatY 3s ease-in-out infinite reverse; }
+    .dot-green { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .dot-blue  { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
+
+    /* ─── STATS ─── */
+    .stats {
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 0;
+      padding: 60px 40px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-item {
+      flex: 1; min-width: 160px;
+      text-align: center;
+      padding: 24px 32px;
+      border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num {
+      font-size: 48px; font-weight: 800;
+      background: linear-gradient(135deg, #fff 0%, var(--blue-2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1;
+    }
+    .stat-label { font-size: 14px; color: var(--text-2); margin-top: 8px; }
+
+    /* ─── FEATURES GRID ─── */
+    .section { padding: 100px 40px; max-width: 1200px; margin: 0 auto; }
+    .section-label {
+      font-size: 13px; font-weight: 600;
+      color: var(--blue-2);
+      letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 60px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at top left, var(--blue-dim), transparent 60%);
+      opacity: 0;
+      transition: opacity .3s;
+    }
+    .feature-card:hover { transform: translateY(-4px); border-color: rgba(26,115,232,0.35); box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      background: var(--blue-dim);
+      border: 1px solid rgba(26,115,232,0.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+      margin-bottom: 20px;
+    }
+    .feature-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .feature-card p  { font-size: 14px; color: var(--text-2); line-height: 1.7; }
+    .feature-tag {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px; font-weight: 600;
+      background: var(--blue-dim);
+      color: var(--blue-2);
+    }
+
+    /* large feature card */
+    .feature-card.large {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+    }
+    .feature-card.large .f-visual {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 28px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .sched-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+    }
+    .sched-time { font-weight: 700; min-width: 48px; }
+    .sched-label { color: var(--text-2); flex: 1; }
+    .sched-badge {
+      font-size: 11px; padding: 2px 8px;
+      border-radius: 6px; font-weight: 600;
+    }
+    .sched-badge.green { background: rgba(52,168,83,0.2); color: var(--green); }
+    .sched-badge.blue  { background: var(--blue-dim); color: var(--blue-2); }
+
+    /* ─── COMPARISON ─── */
+    .compare-wrap {
+      overflow-x: auto;
+      margin-top: 60px;
+    }
+    table.compare {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 600px;
+    }
+    table.compare th, table.compare td {
+      padding: 16px 24px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    table.compare th { font-weight: 700; font-size: 15px; }
+    table.compare td:first-child { text-align: left; color: var(--text-2); }
+    table.compare th:first-child { text-align: left; }
+    .col-us { background: rgba(26,115,232,0.07); }
+    .col-us th { color: var(--blue-2); }
+    .col-head { border-radius: 14px 14px 0 0; }
+    .chk-yes { color: var(--green); font-size: 18px; }
+    .chk-no  { color: var(--text-3); font-size: 18px; }
+    .chk-part { color: #F9AB00; font-size: 14px; }
+
+    /* ─── TESTIMONIALS ─── */
+    .testimonials {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 60px;
+    }
+    .testi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+    }
+    .testi-stars { color: #F9AB00; font-size: 14px; margin-bottom: 14px; }
+    .testi-text  { font-size: 15px; line-height: 1.7; color: var(--text-2); margin-bottom: 20px; }
+    .testi-user  { display: flex; align-items: center; gap: 12px; }
+    .testi-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--blue-dim);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .testi-name  { font-size: 14px; font-weight: 600; }
+    .testi-role  { font-size: 12px; color: var(--text-3); }
+
+    /* ─── CTA SECTION ─── */
+    .cta-section {
+      text-align: center;
+      padding: 120px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-glow {
+      position: absolute;
+      width: 700px; height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(26,115,232,0.15) 0%, transparent 65%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .cta-section h2 {
+      font-size: clamp(36px, 6vw, 72px);
+      font-weight: 900;
+      letter-spacing: -2px;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+    .cta-section p {
+      font-size: 18px; color: var(--text-2);
+      max-width: 500px; margin: 0 auto 48px;
+    }
+    .dl-group {
+      display: flex; flex-wrap: wrap; gap: 16px;
+      justify-content: center; align-items: center;
+    }
+    .dl-hint {
+      font-size: 13px; color: var(--text-3);
+      margin-top: 20px;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .footer-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 16px; font-weight: 700; color: var(--text);
+      text-decoration: none;
+    }
+    .footer-logo-icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+    }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: 13px; color: var(--text-3); text-decoration: none; transition: color .2s; }
+    .footer-links a:hover { color: var(--text-2); }
+    .footer-copy { font-size: 13px; color: var(--text-3); }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes floatY {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-12px); }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(.88); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(26,115,232,0.4); }
+      50%       { box-shadow: 0 0 0 12px rgba(26,115,232,0); }
+    }
+    .pulse-ring { animation: pulse 2s ease-in-out infinite; }
+
+    .fade-in-section {
+      opacity: 0; transform: translateY(32px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+    .fade-in-section.visible {
+      opacity: 1; transform: none;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      .stats { padding: 40px 20px; }
+      .stat-item { border-right: none; border-bottom: 1px solid var(--border); }
+      .stat-item:last-child { border-bottom: none; }
+      .section { padding: 60px 20px; }
+      .feature-card.large { grid-template-columns: 1fr; }
+      .float-badge { display: none; }
+      footer { flex-direction: column; align-items: flex-start; gap: 20px; }
+    }
+    @media (max-width: 480px) {
+      .hero { padding: 100px 20px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── NAV ─── -->
+<nav>
+  <a class="nav-logo" href="#">
+    <div class="nav-logo-icon">⏰</div>
+    NexAlarm
+  </a>
+  <div class="nav-links">
+    <a href="#features">功能特色</a>
+    <a href="#compare">市場比較</a>
+    <a href="#download">立即下載</a>
+  </div>
+  <a class="nav-cta pulse-ring" href="#download" id="nav-dl">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 16L7 11M12 16L17 11M12 16V4"/><path d="M4 20h16"/></svg>
+    下載 App
+  </a>
+</nav>
+
+<!-- ─── HERO ─── -->
+<section class="hero">
+  <div class="hero-glow"></div>
+
+  <div class="hero-badge">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--blue-2)"><circle cx="12" cy="12" r="10"/></svg>
+    Android 8.0 以上免費下載
+  </div>
+
+  <h1 class="hero-title">不只是<span>鬧鐘</span></h1>
+
+  <p class="hero-sub">
+    NexAlarm 採用商業級精準排程技術，搭配資料夾情境分類與會議模式快捷磚片，讓你的每一天從精準開始。
+  </p>
+
+  <div class="hero-actions">
+    <a class="btn-primary pulse-ring" href="#download" id="hero-dl">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="3"/><circle cx="12" cy="17" r="1"/></svg>
+      免費下載
+    </a>
+    <a class="btn-secondary" href="#features">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+      了解更多
+    </a>
+  </div>
+
+  <!-- Phone Mockup -->
+  <div class="hero-phone-wrap">
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="app-time" id="live-time">07:30</div>
+        <div class="app-date" id="live-date">星期一 · 3月24日</div>
+
+        <div class="app-alarm-card">
+          <div class="alarm-info">
+            <div class="alarm-time">07:30</div>
+            <div class="alarm-label">🔔 早安起床 · 週一至週五</div>
+          </div>
+          <div class="alarm-toggle on"><div class="toggle-dot"></div></div>
+        </div>
+        <div class="app-alarm-card">
+          <div class="alarm-info">
+            <div class="alarm-time">09:00</div>
+            <div class="alarm-label">📋 會議提醒</div>
+          </div>
+          <div class="alarm-toggle on"><div class="toggle-dot"></div></div>
+        </div>
+        <div class="app-alarm-card">
+          <div class="alarm-info">
+            <div class="alarm-time">22:30</div>
+            <div class="alarm-label">🌙 睡前提醒</div>
+          </div>
+          <div class="alarm-toggle off"><div class="toggle-dot"></div></div>
+        </div>
+
+        <div class="app-folder-row">
+          <div class="folder-chip"><span class="fi">🔔</span>單次</div>
+          <div class="folder-chip"><span class="fi">🔁</span>重複</div>
+          <div class="folder-chip"><span class="fi">💼</span>工作</div>
+          <div class="folder-chip"><span class="fi">🏋️</span>健身</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="float-badge left">
+      <div class="dot-green"></div>
+      已繞過 Doze 模式
+    </div>
+    <div class="float-badge right">
+      <div class="dot-blue"></div>
+      會議模式已啟動 📳
+    </div>
+  </div>
+</section>
+
+<!-- ─── STATS ─── -->
+<div class="stats fade-in-section">
+  <div class="stat-item">
+    <div class="stat-num">0ms</div>
+    <div class="stat-label">精準觸發誤差<br/>setAlarmClock() 商業級 API</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">14+</div>
+    <div class="stat-label">可靠性測試場景<br/>涵蓋 Doze / Process 回收</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">∞</div>
+    <div class="stat-label">鬧鐘數量無上限<br/>依資料夾情境分類管理</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">100%</div>
+    <div class="stat-label">開機重啟自動恢復<br/>永不遺漏重要排程</div>
+  </div>
+</div>
+
+<!-- ─── FEATURES ─── -->
+<section class="section" id="features">
+  <p class="section-label">核心功能</p>
+  <h2 class="section-title fade-in-section">每一個細節<br/>都為你而設計</h2>
+
+  <div class="features-grid">
+
+    <!-- Large card -->
+    <div class="feature-card large fade-in-section">
+      <div>
+        <div class="feature-icon">🎯</div>
+        <h3>商業級精準排程</h3>
+        <p>NexAlarm 使用 <code style="background:var(--card);padding:2px 6px;border-radius:4px;font-size:13px;">AlarmManager.setAlarmClock()</code>——這是 Google Pixel Clock、三星時鐘等商業鬧鐘 App 採用的同一套 API。它能直接繞過 Doze 省電模式與電池優化，讓你的鬧鐘在任何條件下精準觸發。</p>
+        <div class="feature-tag">🔒 Doze 穿透</div>
+        <div class="feature-tag" style="margin-left:6px;">⚡ 零延遲觸發</div>
+      </div>
+      <div class="f-visual">
+        <div class="sched-row">
+          <span class="sched-time">07:30</span>
+          <span class="sched-label">早安起床</span>
+          <span class="sched-badge green">已觸發</span>
+        </div>
+        <div class="sched-row">
+          <span class="sched-time">09:00</span>
+          <span class="sched-label">週會提醒</span>
+          <span class="sched-badge blue">排程中</span>
+        </div>
+        <div class="sched-row">
+          <span class="sched-time">12:00</span>
+          <span class="sched-label">午休提醒</span>
+          <span class="sched-badge blue">排程中</span>
+        </div>
+        <div style="padding:12px 14px;font-size:12px;color:var(--text-3);">
+          ✓ 裝置休眠中仍精準觸發<br/>
+          ✓ 狀態列顯示下次鬧鐘時間<br/>
+          ✓ 開機自動重新排程所有鬧鐘
+        </div>
+      </div>
+    </div>
+
+    <div class="feature-card fade-in-section">
+      <div class="feature-icon">📁</div>
+      <h3>情境資料夾分類</h3>
+      <p>把鬧鐘依生活情境歸類：工作、健身、學習、假日……用顏色與表情符號一眼辨識，資料夾支援整體啟用/停用，出差假期一鍵暫停。</p>
+      <div class="feature-tag">免費版 10 個資料夾</div>
+    </div>
+
+    <div class="feature-card fade-in-section">
+      <div class="feature-icon">📳</div>
+      <h3>會議模式快捷磚片</h3>
+      <p>在通知下拉選單加入「會議模式」快捷磚片，一鍵將今日所有鬧鐘切換為震動，會議結束後關閉即自動恢復原本設定，不影響系統靜音狀態。</p>
+      <div class="feature-tag">⚡ 下拉快捷磚片</div>
+    </div>
+
+    <div class="feature-card fade-in-section">
+      <div class="feature-icon">🔗</div>
+      <h3>Deep Link 自動化整合</h3>
+      <p>透過 <code style="background:var(--card);padding:2px 6px;border-radius:4px;font-size:12px;">nexalarm://</code> URI scheme，與捷徑、自動化工具（Tasker / MacroDroid）無縫整合，自動新增、刪除鬧鐘或切換資料夾。</p>
+      <div class="feature-tag">🤖 自動化友善</div>
+    </div>
+
+    <div class="feature-card fade-in-section">
+      <div class="feature-icon">⏱️</div>
+      <h3>碼錶 & 計時器</h3>
+      <p>完整的碼錶（含分圈紀錄、最快/最慢分圈標記）與倒數計時器，一個 App 滿足所有計時需求，無需切換多個應用程式。</p>
+    </div>
+
+    <div class="feature-card fade-in-section">
+      <div class="feature-icon">🌙</div>
+      <h3>深色模式 & 雙語介面</h3>
+      <p>精心設計的深色/淺色主題各自調校，護眼夜間使用。介面完整支援繁體中文與英文，即時切換無需重啟。</p>
+      <div class="feature-tag">🌏 中文 / English</div>
+    </div>
+
+    <div class="feature-card fade-in-section">
+      <div class="feature-icon">😴</div>
+      <h3>智慧稍後提醒</h3>
+      <p>可自訂貪睡延遲（5–10 分鐘）與最大次數，避免無限貪睡的惡性循環。單次鬧鐘響鈴後可設定自動刪除，保持列表整潔。</p>
+    </div>
+
+    <div class="feature-card fade-in-section">
+      <div class="feature-icon">🛡️</div>
+      <h3>14 項可靠性測試覆蓋</h3>
+      <p>通過包含 Doze 省電模式、低記憶體 Process 回收、裝置重啟等 14 個真實場景的儀器測試，是台灣自製鬧鐘 App 中罕見的測試覆蓋率。</p>
+      <div class="feature-tag">✅ JUnit4 + UIAutomator</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ─── COMPARISON ─── -->
+<section class="section" id="compare" style="padding-top:0;">
+  <p class="section-label">市場比較</p>
+  <h2 class="section-title fade-in-section">為什麼選擇<br/><span style="color:var(--blue)">NexAlarm</span>？</h2>
+
+  <div class="compare-wrap fade-in-section">
+    <table class="compare">
+      <thead>
+        <tr>
+          <th>功能</th>
+          <th class="col-us col-head">NexAlarm</th>
+          <th>一般鬧鐘 App</th>
+          <th>系統內建鬧鐘</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>setAlarmClock() 穿透 Doze</td>
+          <td class="col-us"><span class="chk-yes">✓</span></td>
+          <td><span class="chk-part">部分支援</span></td>
+          <td><span class="chk-yes">✓</span></td>
+        </tr>
+        <tr>
+          <td>情境資料夾分類</td>
+          <td class="col-us"><span class="chk-yes">✓</span></td>
+          <td><span class="chk-no">✗</span></td>
+          <td><span class="chk-no">✗</span></td>
+        </tr>
+        <tr>
+          <td>會議模式快捷磚片</td>
+          <td class="col-us"><span class="chk-yes">✓</span></td>
+          <td><span class="chk-no">✗</span></td>
+          <td><span class="chk-no">✗</span></td>
+        </tr>
+        <tr>
+          <td>Deep Link / 自動化整合</td>
+          <td class="col-us"><span class="chk-yes">✓</span></td>
+          <td><span class="chk-no">✗</span></td>
+          <td><span class="chk-no">✗</span></td>
+        </tr>
+        <tr>
+          <td>碼錶 & 計時器</td>
+          <td class="col-us"><span class="chk-yes">✓</span></td>
+          <td><span class="chk-part">各異</span></td>
+          <td><span class="chk-yes">✓</span></td>
+        </tr>
+        <tr>
+          <td>開機自動重排程</td>
+          <td class="col-us"><span class="chk-yes">✓</span></td>
+          <td><span class="chk-part">部分支援</span></td>
+          <td><span class="chk-yes">✓</span></td>
+        </tr>
+        <tr>
+          <td>無廣告</td>
+          <td class="col-us"><span class="chk-yes">✓</span></td>
+          <td><span class="chk-no">✗（多數有廣告）</span></td>
+          <td><span class="chk-yes">✓</span></td>
+        </tr>
+        <tr>
+          <td>雙語介面</td>
+          <td class="col-us"><span class="chk-yes">✓ 中 / EN</span></td>
+          <td><span class="chk-part">各異</span></td>
+          <td><span class="chk-part">跟隨系統</span></td>
+        </tr>
+        <tr>
+          <td>深色 / 淺色主題</td>
+          <td class="col-us"><span class="chk-yes">✓</span></td>
+          <td><span class="chk-part">各異</span></td>
+          <td><span class="chk-yes">✓</span></td>
+        </tr>
+        <tr>
+          <td>Material Design 3</td>
+          <td class="col-us"><span class="chk-yes">✓</span></td>
+          <td><span class="chk-part">部分</span></td>
+          <td><span class="chk-yes">✓</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ─── TESTIMONIALS ─── -->
+<section class="section" style="padding-top:0;">
+  <p class="section-label">使用者回饋</p>
+  <h2 class="section-title fade-in-section">他們這樣說</h2>
+
+  <div class="testimonials">
+    <div class="testi-card fade-in-section">
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">「終於有一款鬧鐘 App 可以讓我用資料夾分開工作日跟假日的鬧鐘，出差的時候直接停用整個資料夾，超省事！」</p>
+      <div class="testi-user">
+        <div class="testi-avatar">👩‍💼</div>
+        <div>
+          <div class="testi-name">Lily C.</div>
+          <div class="testi-role">業務主管 · 每週出差 3 天</div>
+        </div>
+      </div>
+    </div>
+    <div class="testi-card fade-in-section">
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">「會議模式磚片真的太方便了，開會前拉下通知欄點一下，不用擔心鬧鐘突然響出聲音，會議結束自動恢復。」</p>
+      <div class="testi-user">
+        <div class="testi-avatar">👨‍💻</div>
+        <div>
+          <div class="testi-name">Marcus W.</div>
+          <div class="testi-role">軟體工程師 · 遠距辦公</div>
+        </div>
+      </div>
+    </div>
+    <div class="testi-card fade-in-section">
+      <div class="testi-stars">★★★★★</div>
+      <p class="testi-text">「用 Tasker 透過 deep link 自動設定鬧鐘，搭配 NexAlarm 的資料夾，我的晨間例行公事全自動化了。」</p>
+      <div class="testi-user">
+        <div class="testi-avatar">🤖</div>
+        <div>
+          <div class="testi-name">Ken L.</div>
+          <div class="testi-role">自動化愛好者 · Power User</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CTA DOWNLOAD ─── -->
+<section class="cta-section" id="download">
+  <div class="cta-glow"></div>
+  <p class="section-label" style="position:relative;">立即下載</p>
+  <h2 style="position:relative;">讓每天的開始<br/><span style="color:var(--blue)">精準無誤</span></h2>
+  <p style="position:relative;">完全免費，無廣告，Android 8.0 以上即可安裝。</p>
+
+  <div class="dl-group" style="position:relative;">
+    <a class="btn-primary" id="main-dl-btn" href="#" style="font-size:17px;padding:18px 36px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.341L13.854 9H14V7h-4v2h.146L6.477 15.341A2 2 0 008.337 18h7.326a2 2 0 001.86-2.659zM12 15a1 1 0 110-2 1 1 0 010 2zm0-4a1 1 0 110-2 1 1 0 010 2z"/><path d="M8.5 2.5l1 1.732M15.5 2.5l-1 1.732"/></svg>
+      從 GitHub 下載 APK
+    </a>
+    <button class="btn-secondary" id="qr-btn" style="font-size:15px;">
+      📱 掃描 QR Code 下載
+    </button>
+  </div>
+  <p class="dl-hint" style="position:relative;" id="platform-hint"></p>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <a class="footer-logo" href="#">
+    <div class="footer-logo-icon">⏰</div>
+    NexAlarm
+  </a>
+  <div class="footer-links">
+    <a href="#features">功能特色</a>
+    <a href="#compare">市場比較</a>
+    <a href="#download">下載</a>
+  </div>
+  <p class="footer-copy">© 2025 NexAlarm. 台灣製造 🇹🇼</p>
+</footer>
+
+<!-- ─── QR MODAL ─── -->
+<div id="qr-modal" role="dialog" aria-modal="true" aria-label="掃描下載 QR Code">
+  <div class="qr-box">
+    <button class="qr-close" id="qr-close" aria-label="關閉">✕</button>
+    <h3>📱 掃描下載 NexAlarm</h3>
+    <p>用手機相機掃描以下 QR Code<br/>即可前往 GitHub 下載 APK</p>
+    <div id="qr-container" style="display:flex;justify-content:center;align-items:center;min-height:220px;"></div>
+    <p class="qr-hint">需要 Android 8.0 (API 26) 以上</p>
+  </div>
+</div>
+
+<script>
+  // ── Live clock in mockup ──
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('live-time').textContent = h + ':' + m;
+    const days = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+    const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    document.getElementById('live-date').textContent =
+      days[now.getDay()] + ' · ' + months[now.getMonth()] + (now.getDate()) + '日';
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  // ── Platform detection ──
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const PLAY_URL = 'https://github.com/yh11011/NexAlarm/releases/latest';
+
+  const hint = document.getElementById('platform-hint');
+  if (isAndroid) {
+    hint.textContent = '✓ 偵測到 Android 裝置，點擊即可下載 APK 安裝檔';
+  } else {
+    hint.textContent = '非 Android 裝置？點擊「掃描 QR Code」用手機掃描下載';
+  }
+
+  // All download buttons point to Play Store
+  document.querySelectorAll('#hero-dl, #nav-dl, #main-dl-btn').forEach(el => {
+    el.href = PLAY_URL;
+    el.target = '_blank';
+    el.rel = 'noopener noreferrer';
+  });
+
+  // ── QR Code ──
+  let qrReady = false;
+  function openQR() {
+    document.getElementById('qr-modal').classList.add('open');
+    if (!qrReady) {
+      const container = document.getElementById('qr-container');
+      container.innerHTML = '';
+      new QRCode(container, {
+        text: PLAY_URL,
+        width: 220,
+        height: 220,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      // qrcodejs 產生的 canvas/img 加圓角
+      setTimeout(function() {
+        const el = container.querySelector('canvas, img');
+        if (el) el.style.borderRadius = '12px';
+      }, 100);
+      qrReady = true;
+    }
+  }
+  function closeQR() {
+    document.getElementById('qr-modal').classList.remove('open');
+  }
+
+  document.getElementById('qr-btn').addEventListener('click', openQR);
+  document.getElementById('qr-close').addEventListener('click', closeQR);
+  document.getElementById('qr-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeQR();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeQR();
+  });
+
+  // Auto-show QR on non-Android
+  if (!isAndroid) {
+    // Delayed auto hint — show QR button more prominently but don't force open
+    document.getElementById('qr-btn').style.background = 'var(--blue-dim)';
+    document.getElementById('qr-btn').style.borderColor = 'rgba(26,115,232,0.4)';
+    document.getElementById('qr-btn').style.color = 'var(--blue-2)';
+  }
+
+  // ── Scroll fade-in ──
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.fade-in-section').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
