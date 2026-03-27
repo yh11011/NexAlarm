@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NexAlarm — 不只是鬧鐘</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <meta name="description" content="NexAlarm 是一款現代 Android 鬧鐘應用，精準排程、資料夾分類、會議模式一鍵切換，讓每天的開始都在你掌握之中。" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -53,7 +56,7 @@
       font-size: 18px; font-weight: 700; color: var(--text);
       text-decoration: none;
     }
-    .nav-logo-icon {
+    .nav-logo-icon-unused {
       width: 32px; height: 32px; border-radius: 8px;
       background: var(--blue);
       display: flex; align-items: center; justify-content: center;
@@ -499,7 +502,7 @@
       font-size: 16px; font-weight: 700; color: var(--text);
       text-decoration: none;
     }
-    .footer-logo-icon {
+    .footer-logo-icon-unused {
       width: 28px; height: 28px; border-radius: 7px;
       background: var(--blue);
       display: flex; align-items: center; justify-content: center;
@@ -552,6 +555,19 @@
     @media (max-width: 480px) {
       .hero { padding: 100px 20px 60px; }
     }
+
+    .nav-logo-img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      object-fit: cover;
+    }
+    .footer-logo-img {
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      object-fit: cover;
+    }
   </style>
 </head>
 <body>
@@ -559,7 +575,7 @@
 <!-- ─── NAV ─── -->
 <nav>
   <a class="nav-logo" href="#">
-    <div class="nav-logo-icon">⏰</div>
+    <img src="/logo.png" alt="NexAlarm" class="nav-logo-img" />
     NexAlarm
   </a>
   <div class="nav-links">
@@ -905,7 +921,7 @@
 <!-- ─── FOOTER ─── -->
 <footer>
   <a class="footer-logo" href="#">
-    <div class="footer-logo-icon">⏰</div>
+    <img src="/logo.png" alt="NexAlarm" class="footer-logo-img" />
     NexAlarm
   </a>
   <div class="footer-links">
