@@ -33,6 +33,14 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("is_english", false)
         set(value) = prefs.edit().putBoolean("is_english", value).apply()
 
+    // 使用者選擇的時區 ID（e.g. "Asia/Taipei"）；null 表示跟隨系統時區
+    var timeZoneId: String?
+        get() = prefs.getString("time_zone_id", null)
+        set(value) {
+            if (value != null) prefs.edit().putString("time_zone_id", value).apply()
+            else prefs.edit().remove("time_zone_id").apply()
+        }
+
     var isPremium: Boolean
         get() = prefs.getBoolean("is_premium", false)
         set(value) = prefs.edit().putBoolean("is_premium", value).apply()

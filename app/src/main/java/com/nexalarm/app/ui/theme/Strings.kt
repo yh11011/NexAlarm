@@ -74,6 +74,11 @@ object S {
     val theme: String get() = if (isAppEnglish) "Theme" else "主題"
     val darkMode: String get() = if (isAppEnglish) "Dark" else "深色"
     val lightMode: String get() = if (isAppEnglish) "Light" else "淺色"
+    val timezone: String get() = if (isAppEnglish) "Timezone" else "時區"
+    val timezoneSystem: String get() = if (isAppEnglish) "System Default" else "跟隨系統"
+    val timezoneSearch: String get() = if (isAppEnglish) "Search timezone..." else "搜尋時區..."
+    val timezoneSelect: String get() = if (isAppEnglish) "Select Timezone" else "選擇時區"
+    val timezoneReset: String get() = if (isAppEnglish) "Reset to System" else "重置為系統時區"
 
     // Folders
     val newFolder: String get() = if (isAppEnglish) "New Folder" else "新增資料夾"

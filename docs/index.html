@@ -200,7 +200,7 @@
     </div>
     <p class="qr-label">掃描 QR Code 或點擊下方按鈕下載</p>
 
-    <a class="download-btn" href="https://github.com/yh11011/NexAlarm/releases/download/v1.0.0-beta/app-debug.apk" download>
+    <a class="download-btn" href="NexAlarm.apk" download="NexAlarm.apk">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
@@ -244,10 +244,7 @@
   <footer>© 2026 NexAlarm · <a href="https://github.com/yh11011/NexAlarm" style="color:#4f8ef7;text-decoration:none;">GitHub</a></footer>
 
   <script>
-    const apkUrl = "https://github.com/yh11011/NexAlarm/releases/download/v1.0.0-beta/app-debug.apk";
-    QRCode.toCanvas
-      ? QRCode.toCanvas(document.createElement('canvas'), apkUrl)
-      : null;
+    const apkUrl = "https://yh11011.github.io/NexAlarm/NexAlarm.apk";
 
     new QRCode(document.getElementById("qrcode"), {
       text: apkUrl,

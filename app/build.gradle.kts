@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     id("com.google.gms.google-services") version "4.4.1"
-    id("com.google.firebase.crashlytics") version "3.0.0"
+    id("com.google.firebase.crashlytics") version "3.0.3"
 }
 
 android {
@@ -72,6 +72,13 @@ android {
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
+}
+
+// 修復：Firebase Crashlytics 3.x + KSP + AGP 8.x 的循環任務依賴問題
+// injectCrashlyticsMappingFileIdDebug 在 debug build 不需要執行（無混淆，無需注入 mapping）
+afterEvaluate {
+    tasks.matching { it.name == "injectCrashlyticsMappingFileIdDebug" }
+        .configureEach { enabled = false }
 }
 
 dependencies {

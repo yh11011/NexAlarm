@@ -89,9 +89,9 @@ fun NexAlarmMainContent() {
     val isFirstLaunch = remember { settingsManager.isFirstLaunch }
     // 用一個整數 tick 作為重組觸發器，避免 username/displayName 各自存一份造成不同步
     var authTick by remember { mutableIntStateOf(0) }
-    val authUsername: String? get() = settingsManager.authUsername
-    val authDisplayName: String? get() = settingsManager.authDisplayName
-    @Suppress("UNUSED_EXPRESSION") authTick // 讓 Compose 追蹤 tick 變化
+    // remember(authTick) 確保 authTick 變更時重新讀取最新值
+    val authUsername: String? = remember(authTick) { settingsManager.authUsername }
+    val authDisplayName: String? = remember(authTick) { settingsManager.authDisplayName }
 
     // 收集資料夾錯誤訊息（例如超過免費版上限）
     LaunchedEffect(folderViewModel) {

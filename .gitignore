@@ -1,5 +1,6 @@
 # Built application files
 *.apk
+!docs/NexAlarm.apk
 *.aar
 *.ap_
 *.aab
