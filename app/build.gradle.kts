@@ -55,6 +55,10 @@ android {
             isDebuggable = true
             // Debug build: no obfuscation, include symbols for crash logs
             buildConfigField("boolean", "IS_PRODUCTION", "false")
+            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                // Debug build 不需要上傳 mapping file（沒有混淆）
+                mappingFileUploadEnabled = false
+            }
         }
         release {
             isMinifyEnabled = true
@@ -74,12 +78,6 @@ android {
     }
 }
 
-// 修復：Firebase Crashlytics 3.x + KSP + AGP 8.x 的循環任務依賴問題
-// injectCrashlyticsMappingFileIdDebug 在 debug build 不需要執行（無混淆，無需注入 mapping）
-afterEvaluate {
-    tasks.matching { it.name == "injectCrashlyticsMappingFileIdDebug" }
-        .configureEach { enabled = false }
-}
 
 dependencies {
     implementation(libs.core.ktx)

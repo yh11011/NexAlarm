@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +35,7 @@ fun AccountScreen(
     // 登入狀態
     authUsername: String?,
     authDisplayName: String?,
+    authToken: String?,
     onLoginClick: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -43,7 +45,16 @@ fun AccountScreen(
     val hasPlayStorePurchase by billingManager.hasPlayStorePurchase.collectAsState()
     val isLoggedIn = authUsername != null
     var showUpgradeDialog by remember { mutableStateOf(false) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
     var deactivateError by remember { mutableStateOf<String?>(null) }
+
+    // ── 修改密碼 Dialog ──
+    if (showChangePasswordDialog && authToken != null) {
+        ChangePasswordDialog(
+            token = authToken,
+            onDismiss = { showChangePasswordDialog = false }
+        )
+    }
 
     // ── 升級/優惠碼 Dialog ──
     if (showUpgradeDialog) {
@@ -185,6 +196,19 @@ fun AccountScreen(
                 }
             }
 
+            // ── 修改密碼按鈕（已登入才顯示）──
+            if (isLoggedIn) {
+                OutlinedButton(
+                    onClick = { showChangePasswordDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                    border = BorderStroke(1.dp, DarkCard)
+                ) {
+                    Text(S.changePassword, fontSize = 14.sp)
+                }
+            }
+
             // ── 目前方案卡片 ──
             Box(
                 modifier = Modifier
@@ -310,6 +334,144 @@ fun AccountScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
+}
+
+@Composable
+private fun ChangePasswordDialog(
+    token: String,
+    onDismiss: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var currentPw by remember { mutableStateOf("") }
+    var newPw by remember { mutableStateOf("") }
+    var confirmPw by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+    var success by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        containerColor = DarkSurface,
+        title = {
+            Text(
+                text = S.changePassword,
+                color = TextPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                val fieldColors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PrimaryBlue,
+                    unfocusedBorderColor = DarkCard,
+                    focusedLabelColor = PrimaryBlue,
+                    unfocusedLabelColor = TextSecondary,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = PrimaryBlue
+                )
+                OutlinedTextField(
+                    value = currentPw,
+                    onValueChange = { currentPw = it; errorMsg = null },
+                    label = { Text(S.currentPassword) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = fieldColors,
+                    enabled = !isLoading && !success
+                )
+                OutlinedTextField(
+                    value = newPw,
+                    onValueChange = { newPw = it; errorMsg = null },
+                    label = { Text(S.newPassword) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = fieldColors,
+                    enabled = !isLoading && !success
+                )
+                OutlinedTextField(
+                    value = confirmPw,
+                    onValueChange = { confirmPw = it; errorMsg = null },
+                    label = { Text(S.confirmNewPassword) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = fieldColors,
+                    enabled = !isLoading && !success
+                )
+                when {
+                    success -> Text(
+                        text = S.passwordChanged,
+                        color = PrimaryBlue,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    isLoading -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            color = TextSecondary,
+                            strokeWidth = 2.dp
+                        )
+                        Text(S.changingPassword, color = TextSecondary, fontSize = 13.sp)
+                    }
+                    errorMsg != null -> Text(
+                        text = errorMsg!!,
+                        color = DangerRed,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        if (success) { onDismiss(); return@Button }
+                        when {
+                            currentPw.isBlank() || newPw.isBlank() || confirmPw.isBlank() ->
+                                errorMsg = S.passwordTooShort
+                            newPw.length < 6 -> errorMsg = S.passwordTooShort
+                            newPw != confirmPw -> errorMsg = S.passwordMismatch
+                            else -> scope.launch {
+                                isLoading = true
+                                errorMsg = null
+                                AuthRepository.changePassword(currentPw, newPw, token)
+                                    .onSuccess { success = true }
+                                    .onFailure { e -> errorMsg = e.message ?: S.loginError }
+                                isLoading = false
+                            }
+                        }
+                    },
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryBlue,
+                        contentColor = TextPrimary
+                    )
+                ) {
+                    Text(
+                        text = if (success) S.confirm else S.changePassword,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                TextButton(
+                    onClick = { if (!isLoading) onDismiss() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(S.cancel, color = TextTertiary)
+                }
+            }
+        },
+        dismissButton = {}
+    )
 }
 
 @Composable

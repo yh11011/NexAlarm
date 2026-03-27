@@ -139,6 +139,16 @@ object S {
     val loginToAccount: String get() = if (isAppEnglish) "Sign in" else "登入帳號"
     val loggedInAs: String get() = if (isAppEnglish) "Signed in as" else "已登入"
 
+    // 修改密碼
+    val changePassword: String get() = if (isAppEnglish) "Change Password" else "修改密碼"
+    val currentPassword: String get() = if (isAppEnglish) "Current Password" else "目前密碼"
+    val newPassword: String get() = if (isAppEnglish) "New Password" else "新密碼"
+    val confirmNewPassword: String get() = if (isAppEnglish) "Confirm New Password" else "確認新密碼"
+    val passwordChanged: String get() = if (isAppEnglish) "Password changed successfully." else "密碼已成功修改。"
+    val passwordMismatch: String get() = if (isAppEnglish) "New passwords do not match." else "兩次輸入的新密碼不一致。"
+    val passwordTooShort: String get() = if (isAppEnglish) "Password must be at least 6 characters." else "密碼至少需要 6 個字元。"
+    val changingPassword: String get() = if (isAppEnglish) "Changing..." else "修改中..."
+
     // 優惠碼
     val promoCode: String get() = if (isAppEnglish) "Promo Code" else "優惠碼"
     val promoCodeHint: String get() = if (isAppEnglish) "Have a promo code? Enter it below, or purchase via Google Play." else "有優惠碼嗎？輸入後套用，或直接透過 Google Play 購買。"

@@ -60,6 +60,13 @@ private fun AlarmEditContent(
     var maxSnoozeCount by remember { mutableIntStateOf(alarm?.maxSnoozeCount ?: 3) }
     var keepAfterRinging by remember { mutableStateOf(alarm?.keepAfterRinging ?: false) }
     var showFolderPicker by remember { mutableStateOf(false) }
+    var showSnoozeDelayMenu by remember { mutableStateOf(false) }
+    var showMaxSnoozeMenu by remember { mutableStateOf(false) }
+
+    // 有資料夾時為資料夾模式（隱藏重複日與響鈴後保留）
+    val isFolderMode = selectedFolderId != null
+    // 選單只顯示非系統資料夾
+    val userFolders = remember(folders) { folders.filter { !it.isSystem } }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -92,14 +99,16 @@ private fun AlarmEditContent(
                             minute = minute,
                             title = title,
                             isEnabled = true,
-                            isRecurring = isRecurring,
-                            repeatDays = if (isRecurring) repeatDays else emptyList(),
+                            // 資料夾模式：不支援重複日，強制為單次
+                            isRecurring = if (isFolderMode) false else isRecurring,
+                            repeatDays = if (isFolderMode) emptyList() else (if (isRecurring) repeatDays else emptyList()),
                             folderId = selectedFolderId,
                             vibrateOnly = vibrateOnly,
                             volume = alarm?.volume ?: 80,
                             snoozeDelay = snoozeDelay,
                             maxSnoozeCount = maxSnoozeCount,
-                            keepAfterRinging = keepAfterRinging,
+                            // 資料夾模式：無「響鈴後保留」，固定為 false
+                            keepAfterRinging = if (isFolderMode) false else keepAfterRinging,
                             snoozeEnabled = snoozeEnabled,
                             createdAt = alarm?.createdAt ?: System.currentTimeMillis()
                         )
@@ -172,15 +181,13 @@ private fun AlarmEditContent(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // 資料夾（與重複互斥）
-                val repeatDisabled = selectedFolderId != null
-                val folderDisabled = !repeatDisabled && repeatDays.isNotEmpty()
+                // 資料夾選擇
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .background(DarkSurface, RoundedCornerShape(18.dp))
-                        .then(if (!folderDisabled) Modifier.clickable { showFolderPicker = !showFolderPicker } else Modifier)
+                        .clickable { showFolderPicker = !showFolderPicker }
                 ) {
                     Row(
                         modifier = Modifier
@@ -189,15 +196,15 @@ private fun AlarmEditContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(S.folderLabel, fontSize = 15.sp, color = if (folderDisabled) TextTertiary else TextPrimary)
+                        Text(S.folderLabel, fontSize = 15.sp, color = TextPrimary)
                         Text(
-                            (folders.find { it.id == selectedFolderId }?.name ?: "無") + " >",
+                            (userFolders.find { it.id == selectedFolderId }?.let { it.emoji + " " + it.name } ?: S.noneLabel) + " >",
                             fontSize = 14.sp,
-                            color = if (folderDisabled) TextTertiary else TextSecondary
+                            color = TextSecondary
                         )
                     }
                 }
-                if (showFolderPicker && !folderDisabled) {
+                if (showFolderPicker) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -205,6 +212,7 @@ private fun AlarmEditContent(
                             .background(DarkCard, RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
                             .padding(horizontal = 18.dp, vertical = 8.dp)
                     ) {
+                        // 「無」= 一般鬧鐘
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -212,9 +220,14 @@ private fun AlarmEditContent(
                                 .clickable { selectedFolderId = null; showFolderPicker = false }
                                 .padding(vertical = 10.dp)
                         ) {
-                            Text(S.noneLabel, fontSize = 14.sp, color = TextSecondary)
+                            Text(
+                                S.noneLabel,
+                                fontSize = 14.sp,
+                                color = if (selectedFolderId == null) SecondaryBlue else TextSecondary
+                            )
                         }
-                        folders.forEach { f ->
+                        // 只顯示使用者建立的資料夾（不含系統資料夾）
+                        userFolders.forEach { f ->
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -232,38 +245,35 @@ private fun AlarmEditContent(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // 重複日選擇
-                EditLabel(S.repeatDaysLabel)
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    listOf("一", "二", "三", "四", "五", "六", "日").forEachIndexed { i, lbl ->
-                        val day = i + 1
-                        val sel = day in repeatDays
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (sel && !repeatDisabled) AccentDim else DarkSurface)
-                                .then(if (!repeatDisabled) Modifier.clickable {
-                                    repeatDays = if (day in repeatDays) repeatDays - day else repeatDays + day
-                                    isRecurring = repeatDays.isNotEmpty()
-                                } else Modifier)
-                                .padding(vertical = 9.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                lbl, fontSize = 12.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = when {
-                                    repeatDisabled -> TextTertiary
-                                    sel -> SecondaryBlue
-                                    else -> TextSecondary
-                                }
-                            )
+                // 重複日選擇（資料夾模式下隱藏）
+                if (!isFolderMode) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    EditLabel(S.repeatDaysLabel)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        listOf("一", "二", "三", "四", "五", "六", "日").forEachIndexed { i, lbl ->
+                            val day = i + 1
+                            val sel = day in repeatDays
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (sel) AccentDim else DarkSurface)
+                                    .clickable {
+                                        repeatDays = if (day in repeatDays) repeatDays - day else repeatDays + day
+                                        isRecurring = repeatDays.isNotEmpty()
+                                    }
+                                    .padding(vertical = 9.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    lbl, fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (sel) SecondaryBlue else TextSecondary
+                                )
+                            }
                         }
                     }
                 }
@@ -280,32 +290,65 @@ private fun AlarmEditContent(
                 ) {
                     EditToggleRow(S.snoozeLabel, S.snoozeSubtitle, snoozeEnabled) { snoozeEnabled = it }
                     EditDiv()
-                    EditRow(S.snoozeIntervalLabel, S.minutesSuffix(snoozeDelay), true) {
-                        snoozeDelay = when {
-                            snoozeDelay < 5 -> 5
-                            snoozeDelay < 10 -> 10
-                            snoozeDelay < 15 -> 15
-                            snoozeDelay < 20 -> 20
-                            snoozeDelay < 30 -> 30
-                            else -> 5
+                    // 貪睡間隔 — 點擊展開下拉選單
+                    Box {
+                        EditRow(S.snoozeIntervalLabel, S.minutesSuffix(snoozeDelay), true) {
+                            showSnoozeDelayMenu = true
+                        }
+                        DropdownMenu(
+                            expanded = showSnoozeDelayMenu,
+                            onDismissRequest = { showSnoozeDelayMenu = false },
+                            containerColor = DarkCard
+                        ) {
+                            listOf(5, 10, 15, 20, 30).forEach { mins ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            S.minutesSuffix(mins),
+                                            color = if (snoozeDelay == mins) SecondaryBlue else TextPrimary,
+                                            fontSize = 14.sp
+                                        )
+                                    },
+                                    onClick = { snoozeDelay = mins; showSnoozeDelayMenu = false }
+                                )
+                            }
                         }
                     }
                     EditDiv()
-                    EditRow(
-                        S.maxSnoozeCountLabel,
-                        if (maxSnoozeCount == 0) S.unlimited else S.times(maxSnoozeCount),
-                        true
-                    ) {
-                        maxSnoozeCount = when {
-                            maxSnoozeCount < 1 -> 1
-                            maxSnoozeCount < 3 -> 3
-                            maxSnoozeCount < 5 -> 5
-                            maxSnoozeCount < 10 -> 10
-                            else -> 0
+                    // 最多貪睡次數 — 點擊展開下拉選單
+                    Box {
+                        EditRow(
+                            S.maxSnoozeCountLabel,
+                            if (maxSnoozeCount == 0) S.unlimited else S.times(maxSnoozeCount),
+                            true
+                        ) {
+                            showMaxSnoozeMenu = true
+                        }
+                        DropdownMenu(
+                            expanded = showMaxSnoozeMenu,
+                            onDismissRequest = { showMaxSnoozeMenu = false },
+                            containerColor = DarkCard
+                        ) {
+                            listOf(1, 3, 5, 10, 0).forEach { count ->
+                                DropdownMenuItem(
+                                    text = {
+                                        val label = if (count == 0) S.unlimited else S.times(count)
+                                        Text(
+                                            label,
+                                            color = if (maxSnoozeCount == count) SecondaryBlue else TextPrimary,
+                                            fontSize = 14.sp
+                                        )
+                                    },
+                                    onClick = { maxSnoozeCount = count; showMaxSnoozeMenu = false }
+                                )
+                            }
                         }
                     }
-                    EditDiv()
-                    EditToggleRow(S.keepAfterRingingLabel, S.keepAfterRingingSubtitle, keepAfterRinging) { keepAfterRinging = it }
+                    // 響鈴後保留（資料夾模式下隱藏）
+                    if (!isFolderMode) {
+                        EditDiv()
+                        EditToggleRow(S.keepAfterRingingLabel, S.keepAfterRingingSubtitle, keepAfterRinging) { keepAfterRinging = it }
+                    }
                     EditDiv()
                     EditToggleRow(S.vibrateOnlyLabel, S.vibrateOnlySubtitle, vibrateOnly) { vibrateOnly = it }
                 }

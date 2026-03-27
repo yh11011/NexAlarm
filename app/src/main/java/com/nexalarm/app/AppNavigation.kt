@@ -352,6 +352,7 @@ fun NexAlarmMainContent() {
                             },
                             authUsername = authUsername,
                             authDisplayName = authDisplayName,
+                            authToken = settingsManager.authToken,
                             onLoginClick = {
                                 navController.navigate("login")
                             },

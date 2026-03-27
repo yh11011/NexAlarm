@@ -47,6 +47,27 @@ object AuthRepository {
         runCatching { ApiClient.post("$BASE_URL/logout", JSONObject(), token) }
     }
 
+    /** 修改密碼：需帶入目前 token；成功返回 Unit，失敗 throws */
+    suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String,
+        token: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val body = JSONObject().apply {
+                put("current_password", currentPassword)
+                put("new_password", newPassword)
+            }
+            val resp = ApiClient.post("$BASE_URL/change-password", body, token)
+            if (resp.code !in 200..299) {
+                val raw = runCatching {
+                    JSONObject(resp.body).optString("detail").takeIf { it.isNotBlank() }
+                }.getOrNull() ?: resp.body
+                throw Exception(toFriendlyMessage(resp.code, raw))
+            }
+        }
+    }
+
     /** 向伺服器驗證優惠碼，成功返回 true，無效返回 false，網路錯誤 throws */
     suspend fun validatePromoCode(code: String): Result<Boolean> =
         withContext(Dispatchers.IO) {

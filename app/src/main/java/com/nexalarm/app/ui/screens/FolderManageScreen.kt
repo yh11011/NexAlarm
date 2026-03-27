@@ -72,7 +72,7 @@ fun FolderManageScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.weight(1f)
         ) {
-            items(folders) { folder ->
+            items(folders.filter { !it.isSystem }) { folder ->
                 val count = alarmCountMap[folder.id] ?: 0
                 FolderListCard(
                     folder = folder,
