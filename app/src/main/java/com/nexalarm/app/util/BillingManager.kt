@@ -34,6 +34,10 @@ class BillingManager(private val context: Context) {
     private val _isPremium = MutableStateFlow(false)
     val isPremium: StateFlow<Boolean> = _isPremium
 
+    /** true = Google Play 有確認有效購買（非優惠碼）；用來防止本地直接停用付費版 */
+    private val _hasPlayStorePurchase = MutableStateFlow(false)
+    val hasPlayStorePurchase: StateFlow<Boolean> = _hasPlayStorePurchase
+
     private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
         when (billingResult.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
@@ -141,6 +145,7 @@ class BillingManager(private val context: Context) {
                     purchase.products.contains(PREMIUM_PRODUCT_ID) &&
                             purchase.purchaseState == Purchase.PurchaseState.PURCHASED
                 }
+                _hasPlayStorePurchase.value = hasPremium
                 setPremiumStatus(hasPremium)
                 Log.d(TAG, "查詢現有購買：isPremium=$hasPremium")
             }

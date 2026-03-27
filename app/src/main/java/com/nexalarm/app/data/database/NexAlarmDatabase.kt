@@ -13,7 +13,7 @@ import com.nexalarm.app.data.model.RepeatDaysConverter
 
 @Database(
     entities = [AlarmEntity::class, FolderEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(RepeatDaysConverter::class)
@@ -50,8 +50,17 @@ abstract class NexAlarmDatabase : RoomDatabase() {
 
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 將系統資料夾「重複鬧鐘」的 emoji 從 🔁（Samsung 裝置上有橘色底色）改為純文字箭頭 ↻
                 db.execSQL("UPDATE folders SET emoji = '↻' WHERE name = '重複鬧鐘' AND isSystem = 1")
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 新增雲端同步欄位：clientId（UUID）和 updatedAt（Unix ms）
+                db.execSQL("ALTER TABLE alarms ADD COLUMN clientId TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE alarms ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                // 為現有鬧鐘產生 UUID 和時間戳記
+                db.execSQL("UPDATE alarms SET clientId = lower(hex(randomblob(16))), updatedAt = createdAt WHERE clientId = ''")
             }
         }
 
@@ -62,7 +71,7 @@ abstract class NexAlarmDatabase : RoomDatabase() {
                     NexAlarmDatabase::class.java,
                     "nexalarm_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .addCallback(PrepopulateCallback())
                     .build()
                 INSTANCE = instance

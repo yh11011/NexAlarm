@@ -118,4 +118,30 @@ object S {
 
     // Other
     val welcomeNexAlarm: String get() = if (isAppEnglish) "Welcome to NexAlarm" else "歡迎使用 NexAlarm"
+
+    // Login / Register
+    val login: String get() = if (isAppEnglish) "Login" else "登入"
+    val register: String get() = if (isAppEnglish) "Register" else "註冊"
+    val skip: String get() = if (isAppEnglish) "Skip" else "跳過"
+    val logout: String get() = if (isAppEnglish) "Logout" else "登出"
+    val loginTitle: String get() = if (isAppEnglish) "Sign in to NexAlarm" else "登入 NexAlarm"
+    val loginWelcome: String get() = if (isAppEnglish) "Sign in to sync your settings across devices." else "登入後可跨裝置同步設定。"
+    val usernameOrEmail: String get() = if (isAppEnglish) "Username or Email" else "帳號或 Email"
+    val password: String get() = if (isAppEnglish) "Password" else "密碼"
+    val displayNameOptional: String get() = if (isAppEnglish) "Display Name (optional)" else "顯示名稱（選填）"
+    val loginError: String get() = if (isAppEnglish) "Login failed. Please try again." else "登入失敗，請再試一次。"
+    val notLoggedIn: String get() = if (isAppEnglish) "Not signed in" else "尚未登入"
+    val loginToAccount: String get() = if (isAppEnglish) "Sign in" else "登入帳號"
+    val loggedInAs: String get() = if (isAppEnglish) "Signed in as" else "已登入"
+
+    // 優惠碼
+    val promoCode: String get() = if (isAppEnglish) "Promo Code" else "優惠碼"
+    val promoCodeHint: String get() = if (isAppEnglish) "Have a promo code? Enter it below, or purchase via Google Play." else "有優惠碼嗎？輸入後套用，或直接透過 Google Play 購買。"
+    val applyPromo: String get() = if (isAppEnglish) "Apply Promo Code" else "套用優惠碼"
+    val buyWithGooglePlay: String get() = if (isAppEnglish) "Purchase via Google Play" else "透過 Google Play 購買"
+    val promoSuccess: String get() = if (isAppEnglish) "Promo code applied! Premium activated." else "優惠碼套用成功，已升級付費版！"
+    val promoCodeInvalid: String get() = if (isAppEnglish) "Invalid promo code." else "優惠碼無效，請確認後再試。"
+    val promoCodeEmpty: String get() = if (isAppEnglish) "Please enter a promo code." else "請輸入優惠碼。"
+    val validating: String get() = if (isAppEnglish) "Validating..." else "驗證中..."
+    val promoNetworkError: String get() = if (isAppEnglish) "Network error. Please try again." else "網路錯誤，請稍後再試。"
 }

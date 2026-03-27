@@ -32,9 +32,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.nexalarm.app.data.AuthRepository
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.model.AlarmEntity
-import com.nexalarm.app.util.BillingManager
 import com.nexalarm.app.util.FeatureFlags
 import com.nexalarm.app.ui.screens.*
 import com.nexalarm.app.ui.theme.*
@@ -81,7 +81,17 @@ fun NexAlarmMainContent() {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = androidx.compose.ui.platform.LocalContext.current
-    val billingManager = remember { BillingManager(context) }
+    // 使用 Application 級單例，避免每次重組重建 BillingClient 連線（修復 issue 10）
+    val billingManager = remember { (context.applicationContext as NexAlarmApp).billingManager }
+
+    // ── 帳號狀態（單一來源：SettingsManager；本地 state 僅作 Compose 重組觸發器）──
+    val settingsManager = remember { SettingsManager(context) }
+    val isFirstLaunch = remember { settingsManager.isFirstLaunch }
+    // 用一個整數 tick 作為重組觸發器，避免 username/displayName 各自存一份造成不同步
+    var authTick by remember { mutableIntStateOf(0) }
+    val authUsername: String? get() = settingsManager.authUsername
+    val authDisplayName: String? get() = settingsManager.authDisplayName
+    @Suppress("UNUSED_EXPRESSION") authTick // 讓 Compose 追蹤 tick 變化
 
     // 收集資料夾錯誤訊息（例如超過免費版上限）
     LaunchedEffect(folderViewModel) {
@@ -101,7 +111,7 @@ fun NexAlarmMainContent() {
     // Pager hoisted here so both bottom nav and drawer can drive it
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { BottomTab.entries.size })
 
-    // Bottom bar shows on tab pager and on drawer-only main screens
+    // Bottom bar shows on tab pager and on drawer-only main screens（登入頁不顯示）
     val showBottomBar = currentRoute == "tabs" || currentRoute in listOf("home", "settings", "account")
 
     val openMenu: () -> Unit = { scope.launch { drawerState.open() } }
@@ -235,13 +245,52 @@ fun NexAlarmMainContent() {
                 }
             ) { padding ->
                 // 導航圖：
+                // - "login" route → 首次安裝登入頁 / 帳號設定入口
                 // - "tabs" route → HorizontalPager（底部 4 個主頁）
                 // - 其餘 routes → NavController push 進入的子頁面
                 NavHost(
                     navController = navController,
-                    startDestination = "tabs",
+                    startDestination = if (isFirstLaunch) "login?onboarding=true" else "tabs",
                     modifier = Modifier.padding(padding)
                 ) {
+                    // ── 登入 / 註冊頁 ──
+                    // 用明確的路由參數 onboarding=true/false 取代 previousBackStackEntry 判斷，
+                    // 避免 APP 被系統回收後重建時判斷錯誤
+                    composable(
+                        route = "login?onboarding={onboarding}",
+                        arguments = listOf(
+                            navArgument("onboarding") { type = NavType.BoolType; defaultValue = false }
+                        )
+                    ) { backStackEntry ->
+                        val isOnboarding = backStackEntry.arguments?.getBoolean("onboarding") ?: false
+                        LoginScreen(
+                            isOnboarding = isOnboarding,
+                            onSuccess = { user ->
+                                settingsManager.authToken = user.token
+                                settingsManager.authUserId = user.id
+                                settingsManager.authUsername = user.username ?: user.email
+                                settingsManager.authDisplayName = user.displayName
+                                settingsManager.isFirstLaunch = false
+                                authTick++ // 觸發帳號狀態重組
+                                if (isOnboarding) {
+                                    navController.navigate("tabs") {
+                                        popUpTo("login?onboarding=true") { inclusive = true }
+                                    }
+                                } else {
+                                    navController.popBackStack()
+                                }
+                            },
+                            onSkip = {
+                                settingsManager.isFirstLaunch = false
+                                navController.navigate("tabs") {
+                                    popUpTo("login?onboarding=true") { inclusive = true }
+                                }
+                            },
+                            onBack = if (!isOnboarding) {
+                                { navController.popBackStack() }
+                            } else null
+                        )
+                    }
                     // 4 main tabs — HorizontalPager gives connected horizontal slide + swipe
                     composable("tabs") {
                         HorizontalPager(
@@ -299,7 +348,23 @@ fun NexAlarmMainContent() {
                             billingManager = billingManager,
                             onPremiumStatusChanged = { newValue ->
                                 FeatureFlags.isPremium = newValue
-                                SettingsManager(context).isPremium = newValue
+                                settingsManager.isPremium = newValue
+                            },
+                            authUsername = authUsername,
+                            authDisplayName = authDisplayName,
+                            onLoginClick = {
+                                navController.navigate("login")
+                            },
+                            onLogout = {
+                                val token = settingsManager.authToken
+                                // 先清除本地，再通知後端（背景執行，失敗不影響本地登出）
+                                settingsManager.clearAuth()
+                                authTick++ // 觸發帳號狀態重組
+                                if (token != null) {
+                                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                        AuthRepository.logout(token)
+                                    }
+                                }
                             }
                         )
                     }

@@ -40,6 +40,7 @@ class AlarmService : Service() {
     private var alarmTitle: String = ""
     private var vibrateOnly: Boolean = false
     private var snoozeEnabled: Boolean = true
+    private var alarmVolume: Int = 80
 
     override fun onCreate() {
         super.onCreate()
@@ -55,6 +56,7 @@ class AlarmService : Service() {
                 alarmTitle = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: S.alarmDefaultTitle
                 vibrateOnly = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, false)
                 snoozeEnabled = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_SNOOZE_ENABLED, true)
+                alarmVolume = intent.getIntExtra(AlarmReceiver.EXTRA_ALARM_VOLUME, 80)
 
                 startForeground(NOTIFICATION_ID, createNotification())
                 startAlarm()
@@ -98,6 +100,9 @@ class AlarmService : Service() {
                 )
                 isLooping = true
                 prepare()
+                // 套用使用者設定的音量 (0-100 → 0.0-1.0)
+                val vol = (alarmVolume / 100f).coerceIn(0f, 1f)
+                setVolume(vol, vol)
                 start()
             }
 

@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.nexalarm.app.data.AlarmSyncRepository
+import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.repository.AlarmRepository
@@ -29,6 +31,7 @@ class AlarmReceiver : BroadcastReceiver() {
         const val EXTRA_ALARM_TITLE = "alarm_title"
         const val EXTRA_ALARM_VIBRATE_ONLY = "alarm_vibrate_only"
         const val EXTRA_ALARM_SNOOZE_ENABLED = "alarm_snooze_enabled"
+        const val EXTRA_ALARM_VOLUME = "alarm_volume"
 
         private const val SNOOZE_PREFS = "nexalarm_snooze_counts"
     }
@@ -54,12 +57,14 @@ class AlarmReceiver : BroadcastReceiver() {
 
         Log.d("AlarmReceiver", "Alarm triggered: ID=$alarmId, Title=$title")
 
+        val volume = intent.getIntExtra(EXTRA_ALARM_VOLUME, 80)
         val serviceIntent = Intent(context, AlarmService::class.java).apply {
             action = AlarmService.ACTION_START_ALARM
             putExtra(EXTRA_ALARM_ID, alarmId)
             putExtra(EXTRA_ALARM_TITLE, title)
             putExtra(EXTRA_ALARM_VIBRATE_ONLY, vibrateOnly)
             putExtra(EXTRA_ALARM_SNOOZE_ENABLED, snoozeEnabled)
+            putExtra(EXTRA_ALARM_VOLUME, volume)
         }
 
         context.startForegroundService(serviceIntent)
@@ -150,15 +155,31 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     /**
-     * 關閉後處理：刪除單次鬧鐘 / 停用 / 排程下一次
+     * 關閉後處理：刪除單次鬧鐘 / 停用 / 排程下一次，並同步雲端
      */
     private suspend fun handlePostDismiss(context: Context, alarm: AlarmEntity, repo: AlarmRepository) {
+        val db = NexAlarmDatabase.getDatabase(context)
+        val token = SettingsManager(context).authToken
+
         if (!alarm.isRecurring && !alarm.keepAfterRinging) {
             repo.deleteById(alarm.id)
             Log.d("AlarmReceiver", "Deleted one-time alarm ${alarm.id}")
+            // 同步軟刪除到雲端
+            if (token != null) {
+                val deletedAt = System.currentTimeMillis()
+                AlarmSyncRepository.sync(
+                    token = token,
+                    localAlarms = db.alarmDao().getAllAlarmsList(),
+                    deletedClientIds = listOf(alarm.clientId to deletedAt)
+                )
+            }
         } else if (!alarm.isRecurring) {
             repo.setEnabled(alarm.id, false)
             Log.d("AlarmReceiver", "Disabled one-time alarm ${alarm.id} (keepAfterRinging)")
+            // 同步停用狀態到雲端
+            if (token != null) {
+                AlarmSyncRepository.sync(token, db.alarmDao().getAllAlarmsList())
+            }
         } else {
             AlarmScheduler(context).schedule(alarm)
             Log.d("AlarmReceiver", "Rescheduled recurring alarm ${alarm.id}")

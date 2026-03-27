@@ -1,18 +1,24 @@
 package com.nexalarm.app
 
 import android.app.Application
+import androidx.work.*
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.util.AppSettingsProvider
-import com.nexalarm.app.util.CrashHandler
+import com.nexalarm.app.util.BillingManager
 import com.nexalarm.app.util.CrashReportingManager
 import com.nexalarm.app.util.FeatureFlags
 import com.nexalarm.app.util.NotificationHelper
+import com.nexalarm.app.worker.AlarmSyncWorker
+import java.util.concurrent.TimeUnit
 
 /**
  * Application 類別
  * 負責 App 啟動時的初始化工作，包含背景服務場景（AlarmService 等）
  */
 class NexAlarmApp : Application() {
+
+    /** Application 級單例，避免每次重組重建 BillingClient 連線 */
+    val billingManager: BillingManager by lazy { BillingManager(this) }
 
     override fun onCreate() {
         super.onCreate()
@@ -30,6 +36,25 @@ class NexAlarmApp : Application() {
         val settings = SettingsManager(this)
         FeatureFlags.isPremium = settings.isPremium
 
-        android.util.Log.d("NexAlarmApp", "Application initialized with CrashReportingManager, AppSettingsProvider")
+        // 排程背景同步（每 15 分鐘，Android WorkManager 最小間隔）
+        schedulePeriodicSync()
+
+        android.util.Log.d("NexAlarmApp", "Application initialized with CrashReportingManager, AppSettingsProvider, and AlarmSyncWorker")
+    }
+
+    private fun schedulePeriodicSync() {
+        val syncRequest = PeriodicWorkRequestBuilder<AlarmSyncWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "alarm_sync",
+            ExistingPeriodicWorkPolicy.KEEP,
+            syncRequest
+        )
     }
 }

@@ -104,6 +104,12 @@ dependencies {
     // LeakCanary for memory leak detection (debug only)
     debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 
+    // 加密儲存（保護 JWT token）
+    implementation(libs.security.crypto)
+
+    // 背景同步（WorkManager）
+    implementation(libs.work.runtime)
+
     // Unit tests (JVM — no device needed)
     testImplementation(libs.junit)
 

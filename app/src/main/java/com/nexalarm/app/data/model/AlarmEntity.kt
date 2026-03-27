@@ -24,7 +24,10 @@ data class AlarmEntity(
     val maxSnoozeCount: Int = 3,
     val keepAfterRinging: Boolean = false,
     val snoozeEnabled: Boolean = true,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    // 雲端同步欄位（v6 新增）
+    val clientId: String = java.util.UUID.randomUUID().toString(),
+    val updatedAt: Long = System.currentTimeMillis()
 )
 
 class RepeatDaysConverter {

@@ -22,6 +22,12 @@ interface AlarmDao {
     @Query("SELECT * FROM alarms WHERE id = :id")
     suspend fun getAlarmById(id: Long): AlarmEntity?
 
+    @Query("SELECT * FROM alarms WHERE clientId = :clientId LIMIT 1")
+    suspend fun getByClientId(clientId: String): AlarmEntity?
+
+    @Query("SELECT * FROM alarms")
+    suspend fun getAllAlarmsList(): List<AlarmEntity>
+
     @Query("SELECT * FROM alarms WHERE hour = :hour AND minute = :minute AND title = :title AND folderId = :folderId AND repeatDays = :repeatDays LIMIT 1")
     suspend fun findDuplicate(hour: Int, minute: Int, title: String, folderId: Long?, repeatDays: String): AlarmEntity?
 
@@ -40,8 +46,8 @@ interface AlarmDao {
     @Query("DELETE FROM alarms WHERE id = :id")
     suspend fun deleteById(id: Long)
 
-    @Query("UPDATE alarms SET isEnabled = :enabled WHERE id = :id")
-    suspend fun setEnabled(id: Long, enabled: Boolean)
+    @Query("UPDATE alarms SET isEnabled = :enabled, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setEnabled(id: Long, enabled: Boolean, updatedAt: Long = System.currentTimeMillis())
 
     @Query("UPDATE alarms SET vibrateOnly = :vibrateOnly WHERE id = :id")
     suspend fun setVibrateOnly(id: Long, vibrateOnly: Boolean)

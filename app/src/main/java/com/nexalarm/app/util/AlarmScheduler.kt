@@ -37,9 +37,9 @@ class AlarmScheduler(private val context: Context) {
             putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarm.id)
             putExtra(AlarmReceiver.EXTRA_ALARM_TITLE, alarm.title)
             putExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, alarm.vibrateOnly)
+            putExtra(AlarmReceiver.EXTRA_ALARM_SNOOZE_ENABLED, alarm.snoozeEnabled)
+            putExtra(AlarmReceiver.EXTRA_ALARM_VOLUME, alarm.volume)
         }
-
-        intent.putExtra(AlarmReceiver.EXTRA_ALARM_SNOOZE_ENABLED, alarm.snoozeEnabled)
 
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -103,6 +103,7 @@ class AlarmScheduler(private val context: Context) {
                 putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarm.id)
                 putExtra(AlarmReceiver.EXTRA_ALARM_TITLE, alarm.title)
                 putExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, alarm.vibrateOnly)
+                putExtra(AlarmReceiver.EXTRA_ALARM_VOLUME, alarm.volume)
             }
             val piFallback = PendingIntent.getBroadcast(
                 context, alarm.id.toInt(), intentFallback,
@@ -119,6 +120,7 @@ class AlarmScheduler(private val context: Context) {
             putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarm.id)
             putExtra(AlarmReceiver.EXTRA_ALARM_TITLE, alarm.title)
             putExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, alarm.vibrateOnly)
+            putExtra(AlarmReceiver.EXTRA_ALARM_VOLUME, alarm.volume)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
