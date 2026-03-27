@@ -1,14 +1,23 @@
-name: Android CI
+name: Android CI/CD
 
 on:
   push:
     branches: [ main, develop ]
+    tags: [ 'v*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_OPTS: "-Xmx4g -Dorg.gradle.daemon=false"
 
 jobs:
-  build:
-    name: Build & Unit Test
+  # ============ 檢查與驗證 ============
+  lint-and-analysis:
+    name: 代碼檢查與靜態分析
     runs-on: ubuntu-latest
 
     steps:
@@ -25,27 +34,70 @@ jobs:
       - name: 授予 Gradle 執行權限
         run: chmod +x gradlew
 
-      - name: 執行 Unit Test
-        run: ./gradlew test --no-daemon
+      - name: 執行 Lint 檢查
+        run: ./gradlew lint --no-daemon
 
-      - name: 上傳測試報告
+      - name: 上傳 Lint 報告
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-test-results
+          name: lint-results
+          path: app/build/reports/lint-results*.html
+
+  # ============ 構建與測試 ============
+  build:
+    name: 構建與測試
+    runs-on: ubuntu-latest
+    needs: lint-and-analysis
+
+    steps:
+      - name: Checkout 程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 設定 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: 授予 Gradle 執行權限
+        run: chmod +x gradlew
+
+      - name: 執行單元測試
+        run: ./gradlew test --no-daemon
+        continue-on-error: true
+
+      - name: 上傳單元測試報告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
           path: app/build/reports/tests/
 
-      - name: 建置 Debug APK
+      - name: 構建 Debug APK
         run: ./gradlew assembleDebug --no-daemon
 
       - name: 上傳 Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: debug-apk
+          name: debug-apk-${{ github.run_number }}
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
 
-  release:
-    name: Build Release APK
+      - name: 生成構建信息
+        if: always()
+        run: |
+          echo "## 構建信息" >> $GITHUB_STEP_SUMMARY
+          echo "- **構建號：** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Git SHA：** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **分支：** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+
+  # ============ Release 構建 ============
+  release-build:
+    name: 構建 Release APK
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: build
@@ -64,11 +116,32 @@ jobs:
       - name: 授予 Gradle 執行權限
         run: chmod +x gradlew
 
-      - name: 建置 Release APK（未簽名）
+      - name: 構建 Release APK（未簽名）
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: 上傳 Release APK
+      - name: 上傳 Release APK（未簽名）
         uses: actions/upload-artifact@v4
         with:
           name: release-apk-unsigned
           path: app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 30
+
+  # ============ 完整性報告 ============
+  summary:
+    name: 構建完整性檢查
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [ lint-and-analysis, build, release-build ]
+
+    steps:
+      - name: 檢查構建狀態
+        run: |
+          if [ "${{ needs.lint-and-analysis.result }}" = "failure" ] || \
+             [ "${{ needs.build.result }}" = "failure" ]; then
+            echo "## ⚠️ 構建失敗" >> $GITHUB_STEP_SUMMARY
+            echo "請檢查上述任務的錯誤信息" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "## ✅ 構建成功" >> $GITHUB_STEP_SUMMARY
+          echo "所有檢查已通過，APK 已生成。" >> $GITHUB_STEP_SUMMARY

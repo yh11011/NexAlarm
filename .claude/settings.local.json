@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleDebug)",
+      "Bash(cmd /c \"gradlew.bat assembleDebug\")",
+      "Bash(cmd /c \"gradlew.bat assembleDebug 2>&1\")",
+      "Bash(powershell -Command \".\\\\gradlew.bat assembleDebug\")",
+      "Bash(Select-Object -Last 80)",
+      "Bash(powershell -Command \".\\\\gradlew.bat assembleDebug *>&1 | Out-String\")",
+      "Bash(java -version)",
+      "Bash(java -jar /c/Users/user/Desktop/開發工作區/專案/NexAlarm/gradle/wrapper/gradle-wrapper.jar)",
+      "Bash(cmd /c \"cd /d \"\"C:\\\\Users\\\\user\\\\Desktop\\\\開發工作區\\\\專案\\\\NexAlarm\"\" && gradlew.bat assembleDebug\")",
+      "Bash(cmd /c \"cd /d \"\"C:\\\\Users\\\\user\\\\Desktop\\\\開發工作區\\\\專案\\\\NexAlarm\"\" && gradlew.bat assembleDebug > C:\\\\Users\\\\user\\\\build_output.txt 2>&1\")",
+      "Read(//c/Users/user/**)",
+      "Bash(echo \"exit $?\")",
+      "Bash(powershell -Command \"\ncmd /c 'mklink /J C:\\\\NexAlarmBuild \\\\\"C:\\\\Users\\\\user\\\\Desktop\\\\開發工作區\\\\專案\\\\NexAlarm\\\\\"' 2>&1\n\" 2>&1)",
+      "Bash(while read:*)",
+      "Bash(do wc:*)",
+      "Bash(done)",
+      "Bash(xargs wc:*)",
+      "Bash(find /c/Users/user/Desktop/開發工作區/專案/NexAlarm/app/src/test -name *.kt)",
+      "Bash(grep -v \"import\\\\|package\\\\|@\\\\|//\")",
+      "Bash(wc -l /c/Users/user/Desktop/開發工作區/專案/NexAlarm/app/src/main/java/com/nexalarm/app/ui/screens/*.kt)",
+      "Bash(xargs grep:*)"
+    ]
+  }
+}

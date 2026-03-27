@@ -2,9 +2,9 @@ package com.nexalarm.app
 
 import android.app.Application
 import com.nexalarm.app.data.SettingsManager
-import com.nexalarm.app.ui.theme.isDarkTheme
-import com.nexalarm.app.ui.theme.isAppEnglish
+import com.nexalarm.app.util.AppSettingsProvider
 import com.nexalarm.app.util.CrashHandler
+import com.nexalarm.app.util.CrashReportingManager
 import com.nexalarm.app.util.FeatureFlags
 import com.nexalarm.app.util.NotificationHelper
 
@@ -17,18 +17,19 @@ class NexAlarmApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // 安裝全域崩潰處理器（最先初始化，確保後續的崩潰也能被捕獲）
-        CrashHandler.install(this)
+        // 初始化遠程崩潰報告（最先初始化，自動安裝本地和遠程異常處理器）
+        CrashReportingManager.init(this)
 
         // 建立通知頻道
         NotificationHelper.createNotificationChannels(this)
 
-        // 初始化全域設定變數，確保背景服務啟動時也能讀到正確設定
+        // 初始化應用設定提供者（統一管理所有設定，確保執行緒安全）
+        AppSettingsProvider.init(this)
+
+        // 初始化功能標誌
         val settings = SettingsManager(this)
-        isDarkTheme = settings.isDarkMode
-        isAppEnglish = settings.isEnglish
         FeatureFlags.isPremium = settings.isPremium
 
-        android.util.Log.d("NexAlarmApp", "Application initialized")
+        android.util.Log.d("NexAlarmApp", "Application initialized with CrashReportingManager, AppSettingsProvider")
     }
 }

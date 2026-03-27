@@ -1,0 +1,129 @@
+name: 發佈 Release
+
+on:
+  # 手動觸發發佈
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release 版本（例：1.0.1）'
+        required: true
+        type: string
+  # 當推送標籤時自動觸發（例：v1.0.0）
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GRADLE_OPTS: "-Xmx4g -Dorg.gradle.daemon=false"
+
+jobs:
+  release:
+    name: 準備發佈
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 提取版本號
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION=${{ github.event.inputs.version }}
+          else
+            # 從標籤名提取版本號（例：v1.0.0 -> 1.0.0）
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: 設定 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: 授予 Gradle 執行權限
+        run: chmod +x gradlew
+
+      - name: 更新版本號
+        run: |
+          # 計算 versionCode（可根據需求修改邏輯）
+          TIMESTAMP=$(date +%s)
+          VERSION_CODE=$(($(date +%Y) * 10000 + $(date +%m) * 100 + $(date +%d)))
+
+          sed -i "s/versionCode = [0-9]*/versionCode = $VERSION_CODE/" app/build.gradle.kts
+          sed -i 's/versionName = "[^"]*"/versionName = "${{ steps.version.outputs.version }}"/' app/build.gradle.kts
+
+          echo "Updated versionCode=$VERSION_CODE, versionName=${{ steps.version.outputs.version }}"
+
+      - name: 構建 Release APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: 驗證 APK
+        run: |
+          APK_PATH="app/build/outputs/apk/release/app-release-unsigned.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            echo "❌ APK 構建失敗"
+            exit 1
+          fi
+          echo "✅ APK 已成功構建"
+          ls -lh "$APK_PATH"
+
+      - name: 上傳 Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk-${{ steps.version.outputs.version }}
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 90
+
+      - name: 生成發佈說明
+        id: release-notes
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          echo "## 版本 $VERSION" > release-notes.md
+          echo "" >> release-notes.md
+          echo "### 重要提醒" >> release-notes.md
+          echo "- ⚠️ **簽名狀態：** APK 未簽名，需要手動簽名後方能在 Google Play 發佈" >> release-notes.md
+          echo "- 📦 **APK 位置：** 見 Artifacts 中的 release-apk-$VERSION" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### 簽名步驟" >> release-notes.md
+          echo "1. 使用 APK Signer 或 jarsigner 簽名 APK" >> release-notes.md
+          echo "2. 驗證簽名：\`adb install signed.apk\`" >> release-notes.md
+          echo "3. 上傳到 Google Play Console" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### 變更日誌" >> release-notes.md
+          echo "見 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)" >> release-notes.md
+
+      - name: 上傳發佈說明
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+
+      - name: 創建 GitHub Release（如果是標籤）
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: NexAlarm ${{ steps.version.outputs.version }}
+          body_path: release-notes.md
+          draft: true
+          prerelease: false
+
+      - name: 發佈完成通知
+        run: |
+          echo "## ✅ 發佈準備完成" >> $GITHUB_STEP_SUMMARY
+          echo "版本：\`${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 後續步驟" >> $GITHUB_STEP_SUMMARY
+          echo "1. 下載 Release APK（未簽名）" >> $GITHUB_STEP_SUMMARY
+          echo "2. 使用簽署金鑰簽名 APK" >> $GITHUB_STEP_SUMMARY
+          echo "3. 在 Google Play Console 上傳並發佈" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "詳見 FIREBASE_SETUP.md 中的簽署憑證配置部分" >> $GITHUB_STEP_SUMMARY

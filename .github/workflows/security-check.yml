@@ -1,0 +1,143 @@
+name: 安全與依賴檢查
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'app/build.gradle.kts'
+      - 'build.gradle.kts'
+      - 'gradle/wrapper/gradle-wrapper.properties'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'app/build.gradle.kts'
+      - 'build.gradle.kts'
+      - 'gradle/wrapper/gradle-wrapper.properties'
+  schedule:
+    # 每週一上午 9 點進行依賴檢查
+    - cron: '0 9 * * 1'
+
+jobs:
+  dependency-check:
+    name: 依賴安全檢查
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 程式碼
+        uses: actions/checkout@v4
+
+      - name: 設定 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: 授予 Gradle 執行權限
+        run: chmod +x gradlew
+
+      - name: 檢查過時依賴
+        run: ./gradlew dependencyUpdates --no-daemon || true
+
+      - name: 驗證 Gradle Wrapper 簽名
+        run: |
+          # 檢查 gradle-wrapper.jar 是否存在（會自動下載）
+          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            echo "⚠️ gradle-wrapper.jar 不存在，將在構建時自動下載"
+          else
+            echo "✅ gradle-wrapper.jar 已存在"
+            # 可選：驗證檔案完整性
+            file gradle/wrapper/gradle-wrapper.jar
+          fi
+
+  security-scan:
+    name: 代碼安全掃描
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 程式碼
+        uses: actions/checkout@v4
+
+      - name: 執行 GitGuardian 掃描
+        uses: GitGuardian/ggshield-action@master
+        env:
+          GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
+          GITHUB_PUSH_BASE_SHA: ${{ github.event.base }}
+          GITHUB_PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+        continue-on-error: true
+
+      - name: 檢查硬編碼機密
+        run: |
+          echo "檢查硬編碼的機密（API keys, passwords 等）..."
+
+          # 搜尋常見的機密模式
+          if grep -r "password\|api_key\|secret\|token" app/src/main/java --include="*.kt" | grep -v "// \|val \|var " | grep "="; then
+            echo "⚠️ 檢測到可能的硬編碼機密"
+            exit 1
+          else
+            echo "✅ 未檢測到硬編碼機密"
+          fi
+
+      - name: 檢查已知漏洞
+        run: |
+          echo "檢查已知的依賴漏洞..."
+          # 可選：集成 OWASP Dependency-Check
+          # ./gradlew dependencyCheckAnalyze --no-daemon
+          echo "提示：可在 build.gradle.kts 中添加 OWASP Dependency-Check 外掛進行詳細掃描"
+
+  lint-security:
+    name: 代碼風格與安全檢查
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 程式碼
+        uses: actions/checkout@v4
+
+      - name: 設定 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: 授予 Gradle 執行權限
+        run: chmod +x gradlew
+
+      - name: 執行 Lint（包含安全檢查）
+        run: ./gradlew lint --no-daemon
+
+      - name: 上傳 Lint 報告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-lint-report
+          path: app/build/reports/lint-results*.html
+
+  summary:
+    name: 安全檢查摘要
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [ dependency-check, security-scan, lint-security ]
+
+    steps:
+      - name: 生成檢查報告
+        run: |
+          echo "## 🔒 安全檢查完成" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.security-scan.result }}" = "failure" ]; then
+            echo "⚠️ **安全掃描結果：失敗**" >> $GITHUB_STEP_SUMMARY
+            echo "請檢查機密檢查和漏洞掃描的結果。" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **安全掃描結果：通過**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 檢查項目" >> $GITHUB_STEP_SUMMARY
+          echo "- 依賴安全性" >> $GITHUB_STEP_SUMMARY
+          echo "- Gradle Wrapper 驗證" >> $GITHUB_STEP_SUMMARY
+          echo "- 硬編碼機密檢測" >> $GITHUB_STEP_SUMMARY
+          echo "- 已知漏洞掃描" >> $GITHUB_STEP_SUMMARY
+          echo "- Lint 安全警告" >> $GITHUB_STEP_SUMMARY

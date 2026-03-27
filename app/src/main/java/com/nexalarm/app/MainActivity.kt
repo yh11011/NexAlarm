@@ -16,15 +16,13 @@ import androidx.activity.compose.setContent
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.data.repository.AlarmRepository
 import com.nexalarm.app.data.repository.FolderRepository
 import com.nexalarm.app.ui.theme.NexAlarmTheme
-import com.nexalarm.app.ui.theme.isDarkTheme
-import com.nexalarm.app.ui.theme.isAppEnglish
+import com.nexalarm.app.util.AppSettingsProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -36,9 +34,8 @@ class MainActivity : ComponentActivity() {
         checkFirstLaunchPermissions()
         handleDeepLink(intent)
 
-        val settings = SettingsManager(this)
-        isDarkTheme = settings.isDarkMode
-        isAppEnglish = settings.isEnglish
+        // AppSettingsProvider 已在 NexAlarmApp.onCreate() 初始化
+        // 無需再次載入設定，直接使用已同步的全域狀態
 
         setContent {
             NexAlarmTheme {

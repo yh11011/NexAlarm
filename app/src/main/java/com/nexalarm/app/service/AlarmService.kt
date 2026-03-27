@@ -14,11 +14,10 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.app.NotificationCompat
 import com.nexalarm.app.R
-import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.receiver.AlarmReceiver
 import com.nexalarm.app.ui.screens.AlarmRingingActivity
 import com.nexalarm.app.ui.theme.S
-import com.nexalarm.app.ui.theme.isAppEnglish
+import com.nexalarm.app.util.AppSettingsProvider
 import com.nexalarm.app.util.NotificationHelper
 
 /**
@@ -45,8 +44,8 @@ class AlarmService : Service() {
     override fun onCreate() {
         super.onCreate()
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        // 確保語言設定在背景服務中與使用者設定一致
-        isAppEnglish = SettingsManager(this).isEnglish
+        // 同步設定，確保背景服務中的狀態與 SharedPreferences 一致
+        AppSettingsProvider.syncFromSharedPreferences()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

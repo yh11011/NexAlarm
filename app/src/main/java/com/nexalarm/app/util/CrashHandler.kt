@@ -31,7 +31,7 @@ object CrashHandler {
 
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
-                saveCrashLog(context, thread, throwable)
+                recordException(context, thread, throwable)
             } catch (e: Exception) {
                 Log.e(TAG, "寫入 crash log 失敗", e)
             } finally {
@@ -41,6 +41,14 @@ object CrashHandler {
         }
 
         Log.d(TAG, "CrashHandler 已安裝")
+    }
+
+    /**
+     * 記錄異常到本地檔案
+     * 可從 CrashReportingManager 或直接調用
+     */
+    fun recordException(context: Context, thread: Thread, throwable: Throwable) {
+        saveCrashLog(context, thread, throwable)
     }
 
     private fun saveCrashLog(context: Context, thread: Thread, throwable: Throwable) {
