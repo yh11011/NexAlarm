@@ -566,6 +566,7 @@
     <a href="#features">功能特色</a>
     <a href="#compare">市場比較</a>
     <a href="#download">立即下載</a>
+    <a href="#" id="alarm-mgr-btn" style="color:var(--blue-2);font-weight:600;">🔔 管理鬧鐘</a>
   </div>
   <a class="nav-cta pulse-ring" href="#download" id="nav-dl">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 16L7 11M12 16L17 11M12 16V4"/><path d="M4 20h16"/></svg>
@@ -920,7 +921,7 @@
   <div class="qr-box">
     <button class="qr-close" id="qr-close" aria-label="關閉">✕</button>
     <h3>📱 掃描下載 NexAlarm</h3>
-    <p>用手機相機掃描以下 QR Code<br/>即可直接下載 NexAlarm APK</p>
+    <p>用手機相機掃描以下 QR Code<br/>即可前往 GitHub 下載 APK</p>
     <div id="qr-container" style="display:flex;justify-content:center;align-items:center;min-height:220px;"></div>
     <p class="qr-hint">需要 Android 8.0 (API 26) 以上</p>
   </div>
@@ -943,18 +944,20 @@
 
   // ── Platform detection ──
   const isAndroid = /android/i.test(navigator.userAgent);
-  const APK_URL = 'https://yh11011.github.io/NexAlarm/NexAlarm.apk';
+  const PLAY_URL = 'https://github.com/yh11011/NexAlarm/releases/latest';
 
   const hint = document.getElementById('platform-hint');
   if (isAndroid) {
-    hint.textContent = '✓ 偵測到 Android 裝置，點擊即可直接下載 APK 安裝檔';
+    hint.textContent = '✓ 偵測到 Android 裝置，點擊即可下載 APK 安裝檔';
   } else {
     hint.textContent = '非 Android 裝置？點擊「掃描 QR Code」用手機掃描下載';
   }
 
-  // All download buttons directly download the APK
+  // All download buttons point to Play Store
   document.querySelectorAll('#hero-dl, #nav-dl, #main-dl-btn').forEach(el => {
-    el.href = APK_URL;
+    el.href = PLAY_URL;
+    el.target = '_blank';
+    el.rel = 'noopener noreferrer';
   });
 
   // ── QR Code ──
@@ -965,7 +968,7 @@
       const container = document.getElementById('qr-container');
       container.innerHTML = '';
       new QRCode(container, {
-        text: APK_URL,
+        text: PLAY_URL,
         width: 220,
         height: 220,
         colorDark: '#000000',
@@ -1013,5 +1016,633 @@
 
   document.querySelectorAll('.fade-in-section').forEach(el => observer.observe(el));
 </script>
+
+<!-- ─── ALARM MANAGER OVERLAY ─── -->
+<style>
+  /* Overlay */
+  #alarm-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  #alarm-overlay.open { display: flex; }
+
+  .am-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%; max-width: 480px;
+    max-height: 90vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+
+  .am-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .am-header h2 { font-size: 18px; font-weight: 700; }
+  .am-close {
+    background: none; border: none; color: var(--text-2);
+    font-size: 20px; cursor: pointer; padding: 4px;
+    line-height: 1; border-radius: 6px;
+    transition: color .2s, background .2s;
+  }
+  .am-close:hover { color: var(--text); background: var(--card); }
+
+  .am-body { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* Auth tabs */
+  .am-tabs {
+    display: flex; gap: 4px;
+    background: var(--card); border-radius: 10px;
+    padding: 4px; margin-bottom: 20px;
+  }
+  .am-tab {
+    flex: 1; padding: 8px; border: none; border-radius: 7px;
+    background: transparent; color: var(--text-2);
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .am-tab.active { background: var(--surface); color: var(--text); }
+
+  /* Form */
+  .am-field { margin-bottom: 14px; }
+  .am-field label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 6px; font-weight: 500; }
+  .am-field input {
+    width: 100%; padding: 10px 14px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-size: 14px; outline: none;
+    transition: border-color .2s;
+  }
+  .am-field input:focus { border-color: var(--blue); }
+  .am-field input::placeholder { color: var(--text-3); }
+
+  .am-btn {
+    width: 100%; padding: 12px;
+    background: var(--blue); color: #fff; border: none;
+    border-radius: 10px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: opacity .2s, transform .15s;
+    margin-top: 4px;
+  }
+  .am-btn:hover { opacity: .88; }
+  .am-btn:active { transform: scale(.98); }
+  .am-btn:disabled { opacity: .45; cursor: default; }
+
+  .am-error {
+    color: var(--red); font-size: 13px; margin-top: 10px;
+    text-align: center; min-height: 20px;
+  }
+
+  /* User bar */
+  .am-userbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--card); border-radius: 10px;
+    margin-bottom: 20px; font-size: 13px;
+  }
+  .am-userbar span { color: var(--text-2); }
+  .am-userbar strong { color: var(--text); }
+  .am-logout {
+    background: none; border: 1px solid var(--border);
+    color: var(--text-2); padding: 4px 10px;
+    border-radius: 6px; font-size: 12px; cursor: pointer;
+    transition: color .2s, border-color .2s;
+  }
+  .am-logout:hover { color: var(--red); border-color: var(--red); }
+
+  /* Alarm list */
+  .am-list-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .am-list-header h3 { font-size: 15px; font-weight: 600; }
+  .am-add-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--blue); color: #fff; border: none;
+    padding: 7px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: opacity .2s;
+  }
+  .am-add-btn:hover { opacity: .85; }
+
+  .am-alarm-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: var(--card); border-radius: 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    transition: border-color .2s;
+  }
+  .am-alarm-item:hover { border-color: rgba(255,255,255,0.14); }
+
+  .am-alarm-time {
+    font-size: 22px; font-weight: 700;
+    letter-spacing: -0.5px; min-width: 72px;
+  }
+  .am-alarm-info { flex: 1; }
+  .am-alarm-title { font-size: 14px; font-weight: 600; }
+  .am-alarm-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+  /* Toggle switch */
+  .am-toggle {
+    position: relative; width: 42px; height: 24px;
+    flex-shrink: 0;
+  }
+  .am-toggle input { opacity: 0; width: 0; height: 0; }
+  .am-toggle-slider {
+    position: absolute; inset: 0; border-radius: 12px;
+    background: var(--border); cursor: pointer;
+    transition: background .25s;
+  }
+  .am-toggle-slider::before {
+    content: ''; position: absolute;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; top: 3px; left: 3px;
+    transition: transform .25s;
+  }
+  .am-toggle input:checked + .am-toggle-slider { background: var(--blue); }
+  .am-toggle input:checked + .am-toggle-slider::before { transform: translateX(18px); }
+
+  .am-del-btn {
+    background: none; border: none; color: var(--text-3);
+    font-size: 16px; cursor: pointer; padding: 4px;
+    border-radius: 6px; transition: color .2s, background .2s;
+    flex-shrink: 0;
+  }
+  .am-del-btn:hover { color: var(--red); background: rgba(244,67,54,0.1); }
+
+  .am-empty {
+    text-align: center; color: var(--text-2);
+    padding: 40px 0; font-size: 14px;
+  }
+  .am-empty div { font-size: 32px; margin-bottom: 8px; }
+
+  .am-sync-status {
+    text-align: center; font-size: 12px; color: var(--text-3);
+    margin-top: 16px;
+  }
+
+  /* Add alarm modal */
+  #alarm-add-modal {
+    display: none;
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(0,0,0,0.7);
+    align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  #alarm-add-modal.open { display: flex; }
+
+  .am-add-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%; max-width: 380px;
+    padding: 24px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+  .am-add-panel h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+
+  .am-days {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;
+  }
+  .am-day {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text-2); font-size: 12px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background .2s, color .2s, border-color .2s;
+    user-select: none;
+  }
+  .am-day.sel { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+  .am-row { display: flex; gap: 10px; }
+  .am-row .am-field { flex: 1; }
+
+  .am-add-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .am-cancel-btn {
+    flex: 1; padding: 11px;
+    background: var(--card); color: var(--text-2); border: 1px solid var(--border);
+    border-radius: 10px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: color .2s;
+  }
+  .am-cancel-btn:hover { color: var(--text); }
+  .am-save-btn {
+    flex: 2; padding: 11px;
+    background: var(--blue); color: #fff; border: none;
+    border-radius: 10px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: opacity .2s;
+  }
+  .am-save-btn:hover { opacity: .85; }
+</style>
+
+<!-- Alarm Manager Overlay -->
+<div id="alarm-overlay">
+  <div class="am-panel">
+    <div class="am-header">
+      <h2>🔔 鬧鐘管理</h2>
+      <button class="am-close" id="am-close">✕</button>
+    </div>
+    <div class="am-body">
+      <!-- Auth section -->
+      <div id="am-auth-section">
+        <div class="am-tabs">
+          <button class="am-tab active" id="am-tab-login" onclick="amSwitchTab('login')">登入</button>
+          <button class="am-tab" id="am-tab-register" onclick="amSwitchTab('register')">註冊</button>
+        </div>
+        <div id="am-login-form">
+          <div class="am-field">
+            <label>帳號或 Email</label>
+            <input type="text" id="am-username" placeholder="username 或 email" autocomplete="username" />
+          </div>
+          <div class="am-field">
+            <label>密碼</label>
+            <input type="password" id="am-password" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+          <button class="am-btn" id="am-login-btn" onclick="amLogin()">登入</button>
+        </div>
+        <div id="am-register-form" style="display:none;">
+          <div class="am-field">
+            <label>帳號</label>
+            <input type="text" id="am-reg-username" placeholder="設定帳號名稱" autocomplete="username" />
+          </div>
+          <div class="am-field">
+            <label>Email（選填）</label>
+            <input type="email" id="am-reg-email" placeholder="your@email.com" autocomplete="email" />
+          </div>
+          <div class="am-field">
+            <label>顯示名稱（選填）</label>
+            <input type="text" id="am-reg-display" placeholder="顯示在 App 的名稱" />
+          </div>
+          <div class="am-field">
+            <label>密碼</label>
+            <input type="password" id="am-reg-password" placeholder="至少 6 個字元" autocomplete="new-password" />
+          </div>
+          <button class="am-btn" id="am-register-btn" onclick="amRegister()">建立帳號</button>
+        </div>
+        <div class="am-error" id="am-auth-error"></div>
+      </div>
+
+      <!-- Alarm list section (hidden until logged in) -->
+      <div id="am-alarm-section" style="display:none;">
+        <div class="am-userbar">
+          <div><span>登入為 </span><strong id="am-display-name"></strong></div>
+          <button class="am-logout" onclick="amLogout()">登出</button>
+        </div>
+        <div class="am-list-header">
+          <h3>我的鬧鐘</h3>
+          <button class="am-add-btn" onclick="amOpenAdd()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            新增
+          </button>
+        </div>
+        <div id="am-alarm-list"></div>
+        <div class="am-sync-status" id="am-sync-status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Alarm Modal -->
+<div id="alarm-add-modal">
+  <div class="am-add-panel">
+    <h3>新增鬧鐘</h3>
+    <div class="am-field">
+      <label>標題</label>
+      <input type="text" id="am-new-title" placeholder="鬧鐘名稱（選填）" />
+    </div>
+    <div class="am-row">
+      <div class="am-field">
+        <label>時</label>
+        <input type="number" id="am-new-hour" min="0" max="23" value="7" />
+      </div>
+      <div class="am-field">
+        <label>分</label>
+        <input type="number" id="am-new-minute" min="0" max="59" value="0" />
+      </div>
+    </div>
+    <div class="am-field">
+      <label>重複日（選填）</label>
+      <div class="am-days" id="am-new-days">
+        <div class="am-day" data-day="1">一</div>
+        <div class="am-day" data-day="2">二</div>
+        <div class="am-day" data-day="3">三</div>
+        <div class="am-day" data-day="4">四</div>
+        <div class="am-day" data-day="5">五</div>
+        <div class="am-day" data-day="6">六</div>
+        <div class="am-day" data-day="7">日</div>
+      </div>
+    </div>
+    <div class="am-add-actions">
+      <button class="am-cancel-btn" onclick="amCloseAdd()">取消</button>
+      <button class="am-save-btn" id="am-save-btn" onclick="amSaveAlarm()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const BASE = 'https://alarm.nex11.me/auth';
+  const DAY_NAMES = ['', '一', '二', '三', '四', '五', '六', '日'];
+
+  let amToken = localStorage.getItem('am_token') || null;
+  let amUser  = JSON.parse(localStorage.getItem('am_user') || 'null');
+  let amAlarms = [];
+
+  // ── Open / Close overlay ──
+  document.getElementById('alarm-mgr-btn').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('alarm-overlay').classList.add('open');
+    if (amToken) { amShowAlarms(); amFetchAlarms(); }
+  });
+  document.getElementById('am-close').addEventListener('click', function() {
+    document.getElementById('alarm-overlay').classList.remove('open');
+  });
+  document.getElementById('alarm-overlay').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+
+  // Restore session on load
+  if (amToken && amUser) {
+    // Session present — alarm list shown when overlay opens
+  }
+
+  // ── Tab switch ──
+  window.amSwitchTab = function(tab) {
+    document.getElementById('am-login-form').style.display   = tab === 'login'    ? '' : 'none';
+    document.getElementById('am-register-form').style.display = tab === 'register' ? '' : 'none';
+    document.getElementById('am-tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('am-tab-register').classList.toggle('active', tab === 'register');
+    document.getElementById('am-auth-error').textContent = '';
+  };
+
+  // ── Login ──
+  window.amLogin = async function() {
+    const btn = document.getElementById('am-login-btn');
+    const err = document.getElementById('am-auth-error');
+    const username = document.getElementById('am-username').value.trim();
+    const password = document.getElementById('am-password').value;
+    if (!username || !password) { err.textContent = '請填寫帳號和密碼'; return; }
+    btn.disabled = true; btn.textContent = '登入中…'; err.textContent = '';
+    try {
+      const res = await fetch(BASE + '/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username_or_email: username, password})
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '登入失敗');
+      amSetSession(data.access_token, data.user);
+      amShowAlarms();
+      amFetchAlarms();
+    } catch(e) {
+      err.textContent = e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = '登入';
+    }
+  };
+
+  // ── Register ──
+  window.amRegister = async function() {
+    const btn = document.getElementById('am-register-btn');
+    const err = document.getElementById('am-auth-error');
+    const username = document.getElementById('am-reg-username').value.trim();
+    const email    = document.getElementById('am-reg-email').value.trim();
+    const display  = document.getElementById('am-reg-display').value.trim();
+    const password = document.getElementById('am-reg-password').value;
+    if (!username || !password) { err.textContent = '請填寫帳號和密碼'; return; }
+    if (password.length < 6)    { err.textContent = '密碼至少需要 6 個字元'; return; }
+    btn.disabled = true; btn.textContent = '建立中…'; err.textContent = '';
+    const body = {username_or_email: email || username, password};
+    if (display) body.display_name = display;
+    if (email)   body.username_or_email = email; // use email as primary key if provided; username added separately
+    // Use username field directly
+    const payload = {username_or_email: username, password};
+    if (display) payload.display_name = display;
+    try {
+      const res = await fetch(BASE + '/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '註冊失敗');
+      amSetSession(data.access_token, data.user);
+      amShowAlarms();
+    } catch(e) {
+      err.textContent = e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = '建立帳號';
+    }
+  };
+
+  function amSetSession(token, user) {
+    amToken = token; amUser = user;
+    localStorage.setItem('am_token', token);
+    localStorage.setItem('am_user', JSON.stringify(user));
+  }
+
+  function amShowAlarms() {
+    document.getElementById('am-auth-section').style.display = 'none';
+    document.getElementById('am-alarm-section').style.display = '';
+    const name = amUser.display_name || amUser.username || '使用者';
+    document.getElementById('am-display-name').textContent = name;
+  }
+
+  window.amLogout = function() {
+    amToken = null; amUser = null; amAlarms = [];
+    localStorage.removeItem('am_token');
+    localStorage.removeItem('am_user');
+    document.getElementById('am-auth-section').style.display = '';
+    document.getElementById('am-alarm-section').style.display = 'none';
+    document.getElementById('am-alarm-list').innerHTML = '';
+    document.getElementById('am-username').value = '';
+    document.getElementById('am-password').value = '';
+  };
+
+  // ── Fetch alarms ──
+  async function amFetchAlarms() {
+    amSetSyncStatus('同步中…');
+    try {
+      const res = await fetch(BASE + '/alarms', {
+        headers: {'Authorization': 'Bearer ' + amToken}
+      });
+      if (res.status === 401) { amLogout(); return; }
+      const data = await res.json();
+      amAlarms = (data.alarms || []).filter(a => !a.is_deleted);
+      amRenderList();
+      amSetSyncStatus('已同步 · ' + new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'}));
+    } catch(e) {
+      amSetSyncStatus('同步失敗：' + e.message);
+    }
+  }
+
+  function amSetSyncStatus(msg) {
+    document.getElementById('am-sync-status').textContent = msg;
+  }
+
+  function amRenderList() {
+    const el = document.getElementById('am-alarm-list');
+    if (!amAlarms.length) {
+      el.innerHTML = '<div class="am-empty"><div>⏰</div>還沒有鬧鐘，點擊「新增」建立第一個</div>';
+      return;
+    }
+    // Sort by hour, minute
+    const sorted = [...amAlarms].sort((a, b) => {
+      const d = a.data || {};
+      const e = b.data || {};
+      return (d.hour * 60 + d.minute) - (e.hour * 60 + e.minute);
+    });
+    el.innerHTML = sorted.map(alarm => {
+      const d = alarm.data || {};
+      const h = String(d.hour || 0).padStart(2,'0');
+      const m = String(d.minute || 0).padStart(2,'0');
+      const title = d.title || '鬧鐘';
+      const enabled = d.isEnabled !== false;
+      const isRecurring = d.isRecurring && d.repeatDays && d.repeatDays.length;
+      const sub = isRecurring
+        ? '重複：' + d.repeatDays.map(n => DAY_NAMES[n]).join('、')
+        : '單次';
+      return `<div class="am-alarm-item">
+        <div class="am-alarm-time" style="color:${enabled ? 'var(--text)' : 'var(--text-3)'}">${h}:${m}</div>
+        <div class="am-alarm-info">
+          <div class="am-alarm-title" style="color:${enabled ? 'var(--text)' : 'var(--text-3)'}">${escHtml(title)}</div>
+          <div class="am-alarm-sub">${sub}</div>
+        </div>
+        <label class="am-toggle">
+          <input type="checkbox" ${enabled ? 'checked' : ''} onchange="amToggle('${alarm.client_id}',this.checked)" />
+          <span class="am-toggle-slider"></span>
+        </label>
+        <button class="am-del-btn" onclick="amDelete('${alarm.client_id}')" title="刪除">🗑</button>
+      </div>`;
+    }).join('');
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Toggle alarm ──
+  window.amToggle = async function(clientId, enabled) {
+    const alarm = amAlarms.find(a => a.client_id === clientId);
+    if (!alarm) return;
+    const newData = Object.assign({}, alarm.data, {isEnabled: enabled});
+    const now = Date.now();
+    amAlarms = amAlarms.map(a => a.client_id === clientId
+      ? Object.assign({}, a, {data: newData, updated_at: now}) : a);
+    amRenderList();
+    await amSyncAll([{client_id: clientId, data: newData, updated_at: now, is_deleted: false}]);
+  };
+
+  // ── Delete alarm ──
+  window.amDelete = async function(clientId) {
+    if (!confirm('確定刪除這個鬧鐘？')) return;
+    const now = Date.now();
+    amAlarms = amAlarms.filter(a => a.client_id !== clientId);
+    amRenderList();
+    await amSyncAll([{client_id: clientId, data: {}, updated_at: now, is_deleted: true}]);
+  };
+
+  // ── Open/close add modal ──
+  window.amOpenAdd = function() {
+    document.getElementById('am-new-title').value = '';
+    document.getElementById('am-new-hour').value = '7';
+    document.getElementById('am-new-minute').value = '0';
+    document.querySelectorAll('#am-new-days .am-day').forEach(d => d.classList.remove('sel'));
+    document.getElementById('alarm-add-modal').classList.add('open');
+  };
+  window.amCloseAdd = function() {
+    document.getElementById('alarm-add-modal').classList.remove('open');
+  };
+  document.getElementById('alarm-add-modal').addEventListener('click', function(e) {
+    if (e.target === this) amCloseAdd();
+  });
+
+  // Day select toggle
+  document.querySelectorAll('#am-new-days .am-day').forEach(d => {
+    d.addEventListener('click', () => d.classList.toggle('sel'));
+  });
+
+  // ── Save new alarm ──
+  window.amSaveAlarm = async function() {
+    const btn = document.getElementById('am-save-btn');
+    const title  = document.getElementById('am-new-title').value.trim() || '鬧鐘';
+    const hour   = parseInt(document.getElementById('am-new-hour').value) || 0;
+    const minute = parseInt(document.getElementById('am-new-minute').value) || 0;
+    const selDays = [...document.querySelectorAll('#am-new-days .am-day.sel')]
+                      .map(d => parseInt(d.dataset.day));
+    const isRecurring = selDays.length > 0;
+    const now = Date.now();
+    const clientId = crypto.randomUUID ? crypto.randomUUID() : (now + '-' + Math.random().toString(36).slice(2));
+
+    const newAlarmData = {
+      title, hour, minute,
+      isEnabled: true,
+      isRecurring,
+      repeatDays: selDays,
+      vibrateOnly: false,
+      volume: 80,
+      snoozeDelay: 10,
+      maxSnoozeCount: 3,
+      keepAfterRinging: false,
+      snoozeEnabled: true,
+      createdAt: now
+    };
+
+    btn.disabled = true;
+    amAlarms.push({client_id: clientId, data: newAlarmData, updated_at: now, is_deleted: false});
+    amRenderList();
+    amCloseAdd();
+
+    await amSyncAll([{client_id: clientId, data: newAlarmData, updated_at: now, is_deleted: false}]);
+    btn.disabled = false;
+  };
+
+  // ── Sync with server ──
+  async function amSyncAll(changedItems) {
+    amSetSyncStatus('同步中…');
+    try {
+      // Build full alarm list including changes
+      const allLocal = amAlarms.map(a => ({
+        client_id: a.client_id,
+        data: a.data,
+        updated_at: a.updated_at,
+        is_deleted: false
+      }));
+      // Merge in changedItems
+      const mergedMap = {};
+      allLocal.forEach(a => mergedMap[a.client_id] = a);
+      (changedItems || []).forEach(a => mergedMap[a.client_id] = a);
+      const alarms = Object.values(mergedMap);
+
+      const res = await fetch(BASE + '/alarms/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + amToken
+        },
+        body: JSON.stringify({alarms})
+      });
+      if (res.status === 401) { amLogout(); return; }
+      const data = await res.json();
+      // Apply server response (last-write-wins already applied server-side)
+      const serverAlarms = (data.alarms || []).filter(a => !a.is_deleted);
+      amAlarms = serverAlarms;
+      amRenderList();
+      amSetSyncStatus('已同步 · ' + new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'}));
+    } catch(e) {
+      amSetSyncStatus('同步失敗：' + e.message);
+    }
+  }
+})();
+</script>
+
 </body>
 </html>
