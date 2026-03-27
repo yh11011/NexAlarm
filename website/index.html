@@ -892,7 +892,7 @@
   <div class="dl-group" style="position:relative;">
     <a class="btn-primary" id="main-dl-btn" href="#" style="font-size:17px;padding:18px 36px;">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.341L13.854 9H14V7h-4v2h.146L6.477 15.341A2 2 0 008.337 18h7.326a2 2 0 001.86-2.659zM12 15a1 1 0 110-2 1 1 0 010 2zm0-4a1 1 0 110-2 1 1 0 010 2z"/><path d="M8.5 2.5l1 1.732M15.5 2.5l-1 1.732"/></svg>
-      從 GitHub 下載 APK
+      下載 APK
     </a>
     <button class="btn-secondary" id="qr-btn" style="font-size:15px;">
       📱 掃描 QR Code 下載
@@ -943,7 +943,8 @@
 
   // ── Platform detection ──
   const isAndroid = /android/i.test(navigator.userAgent);
-  const PLAY_URL = 'https://github.com/yh11011/NexAlarm/releases/latest';
+  const APK_URL = 'NexAlarm.apk';
+  const APK_ABS_URL = 'http://nex11.me/NexAlarm/NexAlarm.apk';
 
   const hint = document.getElementById('platform-hint');
   if (isAndroid) {
@@ -952,11 +953,12 @@
     hint.textContent = '非 Android 裝置？點擊「掃描 QR Code」用手機掃描下載';
   }
 
-  // All download buttons point to Play Store
+  // All download buttons directly download the APK
   document.querySelectorAll('#hero-dl, #nav-dl, #main-dl-btn').forEach(el => {
-    el.href = PLAY_URL;
-    el.target = '_blank';
-    el.rel = 'noopener noreferrer';
+    el.href = APK_URL;
+    el.download = 'NexAlarm.apk';
+    el.removeAttribute('target');
+    el.removeAttribute('rel');
   });
 
   // ── QR Code ──
@@ -967,7 +969,7 @@
       const container = document.getElementById('qr-container');
       container.innerHTML = '';
       new QRCode(container, {
-        text: PLAY_URL,
+        text: APK_ABS_URL,
         width: 220,
         height: 220,
         colorDark: '#000000',
