@@ -19,8 +19,8 @@ android {
         // Version management: Update both versionCode and versionName together
         // versionCode must be incremented for each release (integer, monotonic increase)
         // versionName should follow Semantic Versioning: MAJOR.MINOR.PATCH[-SUFFIX]
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

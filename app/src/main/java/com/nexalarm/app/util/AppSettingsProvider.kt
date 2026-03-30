@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.ui.theme.AppTheme
+import com.nexalarm.app.ui.theme.colors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

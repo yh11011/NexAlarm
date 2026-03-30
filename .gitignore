@@ -77,3 +77,8 @@ lint/generated/
 lint/outputs/
 lint/tmp/
 
+# Node.js
+node_modules/
+**/node_modules/
+mcp-nexalarm/node_modules/
+

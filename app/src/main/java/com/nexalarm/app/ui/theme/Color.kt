@@ -1,6 +1,7 @@
 package com.nexalarm.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.nexalarm.app.util.AppSettingsProvider
 
 // ── 非主題固定色 ─────────────────────────────────────────────
 val LapFast = Color(0xFF34A853)
