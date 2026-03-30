@@ -3,6 +3,7 @@ package com.nexalarm.app.util
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import com.nexalarm.app.data.SettingsManager
+import com.nexalarm.app.ui.theme.AppTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +31,7 @@ object AppSettingsProvider {
     // Compose 層使用（自動感應 UI 更新）
     val isDarkThemeMutableState = mutableStateOf(true)
     val isAppEnglishMutableState = mutableStateOf(false)
+    val currentThemeMutableState = mutableStateOf(AppTheme.MINIMALIST)
 
     /**
      * 初始化設定提供者
@@ -40,6 +42,7 @@ object AppSettingsProvider {
         // 從 SharedPreferences 載入初始值
         isDarkThemeMutableState.value = settingsManager.isDarkMode
         isAppEnglishMutableState.value = settingsManager.isEnglish
+        currentThemeMutableState.value = AppTheme.fromId(settingsManager.themeId)
     }
 
     /**
@@ -92,10 +95,22 @@ object AppSettingsProvider {
      * 同步所有設定（當需要確保與 SharedPreferences 一致時）
      * 用於 AlarmService 或其他背景服務確保狀態同步
      */
+    /** 設定主題，同時更新 Compose State 和 SharedPreferences */
+    fun setTheme(theme: AppTheme) {
+        if (::settingsManager.isInitialized) {
+            settingsManager.themeId = theme.id
+            // 同步深色模式標誌（給非主題感知的系統元件使用）
+            settingsManager.isDarkMode = theme.colors().isDark
+        }
+        currentThemeMutableState.value = theme
+        isDarkThemeMutableState.value = theme.colors().isDark
+    }
+
     fun syncFromSharedPreferences() {
         if (::settingsManager.isInitialized) {
             isDarkThemeMutableState.value = settingsManager.isDarkMode
             isAppEnglishMutableState.value = settingsManager.isEnglish
+            currentThemeMutableState.value = AppTheme.fromId(settingsManager.themeId)
         }
     }
 }

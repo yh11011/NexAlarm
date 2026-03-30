@@ -2,6 +2,7 @@ package com.nexalarm.app.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,18 +18,22 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
+import androidx.annotation.DrawableRes
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nexalarm.app.R
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.ui.theme.*
+import com.nexalarm.app.util.AppSettingsProvider
 import java.util.TimeZone
 
 @Composable
@@ -82,16 +87,8 @@ fun SettingsScreen() {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Theme setting
-        SettingCard(
-            title = S.theme,
-            options = listOf(S.darkMode, S.lightMode),
-            selectedIndex = if (isDarkTheme) 0 else 1,
-            onSelect = { index ->
-                isDarkTheme = index == 0
-                settingsManager.isDarkMode = index == 0
-            }
-        )
+        // Theme style picker
+        ThemeStyleCard(settingsManager = settingsManager)
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -293,24 +290,133 @@ private fun formatTimezoneDisplay(tzId: String): String {
     return "${formatUtcOffset(tzId)} $tzId"
 }
 
+// ── Theme Style Picker ───────────────────────────────────────
+
+@Composable
+private fun ThemeStyleCard(settingsManager: SettingsManager) {
+    val currentTheme by AppSettingsProvider.currentThemeMutableState
+    val allThemes = AppTheme.entries
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .background(DarkSurface, RoundedCornerShape(16.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(S.themeStyle, fontSize = 14.sp, color = TextSecondary)
+            Text(
+                text = if (isAppEnglish) currentTheme.displayNameEn else currentTheme.displayNameZh,
+                fontSize = 13.sp,
+                color = PrimaryBlue,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            modifier = Modifier.heightIn(max = 480.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(allThemes) { theme ->
+                val isSelected = theme == currentTheme
+                val colors = theme.colors()
+                val swatches = theme.swatchColors()
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isSelected) PrimaryBlue.copy(alpha = 0.12f) else DarkCard
+                        )
+                        .border(
+                            width = if (isSelected) 1.5.dp else 0.dp,
+                            color = if (isSelected) PrimaryBlue else Color.Transparent,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable {
+                            AppSettingsProvider.setTheme(theme)
+                        }
+                        .padding(vertical = 10.dp, horizontal = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // 縮圖：四色色塊
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp, 32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(colors.background)
+                    ) {
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(colors.background))
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(colors.card))
+                        }
+                        // 主色條
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(5.dp)
+                                .background(colors.primary)
+                        )
+                        // 選取勾
+                        if (isSelected) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(3.dp)
+                                    .size(12.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(PrimaryBlue),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("✓", fontSize = 7.sp, color = Color.White)
+                            }
+                        }
+                    }
+                    Text(
+                        text = if (isAppEnglish) theme.displayNameEn else theme.displayNameZh,
+                        fontSize = 10.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (isSelected) PrimaryBlue else TextSecondary,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        lineHeight = 13.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
 // ── AI Integration ──────────────────────────────────────────
 
-private data class AiModel(val id: String, val name: String, val emoji: String)
+private data class AiModel(
+    val id: String,
+    val name: String,
+    @DrawableRes val logoRes: Int,
+)
 
 private val AI_MODELS = listOf(
-    AiModel("claude",    "Claude",        "🤖"),
-    AiModel("chatgpt",   "ChatGPT",       "💬"),
-    AiModel("gemini",    "Gemini",        "✨"),
-    AiModel("copilot",   "Copilot",       "🪟"),
-    AiModel("grok",      "Grok",          "𝕏"),
-    AiModel("cursor",    "Cursor",        "⌨️"),
-    AiModel("perplexity","Perplexity",    "🔍"),
-    AiModel("deepseek",  "DeepSeek",      "🐋"),
-    AiModel("kimi",      "Kimi",          "🌙"),
-    AiModel("doubao",    "豆包",           "🫘"),
-    AiModel("qwen",      "通義千問",       "🔮"),
-    AiModel("wenxin",    "文心一言",       "🖊️"),
-    AiModel("chatglm",   "智譜清言",       "🧠"),
+    AiModel("claude",     "Claude",     R.drawable.ai_claude),
+    AiModel("chatgpt",    "ChatGPT",    R.drawable.ai_chatgpt),
+    AiModel("gemini",     "Gemini",     R.drawable.ai_gemini),
+    AiModel("copilot",    "Copilot",    R.drawable.ai_copilot),
+    AiModel("grok",       "Grok",       R.drawable.ai_grok),
+    AiModel("cursor",     "Cursor",     R.drawable.ai_cursor),
+    AiModel("perplexity", "Perplexity", R.drawable.ai_perplexity),
+    AiModel("deepseek",   "DeepSeek",   R.drawable.ai_deepseek),
+    AiModel("kimi",       "Kimi",       R.drawable.ai_kimi),
+    AiModel("doubao",     "豆包",        R.drawable.ai_doubao),
+    AiModel("qwen",       "通義千問",    R.drawable.ai_qwen),
+    AiModel("wenxin",     "文心一言",    R.drawable.ai_wenxin),
+    AiModel("chatglm",    "智譜清言",    R.drawable.ai_chatglm),
 )
 
 @Composable
@@ -381,7 +487,11 @@ private fun AiModelPickerDialog(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Text(model.emoji, fontSize = 24.sp)
+                            Image(
+                                painter = painterResource(model.logoRes),
+                                contentDescription = model.name,
+                                modifier = Modifier.size(36.dp)
+                            )
                             Text(
                                 text = model.name,
                                 fontSize = 11.sp,

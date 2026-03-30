@@ -12,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,6 +32,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AccountScreen(
     folderUsed: Int,
+    alarmUsed: Int,
     billingManager: BillingManager,
     onPremiumStatusChanged: (Boolean) -> Unit,
     // 登入狀態
@@ -245,18 +248,40 @@ fun AccountScreen(
                         }
                     }
                     if (!isPremium) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "${folderUsed} / ${FeatureFlags.FREE_FOLDER_LIMIT} 個資料夾",
-                            fontSize = 13.sp,
-                            color = TextSecondary
+                        Spacer(modifier = Modifier.height(10.dp))
+                        // 鬧鐘使用進度
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(S.alarmUsage(alarmUsed, FeatureFlags.FREE_ALARM_LIMIT), fontSize = 12.sp, color = TextSecondary)
+                            if (alarmUsed >= FeatureFlags.FREE_ALARM_LIMIT)
+                                Text(if (isAppEnglish) "Full" else "已滿", fontSize = 12.sp, color = DangerRed)
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        LinearProgressIndicator(
+                            progress = { (alarmUsed.toFloat() / FeatureFlags.FREE_ALARM_LIMIT).coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth().height(4.dp),
+                            color = if (alarmUsed >= FeatureFlags.FREE_ALARM_LIMIT) DangerRed else PrimaryBlue,
+                            trackColor = DarkCard
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
+                        // 資料夾使用進度
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = if (isAppEnglish) "$folderUsed / ${FeatureFlags.FREE_FOLDER_LIMIT} folders"
+                                       else "$folderUsed / ${FeatureFlags.FREE_FOLDER_LIMIT} 個資料夾",
+                                fontSize = 12.sp, color = TextSecondary)
+                            if (folderUsed >= FeatureFlags.FREE_FOLDER_LIMIT)
+                                Text(if (isAppEnglish) "Full" else "已滿", fontSize = 12.sp, color = DangerRed)
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
                         LinearProgressIndicator(
                             progress = { (folderUsed.toFloat() / FeatureFlags.FREE_FOLDER_LIMIT).coerceIn(0f, 1f) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp),
+                            modifier = Modifier.fillMaxWidth().height(4.dp),
                             color = if (folderUsed >= FeatureFlags.FREE_FOLDER_LIMIT) DangerRed else PrimaryBlue,
                             trackColor = DarkCard
                         )
@@ -278,9 +303,18 @@ fun AccountScreen(
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary
                     )
-                    FeatureRow(text = S.unlimitedFolders, enabled = isPremium)
-                    FeatureRow(text = if (isAppEnglish) "Priority support" else "優先客服支援", enabled = isPremium)
-                    FeatureRow(text = if (isAppEnglish) "Cloud backup" else "雲端備份", enabled = isPremium)
+                    FeatureRow(
+                        text = S.unlimitedAlarms,
+                        enabled = isPremium,
+                        freeLimit = if (!isPremium) FeatureFlags.FREE_ALARM_LIMIT else null
+                    )
+                    FeatureRow(
+                        text = S.unlimitedFolders,
+                        enabled = isPremium,
+                        freeLimit = if (!isPremium) FeatureFlags.FREE_FOLDER_LIMIT else null
+                    )
+                    FeatureRow(text = S.cloudBackupRestore, enabled = isPremium)
+                    FeatureRow(text = S.prioritySupport, enabled = isPremium)
                 }
             }
 
@@ -348,6 +382,7 @@ private fun ChangePasswordDialog(
     var isLoading by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var success by remember { mutableStateOf(false) }
+    var showPassword by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
@@ -370,12 +405,28 @@ private fun ChangePasswordDialog(
                     unfocusedTextColor = TextPrimary,
                     cursorColor = PrimaryBlue
                 )
+                val eyeIcon = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility
+                val eyeDesc = if (showPassword) {
+                    if (isAppEnglish) "Hide password" else "隱藏密碼"
+                } else {
+                    if (isAppEnglish) "Show password" else "顯示密碼"
+                }
+                val pwTransform = if (showPassword)
+                    androidx.compose.ui.text.input.VisualTransformation.None
+                else
+                    PasswordVisualTransformation()
+
                 OutlinedTextField(
                     value = currentPw,
                     onValueChange = { currentPw = it; errorMsg = null },
                     label = { Text(S.currentPassword) },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = pwTransform,
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(eyeIcon, contentDescription = eyeDesc, tint = TextSecondary)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = fieldColors,
                     enabled = !isLoading && !success
@@ -385,7 +436,12 @@ private fun ChangePasswordDialog(
                     onValueChange = { newPw = it; errorMsg = null },
                     label = { Text(S.newPassword) },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = pwTransform,
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(eyeIcon, contentDescription = eyeDesc, tint = TextSecondary)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = fieldColors,
                     enabled = !isLoading && !success
@@ -395,7 +451,12 @@ private fun ChangePasswordDialog(
                     onValueChange = { confirmPw = it; errorMsg = null },
                     label = { Text(S.confirmNewPassword) },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = pwTransform,
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            Icon(eyeIcon, contentDescription = eyeDesc, tint = TextSecondary)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = fieldColors,
                     enabled = !isLoading && !success
@@ -613,7 +674,7 @@ private fun UpgradeDialog(
 }
 
 @Composable
-private fun FeatureRow(text: String, enabled: Boolean) {
+private fun FeatureRow(text: String, enabled: Boolean, freeLimit: Int? = null) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -624,10 +685,23 @@ private fun FeatureRow(text: String, enabled: Boolean) {
             tint = if (enabled) PrimaryBlue else TextTertiary,
             modifier = Modifier.size(18.dp)
         )
-        Text(
-            text = text,
-            fontSize = 14.sp,
-            color = if (enabled) TextPrimary else TextTertiary
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = text,
+                fontSize = 14.sp,
+                color = if (enabled) TextPrimary else TextTertiary
+            )
+            if (!enabled && freeLimit != null) {
+                Text(
+                    text = if (isAppEnglish) "Free: $freeLimit" else "免費: $freeLimit 個",
+                    fontSize = 11.sp,
+                    color = TextTertiary
+                )
+            }
+        }
     }
 }

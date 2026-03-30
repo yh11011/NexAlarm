@@ -119,7 +119,16 @@ object S {
     val upgradeToPremium: String get() = if (isAppEnglish) "Upgrade to Premium" else "升級付費版"
     val deactivatePremium: String get() = if (isAppEnglish) "Deactivate Premium" else "停用付費版"
     val unlimitedFolders: String get() = if (isAppEnglish) "Unlimited folders" else "無限資料夾"
+    val unlimitedAlarms: String get() = if (isAppEnglish) "Unlimited alarms" else "無限鬧鐘"
+    val cloudBackupRestore: String get() = if (isAppEnglish) "Cloud backup & restore" else "雲端備份與還原"
+    val prioritySupport: String get() = if (isAppEnglish) "Priority support" else "優先客服支援"
     val premiumFeatures: String get() = if (isAppEnglish) "Premium features" else "付費版功能"
+    val alarmLimitReached: String get() = if (isAppEnglish)
+        "Alarm limit reached (${com.nexalarm.app.util.FeatureFlags.FREE_ALARM_LIMIT}). Upgrade to Premium for unlimited alarms."
+    else
+        "鬧鐘已達上限（${com.nexalarm.app.util.FeatureFlags.FREE_ALARM_LIMIT} 個），升級付費版可建立無限鬧鐘"
+    fun alarmUsage(used: Int, limit: Int): String =
+        if (isAppEnglish) "$used / $limit alarms" else "$used / $limit 個鬧鐘"
 
     // Other
     val welcomeNexAlarm: String get() = if (isAppEnglish) "Welcome to NexAlarm" else "歡迎使用 NexAlarm"
@@ -159,6 +168,11 @@ object S {
     val promoCodeEmpty: String get() = if (isAppEnglish) "Please enter a promo code." else "請輸入優惠碼。"
     val validating: String get() = if (isAppEnglish) "Validating..." else "驗證中..."
     val promoNetworkError: String get() = if (isAppEnglish) "Network error. Please try again." else "網路錯誤，請稍後再試。"
+
+    // 主題
+    val themeStyle: String get() = if (isAppEnglish) "Theme Style" else "主題風格"
+    val themeStyleDesc: String get() = if (isAppEnglish) "Choose your visual style" else "選擇你的視覺風格"
+    val themePreview: String get() = if (isAppEnglish) "Preview" else "預覽"
 
     // AI 整合
     val aiIntegration: String get() = if (isAppEnglish) "AI Integration" else "AI 整合"

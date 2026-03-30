@@ -57,4 +57,7 @@ interface AlarmDao {
 
     @Query("SELECT COUNT(*) FROM alarms WHERE folderId = :folderId")
     suspend fun getAlarmCountByFolder(folderId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM alarms")
+    suspend fun getTotalAlarmCount(): Int
 }

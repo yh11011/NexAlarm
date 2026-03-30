@@ -8,7 +8,10 @@ import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.util.AlarmScheduler
+import com.nexalarm.app.util.FeatureFlags
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -64,6 +67,10 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** 新增鬧鐘超過免費版上限時觸發（UI 可收集並顯示升級提示） */
+    private val _alarmLimitError = MutableSharedFlow<Unit>()
+    val alarmLimitError: SharedFlow<Unit> = _alarmLimitError
+
     // 所有鬧鐘
     private val _allAlarms = MutableStateFlow<List<AlarmEntity>>(emptyList())
     val allAlarms: StateFlow<List<AlarmEntity>> = _allAlarms
@@ -111,6 +118,12 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         val alarmWithTime = alarm.copy(updatedAt = now)
         viewModelScope.launch {
             if (alarmWithTime.id == 0L) {
+                // 新增鬧鐘：先檢查免費版上限
+                val currentCount = alarmDao.getTotalAlarmCount()
+                if (!FeatureFlags.canCreateAlarm(currentCount)) {
+                    _alarmLimitError.emit(Unit)
+                    return@launch
+                }
                 val newId = alarmDao.insert(alarmWithTime)
                 scheduler.schedule(alarmWithTime.copy(id = newId))
             } else {

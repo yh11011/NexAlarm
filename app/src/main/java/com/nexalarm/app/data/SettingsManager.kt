@@ -29,6 +29,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("dark_mode", true)
         set(value) = prefs.edit().putBoolean("dark_mode", value).apply()
 
+    var themeId: String
+        get() = prefs.getString("theme_id", "minimalist") ?: "minimalist"
+        set(value) = prefs.edit().putString("theme_id", value).apply()
+
     var isEnglish: Boolean
         get() = prefs.getBoolean("is_english", false)
         set(value) = prefs.edit().putBoolean("is_english", value).apply()

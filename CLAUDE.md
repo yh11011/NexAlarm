@@ -214,6 +214,23 @@ var isDarkTheme: Boolean
 
 Firebase Crashlytics 需要 `app/google-services.json`（從 Firebase Console 下載）。缺少此檔案時 Release build 會失敗。詳見 `FIREBASE_SETUP.md`。
 
+### 後端 API
+
+- `AuthRepository`：`BASE_URL = "https://alarm.nex11.me/auth"`（登入/註冊端點）
+- `AlarmSyncRepository`：`SYNC_URL = "https://alarm.nex11.me/auth/alarms/sync"`（雙向同步端點）
+- `network_security_config.xml` 設定 `cleartextTrafficPermitted="false"`，**僅允許 HTTPS**。若需對接本地 backend，需暫時修改此設定。
+
+### 其他開發注意
+
+- **LeakCanary**：Debug build 自動啟用記憶體洩漏偵測（`debugImplementation`），不需額外設定
+- **`BuildConfig.IS_PRODUCTION`**：Debug build = `false`，Release build = `true`，可用於環境切換邏輯
+- **Java 17**：`jvmTarget = "17"`，需確保 JDK 17+
+- **Room schema 匯出**：每次遷移後 KSP 自動更新 `app/schemas/com.nexalarm.app.data.database.NexAlarmDatabase/<version>.json`，可用於追蹤 schema 歷史
+
+### 鬧鐘可靠性測試
+
+`TESTING.md` 包含 14 個自動化測試場景（Doze、省電模式、DND、process kill 等），詳細說明執行方式與三層驗證標準（Level 0/1/2）。
+
 ## CI/CD
 
 `.github/workflows/` 含三個 workflow：

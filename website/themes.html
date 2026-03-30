@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexAlarm — 主題風格選擇器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600;700&family=Space+Mono:wght@400;700&family=Playfair+Display:wght@700;900&family=Sora:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+/* ─── Reset & Base ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --page-bg: #080810;
+  --page-surface: #0F0F1A;
+  --accent: #7B61FF;
+  --accent2: #00E5C0;
+  --text: #F0EDFF;
+  --text-dim: #7070A0;
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--page-bg);
+  color: var(--text);
+  font-family: 'Sora', 'Noto Serif TC', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── Noise overlay ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Page Header ─── */
+.page-header {
+  position: relative;
+  text-align: center;
+  padding: 80px 24px 60px;
+  z-index: 1;
+}
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 400px;
+  background: radial-gradient(ellipse, rgba(123,97,255,0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+.header-eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 16px;
+  opacity: 0;
+  animation: fadeUp 0.6s ease forwards 0.2s;
+}
+.header-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(36px, 6vw, 72px);
+  font-weight: 900;
+  line-height: 1.1;
+  background: linear-gradient(135deg, #fff 30%, #7B61FF 70%, #00E5C0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  opacity: 0;
+  animation: fadeUp 0.7s ease forwards 0.35s;
+}
+.header-sub {
+  font-size: 15px;
+  color: var(--text-dim);
+  margin-top: 12px;
+  opacity: 0;
+  animation: fadeUp 0.7s ease forwards 0.5s;
+}
+
+/* ─── Grid ─── */
+.themes-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 32px 80px;
+}
+@media (max-width: 900px) { .themes-grid { grid-template-columns: repeat(2, 1fr); padding: 0 20px 60px; } }
+@media (max-width: 500px) { .themes-grid { grid-template-columns: 1fr; padding: 0 16px 48px; } }
+
+/* ─── Theme Card ─── */
+.theme-card {
+  cursor: pointer;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1.5px solid rgba(255,255,255,0.06);
+  background: var(--page-surface);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease, border-color 0.3s;
+  opacity: 0;
+  animation: fadeUp 0.5s ease forwards;
+}
+.theme-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  border-color: rgba(123,97,255,0.4);
+}
+.theme-card:nth-child(1)  { animation-delay: 0.1s; }
+.theme-card:nth-child(2)  { animation-delay: 0.15s; }
+.theme-card:nth-child(3)  { animation-delay: 0.2s; }
+.theme-card:nth-child(4)  { animation-delay: 0.25s; }
+.theme-card:nth-child(5)  { animation-delay: 0.3s; }
+.theme-card:nth-child(6)  { animation-delay: 0.35s; }
+.theme-card:nth-child(7)  { animation-delay: 0.4s; }
+.theme-card:nth-child(8)  { animation-delay: 0.45s; }
+.theme-card:nth-child(9)  { animation-delay: 0.5s; }
+.theme-card:nth-child(10) { animation-delay: 0.55s; }
+.theme-card:nth-child(11) { animation-delay: 0.6s; }
+
+/* ─── Phone Mockup ─── */
+.phone-wrap {
+  position: relative;
+  padding: 20px 20px 12px;
+  display: flex;
+  justify-content: center;
+}
+.phone {
+  width: 160px;
+  height: 280px;
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  flex-shrink: 0;
+}
+.phone-notch {
+  position: absolute;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 48px; height: 6px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 3px;
+  z-index: 5;
+}
+.phone-inner {
+  width: 100%; height: 100%;
+  padding: 20px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.p-status {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  opacity: 0.5;
+  font-family: 'Space Mono', monospace;
+  padding: 0 2px;
+}
+.p-title {
+  font-size: 9px;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-top: 2px;
+}
+.p-clock {
+  text-align: center;
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1;
+  margin: 4px 0;
+  letter-spacing: -1px;
+  font-family: 'Space Mono', monospace;
+}
+.p-next {
+  text-align: center;
+  font-size: 8px;
+  opacity: 0.5;
+  margin-bottom: 4px;
+}
+.p-alarm {
+  border-radius: 8px;
+  padding: 7px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+.p-alarm-left { display: flex; flex-direction: column; gap: 1px; }
+.p-alarm-time { font-size: 13px; font-weight: 600; font-family: 'Space Mono', monospace; }
+.p-alarm-label { font-size: 7px; opacity: 0.55; }
+.p-toggle {
+  width: 24px; height: 13px;
+  border-radius: 7px;
+  position: relative;
+  flex-shrink: 0;
+}
+.p-toggle::after {
+  content: '';
+  position: absolute;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: white;
+  top: 2px; right: 2px;
+  transition: transform 0.2s;
+}
+.p-toggle.off { opacity: 0.4; }
+.p-toggle.off::after { right: auto; left: 2px; }
+.p-fab {
+  position: absolute;
+  bottom: 10px; right: 10px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  font-weight: 300;
+  line-height: 1;
+}
+
+/* ─── Card Info ─── */
+.card-info {
+  padding: 12px 16px 16px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.card-name {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-family: 'Noto Serif TC', serif;
+}
+.card-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+.color-swatches {
+  display: flex;
+  gap: 5px;
+}
+.swatch {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  flex-shrink: 0;
+}
+
+/* ─── Modal ─── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(20px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+.modal-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  transform: scale(0.92) translateY(20px);
+  transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+.modal-overlay.open .modal-content { transform: scale(1) translateY(0); }
+.modal-phone {
+  width: 280px;
+  height: 520px;
+  border-radius: 44px;
+  overflow: hidden;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+}
+.modal-phone .phone-inner { padding: 36px 18px 24px; gap: 10px; }
+.modal-phone .phone-notch { width: 90px; height: 10px; }
+.modal-phone .p-status { font-size: 11px; }
+.modal-phone .p-title { font-size: 13px; }
+.modal-phone .p-clock { font-size: 68px; letter-spacing: -3px; margin: 8px 0; }
+.modal-phone .p-next { font-size: 12px; }
+.modal-phone .p-alarm { border-radius: 14px; padding: 12px 14px; }
+.modal-phone .p-alarm-time { font-size: 22px; }
+.modal-phone .p-alarm-label { font-size: 11px; }
+.modal-phone .p-toggle { width: 40px; height: 22px; border-radius: 11px; }
+.modal-phone .p-toggle::after { width: 16px; height: 16px; top: 3px; right: 3px; }
+.modal-phone .p-toggle.off::after { right: auto; left: 3px; }
+.modal-phone .p-fab { width: 54px; height: 54px; font-size: 28px; bottom: 16px; right: 16px; }
+.modal-info { text-align: center; max-width: 400px; }
+.modal-title { font-size: 28px; font-weight: 700; font-family: 'Playfair Display', serif; }
+.modal-desc { font-size: 14px; color: var(--text-dim); margin-top: 8px; line-height: 1.6; }
+.modal-swatches { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+.modal-swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.modal-swatch-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.15); }
+.modal-swatch-label { font-size: 9px; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+.modal-close {
+  position: fixed;
+  top: 24px; right: 24px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.modal-close:hover { background: rgba(255,255,255,0.15); }
+
+/* ─── Special Effects for Themes ─── */
+/* Glassmorphism */
+.glass-phone-inner {
+  background: linear-gradient(135deg, rgba(102,126,234,0.8) 0%, rgba(118,75,162,0.8) 100%) !important;
+}
+/* Starry universe */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+.star { position: absolute; border-radius: 50%; animation: twinkle 2s ease-in-out infinite; }
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Footer */
+.page-footer {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-family: 'Space Mono', monospace;
+  position: relative; z-index: 1;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <p class="header-eyebrow">NexAlarm · Design System</p>
+  <h1 class="header-title">主題風格</h1>
+  <p class="header-sub">11 種精心設計的視覺風格，找到最適合你的鬧鐘體驗</p>
+</div>
+
+<div class="themes-grid" id="themesGrid"></div>
+
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal-content" id="modalContent">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-phone" id="modalPhone"></div>
+    <div class="modal-info" id="modalInfo"></div>
+  </div>
+</div>
+
+<div class="page-footer">點擊任一主題卡片預覽完整效果 · NexAlarm Theme Studio</div>
+
+<script>
+const THEMES = [
+  {
+    id: 'minimalist',
+    name: '極簡風',
+    nameEn: 'Minimalist',
+    desc: '純粹黑底搭配冷藍色系，零雜訊、零干擾，讓時間本身成為焦點。',
+    bg: '#000000', surface: '#1C1C1E', card: '#2C2C2E',
+    primary: '#4DA6FF', secondary: '#7CC4FF',
+    textPrimary: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.55)',
+    toggleOn: '#4DA6FF', toggleOff: '#3A3A3C',
+    fabBg: '#4DA6FF', fabColor: '#fff',
+    isDark: true,
+    swatches: ['#000000','#1C1C1E','#4DA6FF','#7CC4FF','#FF4444'],
+    swatchLabels: ['背景','表面','主色','次色','危險'],
+  },
+  {
+    id: 'morning_glow',
+    name: '晨曦漸層',
+    nameEn: 'Morning Glow',
+    desc: '暖橘、淡粉、淺藍三色交融，像是第一道陽光輕撫窗簾。起床，不再是一種懲罰。',
+    bg: '#FFF5EE', surface: '#FFF0E6', card: '#FEEBD8',
+    primary: '#FF7043', secondary: '#FFADB0',
+    textPrimary: '#3D2314', textSecondary: 'rgba(61,35,20,0.55)',
+    toggleOn: '#FF7043', toggleOff: '#DBBCA8',
+    fabBg: '#FF7043', fabColor: '#fff',
+    isDark: false,
+    swatches: ['#FFF5EE','#FEEBD8','#FF7043','#FFADB0','#E53935'],
+    swatchLabels: ['背景','卡片','暖橘','淡粉','危險'],
+    bgGradient: 'linear-gradient(160deg, #FFF5EE 0%, #FFE8D6 40%, #FFD5D8 70%, #D4ECFF 100%)',
+  },
+  {
+    id: 'night_neon',
+    name: '深夜霓虹',
+    nameEn: 'Night Neon',
+    desc: '深邃藍黑底色搭配青綠與紫色霓虹光暈，夜貓子的專屬儀式感。',
+    bg: '#050A1A', surface: '#0A1128', card: '#0F1A3A',
+    primary: '#00FFC6', secondary: '#9D4EDD',
+    textPrimary: '#E0F0FF', textSecondary: 'rgba(112,144,192,0.8)',
+    toggleOn: '#00FFC6', toggleOff: '#1A2A50',
+    fabBg: '#00FFC6', fabColor: '#050A1A',
+    isDark: true,
+    swatches: ['#050A1A','#0F1A3A','#00FFC6','#9D4EDD','#FF3860'],
+    swatchLabels: ['背景','卡片','霓虹青','霓虹紫','危險'],
+    glowPrimary: '0 0 20px rgba(0,255,198,0.5)',
+    glowSecondary: '0 0 20px rgba(157,78,221,0.4)',
+  },
+  {
+    id: 'forest_mist',
+    name: '森霧自然',
+    nameEn: 'Forest Mist',
+    desc: '灰綠、霧藍、米白，帶有清晨森林的溫柔濕氣，讓人感到踏實而放鬆。',
+    bg: '#F0ECE3', surface: '#E8E4DB', card: '#DDD9D0',
+    primary: '#5C8A6A', secondary: '#8BADB3',
+    textPrimary: '#2D3B35', textSecondary: 'rgba(45,59,53,0.55)',
+    toggleOn: '#5C8A6A', toggleOff: '#C0BCB3',
+    fabBg: '#5C8A6A', fabColor: '#fff',
+    isDark: false,
+    swatches: ['#F0ECE3','#DDD9D0','#5C8A6A','#8BADB3','#C0634A'],
+    swatchLabels: ['米白','卡片','鼠尾草','霧藍','危險'],
+  },
+  {
+    id: 'glassmorphism',
+    name: '玻璃擬態',
+    nameEn: 'Glassmorphism',
+    desc: '紫色漸層背景，半透明毛玻璃卡片，折射出柔和光暈。現代、精緻、難以忘懷。',
+    bg: '#3D1F8A', surface: 'rgba(255,255,255,0.14)', card: 'rgba(255,255,255,0.20)',
+    primary: '#FFFFFF', secondary: '#C4B5FD',
+    textPrimary: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.65)',
+    toggleOn: 'rgba(255,255,255,0.9)', toggleOff: 'rgba(255,255,255,0.25)',
+    fabBg: 'rgba(255,255,255,0.25)', fabColor: '#fff',
+    isDark: true,
+    swatches: ['#3D1F8A','rgba(255,255,255,0.2)','#FFFFFF','#C4B5FD','#FF6B9D'],
+    swatchLabels: ['紫背景','玻璃','白色','薰衣草','危險'],
+    bgGradient: 'linear-gradient(135deg, #1A0A4E 0%, #3D1F8A 40%, #6A2A9A 70%, #2A1A6E 100%)',
+    cardBackdrop: 'blur(12px)',
+  },
+  {
+    id: 'retro_flip',
+    name: '復古翻頁鐘',
+    nameEn: 'Retro Flip',
+    desc: '卡其、棕、墨黑，搭配等寬機械感字型。像是從 1960 年代的火車站時刻表活過來。',
+    bg: '#1C1410', surface: '#2A1F17', card: '#352920',
+    primary: '#C8A96E', secondary: '#8B6040',
+    textPrimary: '#F5E6CC', textSecondary: 'rgba(245,230,204,0.55)',
+    toggleOn: '#C8A96E', toggleOff: '#4A3020',
+    fabBg: '#C8A96E', fabColor: '#1C1410',
+    isDark: true,
+    swatches: ['#1C1410','#352920','#C8A96E','#8B6040','#CC4422'],
+    swatchLabels: ['墨黑','棕卡','卡其金','深棕','危險'],
+    clockFont: "'Space Mono', monospace",
+  },
+  {
+    id: 'focus_blue',
+    name: '專注深藍',
+    nameEn: 'Focus Blue',
+    desc: '深海藍配清晰亮青，像是打開了「深度工作」模式，大腦自動切換到專注頻道。',
+    bg: '#0F1B2D', surface: '#1A2742', card: '#2D3748',
+    primary: '#63B3ED', secondary: '#4299E1',
+    textPrimary: '#EBF8FF', textSecondary: 'rgba(144,205,244,0.7)',
+    toggleOn: '#63B3ED', toggleOff: '#2D4060',
+    fabBg: '#63B3ED', fabColor: '#0F1B2D',
+    isDark: true,
+    swatches: ['#0F1B2D','#2D3748','#63B3ED','#4299E1','#FC8181'],
+    swatchLabels: ['深藍','石墨','亮青','藍','危險'],
+  },
+  {
+    id: 'cream_journal',
+    name: '奶油手帳',
+    nameEn: 'Cream Journal',
+    desc: '奶茶、奶油黃、霧粉三色，搭配圓潤元素。打開 app 就像翻開今天的手帳頁面。',
+    bg: '#FBF7F0', surface: '#F5EFE0', card: '#EEE5D0',
+    primary: '#C9956C', secondary: '#F2C4CE',
+    textPrimary: '#4A3728', textSecondary: 'rgba(74,55,40,0.55)',
+    toggleOn: '#C9956C', toggleOff: '#D5C5B5',
+    fabBg: '#C9956C', fabColor: '#fff',
+    isDark: false,
+    swatches: ['#FBF7F0','#EEE5D0','#C9956C','#F2C4CE','#E07070'],
+    swatchLabels: ['奶油','米卡','焦糖','霧粉','危險'],
+  },
+  {
+    id: 'starry_universe',
+    name: '星夜宇宙',
+    nameEn: 'Starry Universe',
+    desc: '深紫黑底散佈著細碎星點，月光藍與宇宙紫在夜空中低調閃爍。睡前的儀式感。',
+    bg: '#0B0C1E', surface: '#111228', card: '#1A1B35',
+    primary: '#7B9FE8', secondary: '#6C5CE7',
+    textPrimary: '#E8EEFF', textSecondary: 'rgba(128,144,204,0.75)',
+    toggleOn: '#7B9FE8', toggleOff: '#252545',
+    fabBg: '#6C5CE7', fabColor: '#fff',
+    isDark: true,
+    swatches: ['#0B0C1E','#1A1B35','#7B9FE8','#6C5CE7','#FF6B6B'],
+    swatchLabels: ['深紫黑','星空','月光','宇宙紫','危險'],
+    hasStars: true,
+  },
+  {
+    id: 'candy_jelly',
+    name: '糖果果凍',
+    nameEn: 'Candy Jelly',
+    desc: '珊瑚紅、薄荷綠、鵝黃在白底上跳躍，大圓角按鈕充滿果凍彈性，活力四射。',
+    bg: '#FFFFFF', surface: '#F8F4FF', card: '#F0ECFC',
+    primary: '#FF6B6B', secondary: '#4ECDC4',
+    textPrimary: '#2D2D40', textSecondary: 'rgba(45,45,64,0.55)',
+    toggleOn: '#FF6B6B', toggleOff: '#E0DCF0',
+    fabBg: '#FF6B6B', fabColor: '#fff',
+    isDark: false,
+    swatches: ['#FFFFFF','#F0ECFC','#FF6B6B','#4ECDC4','#FF4455'],
+    swatchLabels: ['白底','卡片','珊瑚','薄荷','危險'],
+  },
+  {
+    id: 'material_you',
+    name: 'Material You',
+    nameEn: 'Material You',
+    desc: 'Android 12+ 動態配色，隨桌布自動生成主題色彩，無縫融入你的個人化系統。',
+    bg: '#FFFBFE', surface: '#F3EDF7', card: '#ECE6F0',
+    primary: '#6750A4', secondary: '#625B71',
+    textPrimary: '#1C1B1F', textSecondary: 'rgba(28,27,31,0.55)',
+    toggleOn: '#6750A4', toggleOff: '#E7E0EC',
+    fabBg: '#6750A4', fabColor: '#fff',
+    isDark: false,
+    swatches: ['#FFFBFE','#ECE6F0','#6750A4','#625B71','#B3261E'],
+    swatchLabels: ['白底','表面','主紫','次色','危險'],
+  },
+];
+
+function buildPhone(t, small = true) {
+  const scale = small ? 1 : 1;
+  const hasGrad = t.bgGradient;
+  const hasBdrop = t.cardBackdrop;
+
+  let stars = '';
+  if (t.hasStars) {
+    for (let i = 0; i < (small ? 18 : 45); i++) {
+      const x = Math.random() * 100;
+      const y = Math.random() * 80;
+      const size = Math.random() * 2 + 0.5;
+      const delay = Math.random() * 3;
+      const opacity = Math.random() * 0.6 + 0.2;
+      stars += `<div class="star" style="left:${x}%;top:${y}%;width:${size}px;height:${size}px;background:#fff;opacity:${opacity};animation-delay:${delay}s"></div>`;
+    }
+  }
+
+  const alarmCardStyle = hasBdrop
+    ? `background:${t.card};backdrop-filter:${t.cardBackdrop};-webkit-backdrop-filter:${t.cardBackdrop};`
+    : `background:${t.card};`;
+
+  const glowClock = t.glowPrimary ? `text-shadow:${t.glowPrimary};` : '';
+  const clockFont = t.clockFont ? `font-family:${t.clockFont};` : '';
+
+  return `
+    <div class="phone-notch"></div>
+    <div class="phone-inner" style="background:${hasGrad ? t.bgGradient : t.bg}; color:${t.textPrimary}; position:relative;">
+      ${stars}
+      <div class="p-status" style="color:${t.textSecondary}">
+        <span>9:41</span><span>●●●</span>
+      </div>
+      <div class="p-title" style="color:${t.textSecondary}">NEXALARM</div>
+      <div class="p-clock" style="color:${t.textPrimary};${glowClock}${clockFont}">07:30</div>
+      <div class="p-next" style="color:${t.textSecondary}">明天 · 3小時後響鈴</div>
+      <div class="p-alarm" style="${alarmCardStyle}">
+        <div class="p-alarm-left">
+          <div class="p-alarm-time" style="color:${t.textPrimary};${clockFont}">06:00</div>
+          <div class="p-alarm-label" style="color:${t.textSecondary}">早起 · 週一到五</div>
+        </div>
+        <div class="p-toggle" style="background:${t.toggleOn}"></div>
+      </div>
+      <div class="p-alarm" style="${alarmCardStyle}">
+        <div class="p-alarm-left">
+          <div class="p-alarm-time" style="color:${t.textSecondary};${clockFont}">22:30</div>
+          <div class="p-alarm-label" style="color:${t.textSecondary}">提醒睡覺</div>
+        </div>
+        <div class="p-toggle off" style="background:${t.toggleOff}"></div>
+      </div>
+      <div class="p-fab" style="background:${t.fabBg};color:${t.fabColor}${t.glowPrimary ? ';box-shadow:'+t.glowPrimary : ''}">+</div>
+    </div>
+  `;
+}
+
+function buildSwatches(t, large = false) {
+  const size = large ? 28 : 18;
+  return t.swatches.map((c, i) => {
+    if (large) {
+      return `<div class="modal-swatch">
+        <div class="modal-swatch-dot" style="background:${c}"></div>
+        <div class="modal-swatch-label">${t.swatchLabels[i]}</div>
+      </div>`;
+    }
+    return `<div class="swatch" style="background:${c}" title="${t.swatchLabels[i]}"></div>`;
+  }).join('');
+}
+
+function renderGrid() {
+  const grid = document.getElementById('themesGrid');
+  THEMES.forEach((t, idx) => {
+    const card = document.createElement('div');
+    card.className = 'theme-card';
+    card.innerHTML = `
+      <div class="phone-wrap">
+        <div class="phone">${buildPhone(t, true)}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${t.name}</div>
+        <div class="card-desc">${t.desc.substring(0, 38)}…</div>
+        <div class="color-swatches">${buildSwatches(t)}</div>
+      </div>
+    `;
+    card.addEventListener('click', () => openModal(t));
+    grid.appendChild(card);
+  });
+}
+
+let modalOpen = false;
+
+function openModal(t) {
+  const overlay = document.getElementById('modal');
+  const phone = document.getElementById('modalPhone');
+  const info = document.getElementById('modalInfo');
+
+  phone.innerHTML = buildPhone(t, false);
+  phone.style.background = t.bgGradient || t.bg;
+
+  info.innerHTML = `
+    <div class="modal-title">${t.name}</div>
+    <div style="font-size:13px;color:#7070A0;font-family:'Space Mono',monospace;margin-top:4px">${t.nameEn}</div>
+    <div class="modal-desc">${t.desc}</div>
+    <div class="modal-swatches">${buildSwatches(t, true)}</div>
+  `;
+
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  modalOpen = true;
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal') && !e.target.classList.contains('modal-close')) return;
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow = '';
+  modalOpen = false;
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && modalOpen) closeModal({target: document.getElementById('modal')}); });
+
+renderGrid();
+</script>
+</body>
+</html>

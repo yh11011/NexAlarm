@@ -2,21 +2,26 @@ package com.nexalarm.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Fixed colors (same in both themes)
-val PrimaryBlue = Color(0xFF1A73E8)
-val PrimaryBlueVariant = Color(0xFF1558B0)
-val SecondaryBlue = Color(0xFF4CA8FF)
-val AccentDim = Color(0x261A73E8)
-val DangerRed = Color(0xFFF44336)
+// ── 非主題固定色 ─────────────────────────────────────────────
 val LapFast = Color(0xFF34A853)
 val LapSlow = Color(0xFFEA4335)
 
-// Theme-adaptive colors (read isDarkTheme state, auto-trigger recomposition)
-val DarkBackground: Color get() = if (isDarkTheme) Color(0xFF000000) else Color(0xFFF2F2F7)
-val DarkSurface: Color get() = if (isDarkTheme) Color(0xFF1C1C1E) else Color(0xFFFFFFFF)
-val DarkCard: Color get() = if (isDarkTheme) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)
-val DarkBorder: Color get() = if (isDarkTheme) Color(0x12FFFFFF) else Color(0x12000000)
-val TextPrimary: Color get() = if (isDarkTheme) Color.White else Color(0xFF1C1C1E)
-val TextSecondary: Color get() = if (isDarkTheme) Color(0x8CFFFFFF) else Color(0x8C3C3C43)
-val TextTertiary: Color get() = if (isDarkTheme) Color(0x4DFFFFFF) else Color(0x4D3C3C43)
-val ToggleOff: Color get() = if (isDarkTheme) Color(0xFF3A3A3C) else Color(0xFFE5E5EA)
+// ── 主題自適應色（從 AppSettingsProvider 的當前主題讀取，自動觸發重組） ──
+
+/** 快捷取得當前主題色彩集 */
+private fun t(): ThemeColors = AppSettingsProvider.currentThemeMutableState.value.colors()
+
+val PrimaryBlue: Color       get() = t().primary
+val PrimaryBlueVariant: Color get() = t().primaryVariant
+val SecondaryBlue: Color     get() = t().secondary
+val AccentDim: Color         get() = t().primary.copy(alpha = 0.15f)
+val DangerRed: Color         get() = t().danger
+
+val DarkBackground: Color    get() = t().background
+val DarkSurface: Color       get() = t().surface
+val DarkCard: Color          get() = t().card
+val DarkBorder: Color        get() = t().border
+val TextPrimary: Color       get() = t().textPrimary
+val TextSecondary: Color     get() = t().textSecondary
+val TextTertiary: Color      get() = t().textTertiary
+val ToggleOff: Color         get() = t().toggleOff

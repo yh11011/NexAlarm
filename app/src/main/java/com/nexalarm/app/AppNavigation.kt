@@ -100,6 +100,13 @@ fun NexAlarmMainContent() {
         }
     }
 
+    // 收集鬧鐘數量超限錯誤
+    LaunchedEffect(alarmViewModel) {
+        alarmViewModel.alarmLimitError.collect {
+            snackbarHostState.showSnackbar(S.alarmLimitReached)
+        }
+    }
+
     // Folder add-dialog state hoisted here so the Scaffold FAB can trigger it
     var showFolderDialog by remember { mutableStateOf(false) }
 
@@ -345,6 +352,7 @@ fun NexAlarmMainContent() {
                     composable("account") {
                         AccountScreen(
                             folderUsed = folders.count { !it.isSystem },
+                            alarmUsed = alarms.size,
                             billingManager = billingManager,
                             onPremiumStatusChanged = { newValue ->
                                 FeatureFlags.isPremium = newValue
