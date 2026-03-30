@@ -355,8 +355,8 @@ fun NexAlarmMainContent() {
                             alarmUsed = alarms.size,
                             billingManager = billingManager,
                             onPremiumStatusChanged = { newValue ->
-                                FeatureFlags.isPremium = newValue
-                                settingsManager.isPremium = newValue
+                                if (newValue) billingManager.activatePremiumFromPromo()
+                                else billingManager.deactivatePremium()
                             },
                             authUsername = authUsername,
                             authDisplayName = authDisplayName,

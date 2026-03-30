@@ -181,6 +181,12 @@ class BillingManager(private val context: Context) {
         SettingsManager(context).isPremium = isPremium
     }
 
+    /** 優惠碼兌換成功後呼叫，直接啟用 premium（不經過 Google Play） */
+    fun activatePremiumFromPromo() = setPremiumStatus(true)
+
+    /** 手動停用 premium（優惠碼版本，不影響 Play Store 購買紀錄） */
+    fun deactivatePremium() = setPremiumStatus(false)
+
     fun release() {
         billingClient.endConnection()
     }
