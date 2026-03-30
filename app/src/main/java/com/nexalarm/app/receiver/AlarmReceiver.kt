@@ -56,6 +56,9 @@ class AlarmReceiver : BroadcastReceiver() {
         val snoozeEnabled = intent.getBooleanExtra(EXTRA_ALARM_SNOOZE_ENABLED, true)
 
         Log.d("AlarmReceiver", "Alarm triggered: ID=$alarmId, Title=$title")
+        // [NexAlarmTest] 事件 3/4：BroadcastReceiver.onReceive 被系統呼叫
+        Log.i("NexAlarmTest",
+            "RECEIVED|id=$alarmId|title=$title|ts=${System.currentTimeMillis()}")
 
         val volume = intent.getIntExtra(EXTRA_ALARM_VOLUME, 80)
         val serviceIntent = Intent(context, AlarmService::class.java).apply {

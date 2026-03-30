@@ -48,36 +48,44 @@ class AlarmScheduler(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // 設定鬧鐘
+        // 設定鬧鐘，並記錄實際使用的 API 類型供測試工具解析
+        val apiUsed: String
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
             // 無精確鬧鐘權限：使用 setAndAllowWhileIdle 作為 fallback（精度較低但鬧鐘不會消失）
             // 權限引導由 MainActivity 在首次啟動時處理，排程器不重複彈出
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
             android.util.Log.w("AlarmScheduler",
                 "No SCHEDULE_EXACT_ALARM permission, using inexact fallback for alarm ${alarm.id}")
-            return
+            apiUsed = "setAndAllowWhileIdle"
+        } else {
+            // 正常路徑：使用 setAlarmClock 可 bypass Doze，是商業鬧鐘的標準做法
+            val showIntent = PendingIntent.getActivity(
+                context, alarm.id.toInt(),
+                Intent(context, com.nexalarm.app.MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.setAlarmClock(
+                AlarmManager.AlarmClockInfo(triggerTime, showIntent),
+                pendingIntent
+            )
+            android.util.Log.d("AlarmScheduler",
+                "Scheduled alarm ${alarm.id} at ${Date(triggerTime)}")
+            apiUsed = "setAlarmClock"
         }
 
-        // 正常路徑：使用 setAlarmClock 可 bypass Doze，是商業鬧鐘的標準做法
-        val showIntent = PendingIntent.getActivity(
-            context, alarm.id.toInt(),
-            Intent(context, com.nexalarm.app.MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        alarmManager.setAlarmClock(
-            AlarmManager.AlarmClockInfo(triggerTime, showIntent),
-            pendingIntent
-        )
-
-        android.util.Log.d("AlarmScheduler",
-            "Scheduled alarm ${alarm.id} at ${Date(triggerTime)}")
+        // [NexAlarmTest] 事件 1/4：鬧鐘已寫入 AlarmManager
+        android.util.Log.i("NexAlarmTest",
+            "SCHEDULED|id=${alarm.id}|title=${alarm.title}" +
+            "|triggerMs=$triggerTime|api=$apiUsed|ts=${System.currentTimeMillis()}")
     }
 
     /**
      * 取消鬧鐘排程
      */
     fun cancel(alarm: AlarmEntity) {
-        val intent = Intent(context, AlarmReceiver::class.java)
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_ALARM_TRIGGER
+        }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             alarm.id.toInt(),
@@ -89,6 +97,9 @@ class AlarmScheduler(private val context: Context) {
         pendingIntent.cancel()
 
         android.util.Log.d("AlarmScheduler", "Cancelled alarm ${alarm.id}")
+        // [NexAlarmTest] 事件 2/4：鬧鐘已從 AlarmManager 移除
+        android.util.Log.i("NexAlarmTest",
+            "CANCELLED|id=${alarm.id}|ts=${System.currentTimeMillis()}")
     }
 
     /**

@@ -58,6 +58,10 @@ class AlarmService : Service() {
                 snoozeEnabled = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_SNOOZE_ENABLED, true)
                 alarmVolume = intent.getIntExtra(AlarmReceiver.EXTRA_ALARM_VOLUME, 80)
 
+                // [NexAlarmTest] 事件 4/4：ForegroundService 已啟動，鈴聲即將播放
+                android.util.Log.i("NexAlarmTest",
+                    "SERVICE_START|id=$alarmId|title=$alarmTitle|ts=${System.currentTimeMillis()}")
+
                 startForeground(NOTIFICATION_ID, createNotification())
                 startAlarm()
             }
