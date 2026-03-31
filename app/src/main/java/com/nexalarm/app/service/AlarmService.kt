@@ -52,6 +52,9 @@ class AlarmService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START_ALARM -> {
+                // 先停止目前播放中的鬧鐘，防止密集觸發時音效重疊
+                stopAlarm()
+
                 alarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1)
                 alarmTitle = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: S.alarmDefaultTitle
                 vibrateOnly = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, false)

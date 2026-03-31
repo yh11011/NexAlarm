@@ -7,6 +7,7 @@ import com.nexalarm.app.data.AlarmSyncRepository
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.SettingsManager
+import com.nexalarm.app.data.repository.AlarmRepository
 import com.nexalarm.app.util.AlarmScheduler
 import com.nexalarm.app.util.FeatureFlags
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -26,6 +27,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = NexAlarmDatabase.getDatabase(application)
     private val alarmDao = database.alarmDao()
+    private val repository = AlarmRepository(alarmDao)
     private val scheduler = AlarmScheduler(application)
     private val settings = SettingsManager(application)
 
@@ -124,7 +126,8 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                     _alarmLimitError.emit(Unit)
                     return@launch
                 }
-                val newId = alarmDao.insert(alarmWithTime)
+                // 使用 insertOrUpdate 防止相同鬧鐘重複新增（依 hour+minute+title+folderId+repeatDays 去重）
+                val newId = repository.insertOrUpdate(alarmWithTime)
                 scheduler.schedule(alarmWithTime.copy(id = newId))
             } else {
                 alarmDao.update(alarmWithTime)
