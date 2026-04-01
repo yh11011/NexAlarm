@@ -278,6 +278,10 @@ fun NexAlarmMainContent() {
                                 settingsManager.authUsername = user.username ?: user.email
                                 settingsManager.authDisplayName = user.displayName
                                 settingsManager.isFirstLaunch = false
+                                // 從伺服器同步 Premium 狀態（帳號綁定）
+                                if (user.isPremium && !com.nexalarm.app.util.FeatureFlags.isPremium) {
+                                    billingManager.activatePremiumFromPromo()
+                                }
                                 authTick++ // 觸發帳號狀態重組
                                 if (isOnboarding) {
                                     navController.navigate("tabs") {

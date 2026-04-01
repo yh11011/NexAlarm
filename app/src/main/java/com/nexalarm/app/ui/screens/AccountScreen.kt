@@ -62,6 +62,7 @@ fun AccountScreen(
     // ── 升級/優惠碼 Dialog ──
     if (showUpgradeDialog) {
         UpgradeDialog(
+            authToken = authToken,
             onDismiss = { showUpgradeDialog = false },
             onPromoSuccess = {
                 onPremiumStatusChanged(true)
@@ -537,6 +538,7 @@ private fun ChangePasswordDialog(
 
 @Composable
 private fun UpgradeDialog(
+    authToken: String?,
     onDismiss: () -> Unit,
     onPromoSuccess: () -> Unit,
     onPurchase: () -> Unit
@@ -621,7 +623,13 @@ private fun UpgradeDialog(
                         scope.launch {
                             isValidating = true
                             promoError = null
-                            val result = AuthRepository.validatePromoCode(promoCode.trim())
+                            // 已登入：使用帳號綁定的兌換端點，將 Premium 狀態存到伺服器
+                            // 未登入：僅本地驗證（重裝後需重新兌換）
+                            val result = if (authToken != null) {
+                                AuthRepository.redeemPromoCode(promoCode.trim(), authToken)
+                            } else {
+                                AuthRepository.validatePromoCode(promoCode.trim())
+                            }
                             isValidating = false
                             result
                                 .onSuccess { isValid ->
@@ -633,9 +641,8 @@ private fun UpgradeDialog(
                                     }
                                 }
                                 .onFailure { e ->
-                                    // 400 = 無效優惠碼；其他 = 網路錯誤
                                     val msg = e.message ?: ""
-                                    promoError = if ("Invalid promo" in msg) S.promoCodeInvalid
+                                    promoError = if ("Invalid promo" in msg || "無效" in msg) S.promoCodeInvalid
                                                  else S.promoNetworkError
                                 }
                         }

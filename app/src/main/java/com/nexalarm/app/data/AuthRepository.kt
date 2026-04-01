@@ -9,7 +9,8 @@ data class AuthUser(
     val username: String?,
     val email: String?,
     val displayName: String?,
-    val token: String
+    val token: String,
+    val isPremium: Boolean = false
 )
 
 object AuthRepository {
@@ -78,6 +79,31 @@ object AuthRepository {
             }
         }
 
+    /** 已登入用戶兌換優惠碼，成功後伺服器將帳號標記為 Premium */
+    suspend fun redeemPromoCode(code: String, token: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val body = JSONObject().apply { put("code", code) }
+                val resp = ApiClient.post("$BASE_URL/promo/redeem", body, token)
+                if (resp.code !in 200..299) {
+                    val detail = runCatching {
+                        JSONObject(resp.body).optString("detail").takeIf { it.isNotBlank() }
+                    }.getOrNull() ?: resp.body
+                    throw Exception(if ("Invalid promo" in (detail ?: "")) "優惠碼無效或已使用" else "兌換失敗，請稍後再試")
+                }
+                true
+            }
+        }
+
+    /** Google Play 購買成功後通知伺服器，將帳號標記為 Premium */
+    suspend fun activatePremiumOnServer(token: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                ApiClient.post("$BASE_URL/premium/activate", JSONObject(), token)
+                Unit
+            }
+        }
+
     private fun parseAuthResponse(resp: ApiClient.Response): AuthUser {
         if (resp.code !in 200..299) {
             val raw = runCatching {
@@ -93,7 +119,8 @@ object AuthRepository {
             username    = user.optString("username").takeIf    { it.isNotEmpty() && it != "null" },
             email       = user.optString("email").takeIf       { it.isNotEmpty() && it != "null" },
             displayName = user.optString("display_name").takeIf { it.isNotEmpty() && it != "null" },
-            token       = token
+            token       = token,
+            isPremium   = user.optBoolean("is_premium", false)
         )
     }
 
