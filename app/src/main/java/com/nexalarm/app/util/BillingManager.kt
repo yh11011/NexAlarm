@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.util.Log
 import com.android.billingclient.api.*
+import com.nexalarm.app.data.AuthRepository
 import com.nexalarm.app.data.SettingsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -166,11 +167,13 @@ class BillingManager(private val context: Context) {
                     val result = billingClient.acknowledgePurchase(acknowledgePurchaseParams)
                     if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                         setPremiumStatus(true)
+                        notifyServerPremiumActivated()
                         Log.d(TAG, "Premium 購買確認成功")
                     }
                 }
             } else {
                 setPremiumStatus(true)
+                CoroutineScope(Dispatchers.IO).launch { notifyServerPremiumActivated() }
             }
         }
     }
@@ -179,6 +182,13 @@ class BillingManager(private val context: Context) {
         _isPremium.value = isPremium
         FeatureFlags.isPremium = isPremium
         SettingsManager(context).isPremium = isPremium
+    }
+
+    /** 購買成功後通知後端（帳號已登入時），讓 Premium 狀態與帳號綁定 */
+    private suspend fun notifyServerPremiumActivated() {
+        val token = SettingsManager(context).authToken ?: return
+        runCatching { AuthRepository.activatePremiumOnServer(token) }
+            .onFailure { Log.w(TAG, "通知伺服器 Premium 狀態失敗（將在下次同步重試）：${it.message}") }
     }
 
     /** 優惠碼兌換成功後呼叫，直接啟用 premium（不經過 Google Play） */

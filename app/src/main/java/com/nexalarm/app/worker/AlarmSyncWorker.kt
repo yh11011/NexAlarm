@@ -7,6 +7,7 @@ import com.nexalarm.app.data.AlarmSyncRepository
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.util.AlarmScheduler
+import com.nexalarm.app.util.FeatureFlags
 
 /**
  * 背景同步 Worker：由 WorkManager 每 15 分鐘執行一次。
@@ -20,6 +21,7 @@ class AlarmSyncWorker(
     override suspend fun doWork(): Result {
         val settings = SettingsManager(applicationContext)
         val token = settings.authToken ?: return Result.success() // 未登入，跳過
+        if (!FeatureFlags.isPremium) return Result.success() // 非 Premium，跳過（雲端同步為付費功能）
 
         val db = NexAlarmDatabase.getDatabase(applicationContext)
         val alarmDao = db.alarmDao()
