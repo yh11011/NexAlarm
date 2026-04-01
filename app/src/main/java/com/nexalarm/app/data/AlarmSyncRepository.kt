@@ -34,12 +34,13 @@ object AlarmSyncRepository {
             for (alarm in localAlarms) {
                 alarmsArray.put(JSONObject().apply {
                     put("client_id",  alarm.clientId)
-                    put("data",       alarmToJson(alarm))
+                    put("data",       if (alarm.isDeleted) JSONObject() else alarmToJson(alarm))
                     put("updated_at", alarm.updatedAt)
-                    put("is_deleted", false)
+                    put("is_deleted", alarm.isDeleted)
                 })
             }
 
+            // 相容舊版呼叫方式：明確傳入的待刪除 clientId
             for ((clientId, updatedAt) in deletedClientIds) {
                 alarmsArray.put(JSONObject().apply {
                     put("client_id",  clientId)

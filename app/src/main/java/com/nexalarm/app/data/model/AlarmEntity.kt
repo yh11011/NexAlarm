@@ -27,7 +27,9 @@ data class AlarmEntity(
     val createdAt: Long = System.currentTimeMillis(),
     // 雲端同步欄位（v6 新增）
     val clientId: String = java.util.UUID.randomUUID().toString(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    // 軟刪除欄位（v8 新增）：true = 待同步刪除，同步成功後硬刪
+    @androidx.room.ColumnInfo(name = "is_deleted") val isDeleted: Boolean = false
 )
 
 class RepeatDaysConverter {

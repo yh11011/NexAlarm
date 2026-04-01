@@ -7,16 +7,16 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface AlarmDao {
 
-    @Query("SELECT * FROM alarms ORDER BY hour, minute")
+    @Query("SELECT * FROM alarms WHERE is_deleted = 0 ORDER BY hour, minute")
     fun getAllAlarms(): Flow<List<AlarmEntity>>
 
-    @Query("SELECT * FROM alarms WHERE isEnabled = 1 ORDER BY hour, minute")
+    @Query("SELECT * FROM alarms WHERE isEnabled = 1 AND is_deleted = 0 ORDER BY hour, minute")
     fun getEnabledAlarms(): Flow<List<AlarmEntity>>
 
-    @Query("SELECT * FROM alarms WHERE isEnabled = 1")
+    @Query("SELECT * FROM alarms WHERE isEnabled = 1 AND is_deleted = 0")
     suspend fun getEnabledAlarmsList(): List<AlarmEntity>
 
-    @Query("SELECT * FROM alarms WHERE folderId = :folderId ORDER BY hour, minute")
+    @Query("SELECT * FROM alarms WHERE folderId = :folderId AND is_deleted = 0 ORDER BY hour, minute")
     fun getAlarmsByFolder(folderId: Long): Flow<List<AlarmEntity>>
 
     @Query("SELECT * FROM alarms WHERE id = :id")
@@ -28,7 +28,7 @@ interface AlarmDao {
     @Query("SELECT * FROM alarms")
     suspend fun getAllAlarmsList(): List<AlarmEntity>
 
-    @Query("SELECT * FROM alarms WHERE hour = :hour AND minute = :minute AND title = :title AND folderId = :folderId AND repeatDays = :repeatDays LIMIT 1")
+    @Query("SELECT * FROM alarms WHERE hour = :hour AND minute = :minute AND title = :title AND folderId = :folderId AND repeatDays = :repeatDays AND is_deleted = 0 LIMIT 1")
     suspend fun findDuplicate(hour: Int, minute: Int, title: String, folderId: Long?, repeatDays: String): AlarmEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -52,12 +52,12 @@ interface AlarmDao {
     @Query("UPDATE alarms SET vibrateOnly = :vibrateOnly WHERE id = :id")
     suspend fun setVibrateOnly(id: Long, vibrateOnly: Boolean)
 
-    @Query("SELECT * FROM alarms WHERE isEnabled = 1 AND (isRecurring = 0 OR repeatDays LIKE '%' || :dayOfWeek || '%')")
+    @Query("SELECT * FROM alarms WHERE isEnabled = 1 AND is_deleted = 0 AND (isRecurring = 0 OR repeatDays LIKE '%' || :dayOfWeek || '%')")
     suspend fun getTodayAlarms(dayOfWeek: Int): List<AlarmEntity>
 
-    @Query("SELECT COUNT(*) FROM alarms WHERE folderId = :folderId")
+    @Query("SELECT COUNT(*) FROM alarms WHERE folderId = :folderId AND is_deleted = 0")
     suspend fun getAlarmCountByFolder(folderId: Long): Int
 
-    @Query("SELECT COUNT(*) FROM alarms")
+    @Query("SELECT COUNT(*) FROM alarms WHERE is_deleted = 0")
     suspend fun getTotalAlarmCount(): Int
 }

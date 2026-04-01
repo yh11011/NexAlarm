@@ -13,7 +13,7 @@ import com.nexalarm.app.data.model.RepeatDaysConverter
 
 @Database(
     entities = [AlarmEntity::class, FolderEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(RepeatDaysConverter::class)
@@ -64,6 +64,13 @@ abstract class NexAlarmDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 新增軟刪除欄位：0=正常，1=待同步刪除
+                db.execSQL("ALTER TABLE alarms ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         private val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // 修復 clientId 格式不一致問題：
@@ -91,7 +98,7 @@ abstract class NexAlarmDatabase : RoomDatabase() {
                     NexAlarmDatabase::class.java,
                     "nexalarm_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .addCallback(PrepopulateCallback())
                     .build()
                 INSTANCE = instance
