@@ -23,6 +23,7 @@ import com.nexalarm.app.data.repository.AlarmRepository
 import com.nexalarm.app.data.repository.FolderRepository
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.ui.theme.NexAlarmTheme
+import com.nexalarm.app.util.AlarmScheduler
 import com.nexalarm.app.util.AppSettingsProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -144,7 +145,11 @@ class MainActivity : ComponentActivity() {
             isRecurring = isRecurring, repeatDays = repeatDays,
             folderId = folderId, vibrateOnly = silent
         )
-        alarmRepo.insertOrUpdate(alarm)
+        val alarmId = alarmRepo.insertOrUpdate(alarm)
+        
+        // 排程鬧鐘（讓 AlarmScheduler 產生 NexAlarmTest logcat 事件供測試腳本監聽）
+        val scheduledAlarm = alarm.copy(id = alarmId)
+        AlarmScheduler.schedule(this, scheduledAlarm)
 
         runOnUiThread {
             Toast.makeText(this, "Alarm added: $title ${String.format("%02d:%02d", hour, minute)}", Toast.LENGTH_SHORT).show()
@@ -153,7 +158,12 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun handleUriDelete(uri: Uri, alarmRepo: AlarmRepository) {
         val id = uri.getQueryParameter("id")?.toLongOrNull() ?: return
+        // 先從 DB 取得鬧鐘資料，才能正確取消 AlarmManager 排程
+        val alarm = alarmRepo.getAlarmById(id)
         alarmRepo.deleteById(id)
+        if (alarm != null) {
+            AlarmScheduler.cancel(this, alarm)
+        }
         runOnUiThread { Toast.makeText(this, "Alarm deleted", Toast.LENGTH_SHORT).show() }
     }
 
