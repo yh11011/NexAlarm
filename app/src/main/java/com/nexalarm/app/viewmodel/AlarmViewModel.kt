@@ -35,6 +35,8 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     private fun triggerSync() {
         val token = settings.authToken ?: return
         viewModelScope.launch {
+            // getAllAlarmsList() 包含軟刪除（is_deleted=true）的鬧鐘，
+            // 同步時會帶 is_deleted:true 送至伺服器；伺服器確認後 applyServerAlarms 會硬刪
             val localAlarms = alarmDao.getAllAlarmsList()
             AlarmSyncRepository.sync(token, localAlarms)
                 .onSuccess { serverAlarms ->
@@ -152,20 +154,16 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * 刪除鬧鐘
-     * ⚠️ 重點：會自動取消排程
+     * 採軟刪除：先標記 is_deleted=true、取消排程，再由同步流程通知伺服器；
+     * 伺服器確認刪除後（回傳 is_deleted:true）applyServerAlarms 才進行硬刪。
+     * 這樣即使同步在刪除前失敗或 app 重裝，WorkManager 定期同步也能把刪除帶上去。
      */
     fun deleteAlarm(alarm: AlarmEntity) {
         viewModelScope.launch {
             scheduler.cancel(alarm)
-            alarmDao.delete(alarm)
-            // 通知伺服器刪除（以軟刪除形式同步）
-            val token = settings.authToken ?: return@launch
             val deletedAt = System.currentTimeMillis()
-            AlarmSyncRepository.sync(
-                token = token,
-                localAlarms = alarmDao.getAllAlarmsList(),
-                deletedClientIds = listOf(alarm.clientId to deletedAt)
-            )
+            alarmDao.update(alarm.copy(isDeleted = true, updatedAt = deletedAt))
+            triggerSync()
         }
     }
 
@@ -174,18 +172,12 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun deleteAlarms(alarms: List<AlarmEntity>) {
         viewModelScope.launch {
+            val deletedAt = System.currentTimeMillis()
             alarms.forEach { alarm ->
                 scheduler.cancel(alarm)
+                alarmDao.update(alarm.copy(isDeleted = true, updatedAt = deletedAt))
             }
-            alarmDao.deleteAll(alarms)
-            // 同步刪除到雲端
-            val token = settings.authToken ?: return@launch
-            val deletedAt = System.currentTimeMillis()
-            AlarmSyncRepository.sync(
-                token = token,
-                localAlarms = alarmDao.getAllAlarmsList(),
-                deletedClientIds = alarms.map { it.clientId to deletedAt }
-            )
+            triggerSync()
         }
     }
 
