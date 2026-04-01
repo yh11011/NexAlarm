@@ -41,14 +41,19 @@ import com.nexalarm.app.ui.theme.NexAlarmTheme
 import com.nexalarm.app.ui.theme.S
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 
 /**
  * 全螢幕鬧鐘觸發 Activity
- * 在鎖定螢幕或桌面上顯示全螢幕鬧鐘介面
+ * 在鎖定螢幕或桌面上顯示全螢幕鬧鐘介面。
+ * launchMode="singleInstance"：系統保證只有一個實例，後續鬧鐘觸發透過 onNewIntent 傳入。
  */
 class AlarmRingingActivity : ComponentActivity() {
+
+    // Compose-observable state：讓 onNewIntent 能即時更新 UI
+    private val activeAlarmId = mutableLongStateOf(-1L)
+    private val activeAlarmTitle = mutableStateOf(S.alarmDefaultTitle)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,37 +75,54 @@ class AlarmRingingActivity : ComponentActivity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        val alarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1L)
-        val alarmTitle = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: S.alarmDefaultTitle
+        updateFromIntent(intent)
 
         setContent {
             NexAlarmTheme {
-                var alarm by remember { mutableStateOf<AlarmEntity?>(null) }
-                val scope = rememberCoroutineScope()
+                // 讀取 class-level state，onNewIntent 更新後自動觸發重組
+                val alarmId = activeAlarmId.longValue
+                val fallbackTitle = activeAlarmTitle.value
+
+                var alarm by remember(alarmId) { mutableStateOf<AlarmEntity?>(null) }
 
                 LaunchedEffect(alarmId) {
                     if (alarmId != -1L) {
-                        scope.launch(Dispatchers.IO) {
-                            val db = NexAlarmDatabase.getDatabase(this@AlarmRingingActivity)
-                            alarm = db.alarmDao().getAlarmById(alarmId)
+                        alarm = withContext(Dispatchers.IO) {
+                            NexAlarmDatabase.getDatabase(this@AlarmRingingActivity)
+                                .alarmDao().getAlarmById(alarmId)
                         }
                     }
                 }
 
                 AlarmRingingScreen(
                     alarm = alarm,
-                    fallbackTitle = alarmTitle,
+                    fallbackTitle = fallbackTitle,
                     onDismiss = {
-                        sendDismiss(alarmId)
+                        sendDismiss(activeAlarmId.longValue)
                         finish()
                     },
                     onSnooze = {
-                        sendSnooze(alarmId)
+                        sendSnooze(activeAlarmId.longValue)
                         finish()
                     }
                 )
             }
         }
+    }
+
+    /**
+     * singleInstance 模式下，後續鬧鐘觸發會呼叫此方法而非重建 Activity。
+     * 更新 Compose state 即可讓 UI 即時切換到新鬧鐘資訊。
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        updateFromIntent(intent)
+    }
+
+    private fun updateFromIntent(intent: Intent) {
+        activeAlarmId.longValue = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1L)
+        activeAlarmTitle.value = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: S.alarmDefaultTitle
     }
 
     /**

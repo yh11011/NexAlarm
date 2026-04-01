@@ -14,11 +14,18 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.app.NotificationCompat
 import com.nexalarm.app.R
+import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.receiver.AlarmReceiver
 import com.nexalarm.app.ui.screens.AlarmRingingActivity
 import com.nexalarm.app.ui.theme.S
+import com.nexalarm.app.util.AlarmScheduler
 import com.nexalarm.app.util.AppSettingsProvider
 import com.nexalarm.app.util.NotificationHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 鬧鐘服務
@@ -31,10 +38,19 @@ class AlarmService : Service() {
         const val ACTION_STOP_ALARM = "com.nexalarm.app.STOP_ALARM"
 
         private const val NOTIFICATION_ID = 1001
+
+        /**
+         * 目前是否正在響鈴。
+         * 用來防止同分鐘多個鬧鐘重複啟動音效——只有第一個鬧鐘觸發音效，
+         * 後續在服務存活期間觸發的鬧鐘僅更新通知。
+         */
+        @Volatile
+        private var isRinging = false
     }
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private var serviceScope: CoroutineScope? = null
 
     private var alarmId: Long = -1
     private var alarmTitle: String = ""
@@ -45,6 +61,7 @@ class AlarmService : Service() {
     override fun onCreate() {
         super.onCreate()
         vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        serviceScope = CoroutineScope(Dispatchers.Main + Job())
         // 同步設定，確保背景服務中的狀態與 SharedPreferences 一致
         AppSettingsProvider.syncFromSharedPreferences()
     }
@@ -52,10 +69,9 @@ class AlarmService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START_ALARM -> {
-                // 先停止目前播放中的鬧鐘，防止密集觸發時音效重疊
-                stopAlarm()
+                val newAlarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1)
+                val prevAlarmId = alarmId  // 記錄被取代的鬧鐘 id
 
-                alarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1)
                 alarmTitle = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: S.alarmDefaultTitle
                 vibrateOnly = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, false)
                 snoozeEnabled = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_SNOOZE_ENABLED, true)
@@ -63,12 +79,27 @@ class AlarmService : Service() {
 
                 // [NexAlarmTest] 事件 4/4：ForegroundService 已啟動，鈴聲即將播放
                 android.util.Log.i("NexAlarmTest",
-                    "SERVICE_START|id=$alarmId|title=$alarmTitle|ts=${System.currentTimeMillis()}")
+                    "SERVICE_START|id=$newAlarmId|title=$alarmTitle|ts=${System.currentTimeMillis()}")
 
-                startForeground(NOTIFICATION_ID, createNotification())
-                startAlarm()
+                if (isRinging && prevAlarmId != -1L && prevAlarmId != newAlarmId) {
+                    // 已有鬧鐘正在響鈴：不重啟音效（避免音效中斷或重疊），
+                    // 僅更新通知以顯示最新鬧鐘名稱，並排程被取代的鬧鐘。
+                    alarmId = newAlarmId
+                    startForeground(NOTIFICATION_ID, createNotification())
+                    android.util.Log.d("AlarmService",
+                        "Alarm $newAlarmId arrived while ringing; coalescing. Rescheduling displaced alarm $prevAlarmId.")
+                    rescheduleDisplacedAlarm(prevAlarmId)
+                } else {
+                    // 正常啟動：先停止舊音效（若有），再開始新音效
+                    stopAlarm()
+                    alarmId = newAlarmId
+                    isRinging = true
+                    startForeground(NOTIFICATION_ID, createNotification())
+                    startAlarm()
+                }
             }
             ACTION_STOP_ALARM -> {
+                isRinging = false
                 stopAlarm()
                 stopSelf()
             }
@@ -78,6 +109,35 @@ class AlarmService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /**
+     * 排程被取代的鬧鐘：確保重複鬧鐘下次仍能觸發，單次鬧鐘則刪除或停用。
+     * 邏輯與 AlarmReceiver.handlePostDismiss 一致。
+     */
+    private fun rescheduleDisplacedAlarm(displacedAlarmId: Long) {
+        serviceScope?.launch {
+            try {
+                val db = NexAlarmDatabase.getDatabase(this@AlarmService)
+                val alarm = withContext(Dispatchers.IO) { db.alarmDao().getAlarmById(displacedAlarmId) }
+                    ?: return@launch
+                if (alarm.isRecurring) {
+                    // 重複鬧鐘：排程下次觸發
+                    AlarmScheduler(this@AlarmService).schedule(alarm)
+                    android.util.Log.d("AlarmService", "Rescheduled displaced recurring alarm $displacedAlarmId")
+                } else if (!alarm.keepAfterRinging) {
+                    // 單次鬧鐘（不保留）：從 DB 刪除
+                    withContext(Dispatchers.IO) { db.alarmDao().deleteById(displacedAlarmId) }
+                    android.util.Log.d("AlarmService", "Deleted displaced one-time alarm $displacedAlarmId")
+                } else {
+                    // 單次鬧鐘（保留）：停用
+                    withContext(Dispatchers.IO) { db.alarmDao().setEnabled(displacedAlarmId, false) }
+                    android.util.Log.d("AlarmService", "Disabled displaced one-time alarm $displacedAlarmId")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("AlarmService", "Failed to reschedule displaced alarm $displacedAlarmId", e)
+            }
+        }
+    }
 
     /**
      * 開始播放鬧鐘
@@ -140,7 +200,12 @@ class AlarmService : Service() {
      */
     private fun stopAlarm() {
         mediaPlayer?.apply {
-            if (isPlaying) stop()
+            try {
+                if (isPlaying) stop()
+                reset()  // 確保進入 Idle 狀態，讓音訊資源完全釋放再 release
+            } catch (e: Exception) {
+                android.util.Log.w("AlarmService", "Error stopping media player", e)
+            }
             release()
         }
         mediaPlayer = null
@@ -196,7 +261,10 @@ class AlarmService : Service() {
     }
 
     override fun onDestroy() {
+        isRinging = false
         stopAlarm()
+        serviceScope?.cancel()
+        serviceScope = null
         super.onDestroy()
     }
 }
