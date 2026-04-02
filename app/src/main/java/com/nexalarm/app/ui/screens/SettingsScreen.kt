@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.nexalarm.app.R
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.ui.theme.*
@@ -37,13 +38,12 @@ import com.nexalarm.app.util.AppSettingsProvider
 import java.util.TimeZone
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(navController: NavController? = null) {
     val openMenu = LocalMenuAction.current
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager(context) }
     var showTimezoneDialog by remember { mutableStateOf(false) }
     var selectedTimezoneId by remember { mutableStateOf(settingsManager.timeZoneId) }
-    var showAiDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Header
@@ -101,18 +101,7 @@ fun SettingsScreen() {
         Spacer(modifier = Modifier.height(12.dp))
 
         // AI Integration
-        AiIntegrationCard(onClick = { showAiDialog = true })
-    }
-
-    if (showAiDialog) {
-        AiModelPickerDialog(
-            authToken = settingsManager.authToken,
-            onDismiss = { showAiDialog = false },
-            onOpenUrl = { url ->
-                showAiDialog = false
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-            }
-        )
+        AiIntegrationCard(onClick = { navController?.navigate("ai_settings") })
     }
 
     if (showTimezoneDialog) {

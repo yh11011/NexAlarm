@@ -43,7 +43,10 @@ class NexAlarmApp : Application() {
     }
 
     private fun schedulePeriodicSync() {
-        val syncRequest = PeriodicWorkRequestBuilder<AlarmSyncWorker>(15, TimeUnit.MINUTES)
+        // 使用 OneTimeWork 自我重排程方式達到 5 分鐘同步一次
+        // Worker 完成後會自動 enqueue 下一個 5 分鐘後的工作
+        val syncRequest = OneTimeWorkRequestBuilder<AlarmSyncWorker>()
+            .setInitialDelay(5, TimeUnit.MINUTES)
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -51,9 +54,9 @@ class NexAlarmApp : Application() {
             )
             .build()
 
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "alarm_sync",
-            ExistingPeriodicWorkPolicy.KEEP,
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            "alarm_sync_5min",
+            ExistingWorkPolicy.KEEP,
             syncRequest
         )
     }

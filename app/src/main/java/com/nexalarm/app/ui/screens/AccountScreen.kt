@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.AuthRepository
+import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.util.BillingManager
 import com.nexalarm.app.util.FeatureFlags
@@ -40,7 +41,11 @@ fun AccountScreen(
     authDisplayName: String?,
     authToken: String?,
     onLoginClick: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    // 雲端同步
+    onManualUpload: () -> Unit = {},
+    isSyncing: Boolean = false,
+    lastSyncTime: Long = 0L
 ) {
     val openMenu = LocalMenuAction.current
     val context = LocalContext.current
@@ -210,6 +215,86 @@ fun AccountScreen(
                     border = BorderStroke(1.dp, DarkCard)
                 ) {
                     Text(S.changePassword, fontSize = 14.sp)
+                }
+            }
+
+            // ── 雲端同步卡片（已登入才顯示）──
+            if (isLoggedIn) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(DarkSurface, RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // 標題
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = S.cloudSync,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // 最後同步時間
+                        val lastSyncText = if (lastSyncTime == 0L) {
+                            S.neverSynced
+                        } else {
+                            val diff = System.currentTimeMillis() - lastSyncTime
+                            val minutes = diff / (1000 * 60)
+                            when {
+                                minutes < 1 -> S.justNow
+                                minutes < 60 -> if (SettingsManager(context).isEnglish)
+                                    "$minutes minute${if (minutes > 1) "s" else ""} ago"
+                                else "${minutes}分鐘前"
+                                else -> {
+                                    val hours = minutes / 60
+                                    if (SettingsManager(context).isEnglish)
+                                        "$hours hour${if (hours > 1) "s" else ""} ago"
+                                    else "${hours}小時前"
+                                }
+                            }
+                        }
+                        Text(
+                            text = "${S.lastSyncPrefix}$lastSyncText",
+                            fontSize = 13.sp,
+                            color = TextTertiary
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // 上傳按鈕
+                        Button(
+                            onClick = onManualUpload,
+                            enabled = !isSyncing,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = PrimaryBlue,
+                                disabledContainerColor = PrimaryBlue.copy(alpha = 0.5f)
+                            )
+                        ) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .padding(end = 8.dp),
+                                    strokeWidth = 2.dp,
+                                    color = TextPrimary
+                                )
+                                Text(S.syncing, fontSize = 14.sp)
+                            } else {
+                                Text(S.uploadToServer, fontSize = 14.sp)
+                            }
+                        }
+                    }
                 }
             }
 

@@ -71,6 +71,27 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** 強制套用：不比較時間戳，直接覆蓋所有伺服器鬧鐘（用於拉取操作） */
+    private suspend fun applyServerAlarmsForce(serverAlarms: List<com.nexalarm.app.data.ServerAlarm>) {
+        for (serverAlarm in serverAlarms) {
+            val existing = alarmDao.getByClientId(serverAlarm.clientId)
+            if (serverAlarm.isDeleted) {
+                if (existing != null) { scheduler.cancel(existing); alarmDao.delete(existing) }
+            } else {
+                val newAlarm = AlarmSyncRepository.jsonToAlarm(
+                    serverAlarm.data, serverAlarm.clientId, serverAlarm.updatedAt, existing?.id ?: 0L
+                )
+                if (existing == null) {
+                    val newId = alarmDao.insert(newAlarm)
+                    if (newAlarm.isEnabled) scheduler.schedule(newAlarm.copy(id = newId))
+                } else {
+                    alarmDao.update(newAlarm)
+                    if (newAlarm.isEnabled) scheduler.schedule(newAlarm) else scheduler.cancel(newAlarm)
+                }
+            }
+        }
+    }
+
     /** 新增鬧鐘超過免費版上限時觸發（UI 可收集並顯示升級提示） */
     private val _alarmLimitError = MutableSharedFlow<Unit>()
     val alarmLimitError: SharedFlow<Unit> = _alarmLimitError
@@ -94,6 +115,13 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                   .minByOrNull { scheduler.getNextTriggerTime(it) }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    // 雲端同步狀態
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing
+
+    private val _lastSyncTime = MutableStateFlow(0L)
+    val lastSyncTime: StateFlow<Long> = _lastSyncTime
 
     init {
         loadAlarms()
@@ -224,6 +252,51 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             alarmDao.update(updated)
             if (updated.isEnabled) scheduler.schedule(updated) else scheduler.cancel(updated)
             triggerSync()
+        }
+    }
+
+    /**
+     * 手動上傳到伺服器（按鈕觸發 + App 進背景時呼叫）
+     * 使用 Last-Write-Wins 衝突解決策略
+     */
+    fun manualUpload() {
+        val token = settings.authToken ?: return
+        if (_isSyncing.value) return  // 防止重複觸發
+        _isSyncing.value = true
+        viewModelScope.launch {
+            val localAlarms = alarmDao.getAllAlarmsList()
+            AlarmSyncRepository.sync(token, localAlarms)
+                .onSuccess { serverAlarms ->
+                    applyServerAlarms(serverAlarms)
+                    _lastSyncTime.value = System.currentTimeMillis()
+                }
+                .onFailure { e ->
+                    if (e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true) {
+                        settings.clearAuth()
+                    }
+                }
+            _isSyncing.value = false
+        }
+    }
+
+    /**
+     * 從伺服器拉取更新（App 開啟時呼叫 + 背景 Worker）
+     * 伺服器優先，強制套用所有鬧鐘（忽略時間戳比較）
+     */
+    fun pullFromServer() {
+        val token = settings.authToken ?: return
+        viewModelScope.launch {
+            val localAlarms = alarmDao.getAllAlarmsList()
+            AlarmSyncRepository.sync(token, localAlarms)
+                .onSuccess { serverAlarms ->
+                    applyServerAlarmsForce(serverAlarms)
+                    _lastSyncTime.value = System.currentTimeMillis()
+                }
+                .onFailure { e ->
+                    if (e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true) {
+                        settings.clearAuth()
+                    }
+                }
         }
     }
 }

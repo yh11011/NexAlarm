@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -61,6 +64,7 @@ private val allDrawerItems get() = listOf(
     DrawerNavItem(S.folders,   Icons.Default.Folder,         "tabs", 1),
     DrawerNavItem(S.stopwatch, Icons.Default.Timer,           "tabs", 2),
     DrawerNavItem(S.timer,     Icons.Default.HourglassBottom, "tabs", 3),
+    DrawerNavItem(S.chatWithAi, Icons.Default.SmartToy,       "chat"),
     DrawerNavItem(S.settings,  Icons.Default.Settings,       "settings"),
     DrawerNavItem(S.account,   Icons.Default.Person,         "account")
 )
@@ -107,6 +111,20 @@ fun NexAlarmMainContent() {
         }
     }
 
+    // 生命週期事件：App 開啟時拉取伺服器資料，背景時推送本地變更
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> alarmViewModel.pullFromServer()
+                Lifecycle.Event.ON_PAUSE -> alarmViewModel.manualUpload()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // Folder add-dialog state hoisted here so the Scaffold FAB can trigger it
     var showFolderDialog by remember { mutableStateOf(false) }
 
@@ -119,7 +137,7 @@ fun NexAlarmMainContent() {
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { BottomTab.entries.size })
 
     // Bottom bar shows on tab pager and on drawer-only main screens（登入頁不顯示）
-    val showBottomBar = currentRoute == "tabs" || currentRoute in listOf("home", "settings", "account")
+    val showBottomBar = currentRoute == "tabs" || currentRoute in listOf("home", "settings", "account", "chat")
 
     val openMenu: () -> Unit = { scope.launch { drawerState.open() } }
 
@@ -349,11 +367,13 @@ fun NexAlarmMainContent() {
 
                     // Settings (drawer-only)
                     composable("settings") {
-                        SettingsScreen()
+                        SettingsScreen(navController = navController)
                     }
 
                     // Account (drawer-only)
                     composable("account") {
+                        val isSyncing by alarmViewModel.isSyncing.collectAsState()
+                        val lastSyncTime by alarmViewModel.lastSyncTime.collectAsState()
                         AccountScreen(
                             folderUsed = folders.count { !it.isSystem },
                             alarmUsed = alarms.size,
@@ -378,7 +398,22 @@ fun NexAlarmMainContent() {
                                         AuthRepository.logout(token)
                                     }
                                 }
-                            }
+                            },
+                            onManualUpload = { alarmViewModel.manualUpload() },
+                            isSyncing = isSyncing,
+                            lastSyncTime = lastSyncTime
+                        )
+                    }
+
+                    // Chat (drawer-only)
+                    composable("chat") {
+                        ChatScreen()
+                    }
+
+                    // AI Settings (push screen, accessed from Settings)
+                    composable("ai_settings") {
+                        AiSettingsScreen(
+                            onBack = { navController.popBackStack() }
                         )
                     }
 

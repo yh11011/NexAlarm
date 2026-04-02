@@ -79,18 +79,24 @@ class MainActivity : ComponentActivity() {
         }
 
         // 電池優化白名單——讓鬧鐘在 Doze 模式下也能正常觸發
+        // 邏輯：每次啟動檢查是否已在白名單；只有實際加入時才標記為已提示，失敗後下次仍會重新提示
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         if (!powerManager.isIgnoringBatteryOptimizations(packageName) &&
             !settings.hasShownBatteryOptDialog
         ) {
-            settings.hasShownBatteryOptDialog = true
             try {
                 startActivity(
                     Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                         data = Uri.parse("package:$packageName")
                     }
                 )
+                // 注意：不在此立即標記為已提示，讓使用者返回時才檢查結果
             } catch (_: Exception) {}
+        } else if (powerManager.isIgnoringBatteryOptimizations(packageName) &&
+            !settings.hasShownBatteryOptDialog
+        ) {
+            // 如果現在已在白名單中且尚未標記過，進行標記（表示成功）
+            settings.hasShownBatteryOptDialog = true
         }
     }
 

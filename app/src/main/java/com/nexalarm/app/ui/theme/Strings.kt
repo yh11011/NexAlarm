@@ -158,6 +158,14 @@ object S {
     val passwordTooShort: String get() = if (isAppEnglish) "Password must be at least 6 characters." else "密碼至少需要 6 個字元。"
     val changingPassword: String get() = if (isAppEnglish) "Changing..." else "修改中..."
 
+    // 雲端同步
+    val cloudSync: String get() = if (isAppEnglish) "Cloud Sync" else "雲端同步"
+    val uploadToServer: String get() = if (isAppEnglish) "Upload to Server" else "上傳到伺服器"
+    val syncing: String get() = if (isAppEnglish) "Syncing..." else "同步中..."
+    val neverSynced: String get() = if (isAppEnglish) "Never synced" else "從未同步"
+    val lastSyncPrefix: String get() = if (isAppEnglish) "Last sync: " else "最後同步："
+    val justNow: String get() = if (isAppEnglish) "Just now" else "剛剛"
+
     // 優惠碼
     val promoCode: String get() = if (isAppEnglish) "Promo Code" else "優惠碼"
     val promoCodeHint: String get() = if (isAppEnglish) "Have a promo code? Enter it below, or purchase via Google Play." else "有優惠碼嗎？輸入後套用，或直接透過 Google Play 購買。"
@@ -174,11 +182,36 @@ object S {
     val themeStyleDesc: String get() = if (isAppEnglish) "Choose your visual style" else "選擇你的視覺風格"
     val themePreview: String get() = if (isAppEnglish) "Preview" else "預覽"
 
-    // AI 整合
+    // AI 整合 & Chat
+    val aiAssistant: String get() = if (isAppEnglish) "AI Assistant" else "AI 助理"
+    val aiSettings: String get() = if (isAppEnglish) "AI Settings" else "AI 設定"
     val aiIntegration: String get() = if (isAppEnglish) "AI Integration" else "AI 整合"
     val aiIntegrationDesc: String get() = if (isAppEnglish) "Connect your AI assistant to manage alarms" else "連接 AI 助理，讓 AI 幫你管理鬧鐘"
     val aiSelectModel: String get() = if (isAppEnglish) "Select AI Model" else "選擇 AI 模型"
     val aiSelectHint: String get() = if (isAppEnglish) "Choose the AI assistant you want to connect" else "選擇你想連接的 AI 助理"
     val aiConfirm: String get() = if (isAppEnglish) "Get Setup Link" else "取得設定連結"
     val aiLoginRequired: String get() = if (isAppEnglish) "Please sign in first to use AI integration" else "請先登入帳號才能使用 AI 整合"
+
+    // AI 綁定畫面
+    val bindAiTitle: String get() = if (isAppEnglish) "Bind AI Service" else "綁定 AI 服務"
+    val groqProvider: String get() = if (isAppEnglish) "Groq (Free)" else "Groq（免費）"
+    val openaiProvider: String get() = if (isAppEnglish) "OpenAI" else "OpenAI"
+    val anthropicProvider: String get() = if (isAppEnglish) "Anthropic Claude" else "Anthropic Claude"
+    val geminiProvider: String get() = if (isAppEnglish) "Google Gemini" else "Google Gemini"
+    val getApiKey: String get() = if (isAppEnglish) "Get API Key" else "取得 API Key"
+    val enterApiKey: String get() = if (isAppEnglish) "Paste API Key" else "貼上 API Key"
+    val verifyAndSave: String get() = if (isAppEnglish) "Verify & Save" else "驗證並儲存"
+    val apiKeyVerifying: String get() = if (isAppEnglish) "Verifying..." else "驗證中..."
+    val apiKeyInvalid: String get() = if (isAppEnglish) "Invalid API key. Please check and try again." else "API Key 無效，請檢查後重試。"
+    val apiKeyBindingSuccess: String get() = if (isAppEnglish) "API key bound successfully!" else "API Key 綁定成功！"
+    val unbindAi: String get() = if (isAppEnglish) "Unbind" else "解除綁定"
+
+    // Chat 畫面
+    val chatWithAi: String get() = if (isAppEnglish) "Chat with AI" else "與 AI 對話"
+    val aiNotBound: String get() = if (isAppEnglish) "No AI service bound. Go to Settings > AI Assistant to bind one." else "未綁定 AI 服務。前往設定 > AI 助理綁定。"
+    val typeMessage: String get() = if (isAppEnglish) "Type a message..." else "輸入訊息..."
+    val send: String get() = if (isAppEnglish) "Send" else "發送"
+    val aiWaitingResponse: String get() = if (isAppEnglish) "Waiting for response..." else "等待回應..."
+    val alarmCreated: String get() = if (isAppEnglish) "Alarm created" else "鬧鐘已建立"
+    val alarmDeleted: String get() = if (isAppEnglish) "Alarm deleted" else "鬧鐘已刪除"
 }
