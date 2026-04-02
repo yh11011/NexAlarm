@@ -1,7 +1,7 @@
 package com.nexalarm.app.ui.screens
 
-import android.content.Intent
 import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +24,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -112,7 +113,10 @@ fun SettingsScreen() {
             onDismiss = { showAiDialog = false },
             onOpenUrl = { url ->
                 showAiDialog = false
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                CustomTabsIntent.Builder()
+                    .setShowTitle(false)
+                    .build()
+                    .launchUrl(context, Uri.parse(url))
             }
         )
     }
@@ -453,8 +457,6 @@ private fun AiModelPickerDialog(
     onDismiss: () -> Unit,
     onOpenUrl: (String) -> Unit
 ) {
-    var selectedModel by remember { mutableStateOf<AiModel?>(null) }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DarkSurface,
@@ -472,19 +474,14 @@ private fun AiModelPickerDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(AI_MODELS) { model ->
-                        val isSelected = selectedModel?.id == model.id
                         Column(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    if (isSelected) PrimaryBlue.copy(alpha = 0.15f) else DarkCard
-                                )
-                                .border(
-                                    width = if (isSelected) 1.5.dp else 0.dp,
-                                    color = if (isSelected) PrimaryBlue else Color.Transparent,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .clickable { selectedModel = model }
+                                .background(DarkCard)
+                                .clickable(enabled = authToken != null) {
+                                    val url = "https://login.nex11.me/ai-setup?model=${model.id}&token=${Uri.encode(authToken!!)}"
+                                    onOpenUrl(url)
+                                }
                                 .padding(vertical = 12.dp, horizontal = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -492,13 +489,18 @@ private fun AiModelPickerDialog(
                             Image(
                                 painter = painterResource(model.logoRes),
                                 contentDescription = model.name,
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .then(
+                                        if (authToken == null)
+                                            Modifier.alpha(0.4f)
+                                        else Modifier
+                                    )
                             )
                             Text(
                                 text = model.name,
                                 fontSize = 11.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (isSelected) PrimaryBlue else TextSecondary,
+                                color = if (authToken == null) TextSecondary.copy(alpha = 0.4f) else TextSecondary,
                                 textAlign = TextAlign.Center,
                                 maxLines = 2
                             )
@@ -515,21 +517,7 @@ private fun AiModelPickerDialog(
                 }
             }
         },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val model = selectedModel ?: return@Button
-                    val token = authToken ?: return@Button
-                    val url = "https://login.nex11.me/ai-setup?model=${model.id}&token=${Uri.encode(token)}"
-                    onOpenUrl(url)
-                },
-                enabled = selectedModel != null && authToken != null,
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
-            ) {
-                Text(S.aiConfirm, fontWeight = FontWeight.SemiBold)
-            }
-        },
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text(S.cancel, color = TextSecondary)

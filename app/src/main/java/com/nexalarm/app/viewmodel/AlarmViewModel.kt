@@ -170,9 +170,14 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteAlarm(alarm: AlarmEntity) {
         viewModelScope.launch {
             scheduler.cancel(alarm)
-            val deletedAt = System.currentTimeMillis()
-            alarmDao.update(alarm.copy(isDeleted = true, updatedAt = deletedAt))
-            triggerSync()
+            if (settings.authToken == null) {
+                // 未登入：無需同步，直接硬刪
+                alarmDao.delete(alarm)
+            } else {
+                val deletedAt = System.currentTimeMillis()
+                alarmDao.update(alarm.copy(isDeleted = true, updatedAt = deletedAt))
+                triggerSync()
+            }
         }
     }
 
@@ -181,12 +186,18 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun deleteAlarms(alarms: List<AlarmEntity>) {
         viewModelScope.launch {
-            val deletedAt = System.currentTimeMillis()
-            alarms.forEach { alarm ->
-                scheduler.cancel(alarm)
-                alarmDao.update(alarm.copy(isDeleted = true, updatedAt = deletedAt))
+            if (settings.authToken == null) {
+                // 未登入：無需同步，直接硬刪
+                alarms.forEach { alarm -> scheduler.cancel(alarm) }
+                alarmDao.deleteAll(alarms)
+            } else {
+                val deletedAt = System.currentTimeMillis()
+                alarms.forEach { alarm ->
+                    scheduler.cancel(alarm)
+                    alarmDao.update(alarm.copy(isDeleted = true, updatedAt = deletedAt))
+                }
+                triggerSync()
             }
-            triggerSync()
         }
     }
 

@@ -112,6 +112,9 @@ dependencies {
     // 加密儲存（保護 JWT token）
     implementation(libs.security.crypto)
 
+    // Chrome Custom Tabs（AI 整合用，取代外部瀏覽器）
+    implementation(libs.browser)
+
     // 背景同步（WorkManager）
     implementation(libs.work.runtime)
 
