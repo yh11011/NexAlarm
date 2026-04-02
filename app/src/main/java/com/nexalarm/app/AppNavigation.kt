@@ -107,6 +107,13 @@ fun NexAlarmMainContent() {
         }
     }
 
+    // 收集同資料夾時間重複錯誤
+    LaunchedEffect(alarmViewModel) {
+        alarmViewModel.alarmDuplicateError.collect {
+            snackbarHostState.showSnackbar(S.alarmTimeDuplicate)
+        }
+    }
+
     // Folder add-dialog state hoisted here so the Scaffold FAB can trigger it
     var showFolderDialog by remember { mutableStateOf(false) }
 
@@ -360,7 +367,6 @@ fun NexAlarmMainContent() {
                             billingManager = billingManager,
                             onPremiumStatusChanged = { newValue ->
                                 if (newValue) billingManager.activatePremiumFromPromo()
-                                else billingManager.deactivatePremium()
                             },
                             authUsername = authUsername,
                             authDisplayName = authDisplayName,

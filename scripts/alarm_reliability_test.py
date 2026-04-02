@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-NexAlarm ADB 可靠性測試腳本  v2.0
+NexAlarm ADB 可靠性測試腳本  v3.0
 ====================================
 架構：
   - 透過 nexalarm:// Deep Link 批次建立鬧鐘
@@ -12,11 +12,21 @@ NexAlarm ADB 可靠性測試腳本  v2.0
   - Doze 批次記錄 API 類型與 idle 狀態
   - 輸出 JSON + CSV
 
+v3.0 新功能：
+  - 測試開始自動安裝最新 debug APK（--no-install 可跳過）
+  - 測試帳號自動登入（TEST_ACCOUNT_EMAIL / TEST_ACCOUNT_PASSWORD）
+  - 飛航模式離線測試（--offline）
+  - --hours N：設定總測試時長（支援 9 小時以上），自動計算批次窗口
+  - 移除鬧鐘數量上限（原本最多 100，現在無上限）
+  - 測試結束自動清除所有測試鬧鐘（--no-cleanup 可跳過）
+
 使用：
   python3 alarm_reliability_test.py -n 30
   python3 alarm_reliability_test.py -n 50 --no-doze
+  python3 alarm_reliability_test.py -n 100 --hours 3
+  python3 alarm_reliability_test.py -n 200 --hours 9 --offline
   python3 alarm_reliability_test.py -n 20 --scenarios normal battery_saver dnd
-  python3 alarm_reliability_test.py -n 10 --scenarios screen_off app_stopped
+  python3 alarm_reliability_test.py -n 10 --scenarios screen_off app_stopped --no-install
 
 前置需求：
   adb 在 PATH，裝置已啟用 USB 偵錯，NexAlarm 已安裝
@@ -25,16 +35,27 @@ NexAlarm ADB 可靠性測試腳本  v2.0
 
 import argparse
 import csv
+import glob as _glob
 import json
+import os
 import random
 import re
 import subprocess
 import sys
 import threading
 import time
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
+
+# ── 測試帳號 ──────────────────────────────────────────────────────────────────
+TEST_ACCOUNT_EMAIL    = "nexalarm.test@gmail.com"
+TEST_ACCOUNT_PASSWORD = "NexAlarm@Test2026"
+
+# ── APK 路徑（相對於腳本目錄）────────────────────────────────────────────────
+_SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
+APK_SEARCH_DIR = os.path.join(_SCRIPT_DIR, "..", "app", "build", "outputs", "apk", "debug")
 
 # ── 常數 ──────────────────────────────────────────────────────────────────────
 
@@ -43,7 +64,7 @@ PACKAGE = "com.nexalarm.app"
 TOLERANCE_PERFECT  = 3.0    # ≤ 3 s  → 完全準確
 TOLERANCE_MILD     = 60.0   # 3–60 s → 輕微延遲；> 60 s → 嚴重延遲
 
-# 批次時間設計（秒）
+# 批次時間設計（秒）——當未指定 --hours 時使用
 BATCH_START_OFFSET  = 75    # 批次開始後，第一個鬧鐘最早幾秒後觸發
 BATCH_WINDOW        = 60    # 批次觸發窗口寬度（所有鬧鐘分散在此範圍內）
 BATCH_TAIL_WAIT     = 25    # 最後一個鬧鐘觸發後的緩衝等待
@@ -191,6 +212,14 @@ def get_device_info() -> str:
     return f"{model} (API {api})"
 
 
+def get_screen_size() -> Tuple[int, int]:
+    out = adb_shell("wm", "size")
+    m = re.search(r'(\d+)x(\d+)', out)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    return 1080, 1920
+
+
 def open_deep_link(url: str):
     adb("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", url)
     time.sleep(0.5)
@@ -203,6 +232,54 @@ def clear_logcat():
 def dump_logcat_tag(tag: str) -> str:
     out, _ = adb("logcat", "-d", "-s", tag, timeout=8)
     return out
+
+
+# ── APK 安裝 ──────────────────────────────────────────────────────────────────
+
+def find_latest_apk() -> Optional[str]:
+    """找 debug APK 目錄，回傳最新修改時間的那個"""
+    pattern = os.path.join(APK_SEARCH_DIR, "*.apk")
+    apks = _glob.glob(pattern)
+    if not apks:
+        return None
+    return max(apks, key=os.path.getmtime)
+
+
+def install_latest_apk() -> bool:
+    """安裝最新 debug APK 到已連接裝置，回傳是否成功"""
+    apk = find_latest_apk()
+    if not apk:
+        _log("⚠️  找不到 APK（路徑: " + APK_SEARCH_DIR + "）")
+        _log("    請先執行: ./gradlew assembleDebug")
+        return False
+
+    _log(f"📦 安裝 APK: {os.path.basename(apk)}")
+    mtime = datetime.fromtimestamp(os.path.getmtime(apk)).strftime("%Y-%m-%d %H:%M:%S")
+    _log(f"   編譯時間: {mtime}")
+
+    out, code = adb("install", "-r", "-t", apk, timeout=180)
+    if code == 0 and "Success" in out:
+        _log("✅ 安裝成功")
+        time.sleep(2)
+        return True
+    else:
+        _log(f"❌ 安裝失敗（code={code}）: {out[:300]}")
+        return False
+
+
+# ── 飛航模式 ──────────────────────────────────────────────────────────────────
+
+def set_airplane_mode(on: bool):
+    """切換飛航模式（離線/上線）"""
+    val = "1" if on else "0"
+    adb_shell("settings", "put", "global", "airplane_mode_on", val)
+    # 發送廣播讓系統確實生效
+    adb_shell("am", "broadcast",
+              "-a", "android.intent.action.AIRPLANE_MODE",
+              "--ez", "state", "true" if on else "false")
+    time.sleep(2)
+    _log(f"飛航模式: {'ON ✈️  (離線測試中)' if on else 'OFF (已恢復網路)'}")
+
 
 # ── 事先檢查：精確鬧鐘權限 ───────────────────────────────────────────────────
 
@@ -343,11 +420,14 @@ def dismiss_ringing():
     time.sleep(0.3)
 
 
-def reset_all():
+def reset_all(restore_network: bool = True):
+    """重置所有情境，可選擇是否恢復網路"""
     set_battery_saver(False)
     set_doze(False)
     set_dnd(False)
     set_screen(True)
+    if restore_network:
+        set_airplane_mode(False)
     start_app()
     time.sleep(1)
 
@@ -391,6 +471,188 @@ def teardown_scenario(key: str):
     elif key == "app_stopped":
         start_app()
     time.sleep(0.5)
+
+
+# ── 測試帳號登入 ──────────────────────────────────────────────────────────────
+
+def _get_ui_dump() -> str:
+    """取得 UIAutomator UI 結構 XML"""
+    adb_shell("uiautomator", "dump", "/sdcard/ui_nexalarm_dump.xml", timeout=10)
+    out, _ = adb("shell", "cat", "/sdcard/ui_nexalarm_dump.xml", timeout=8)
+    return out
+
+
+def _ui_find_by_text(xml_str: str, *texts: str) -> Optional[Tuple[int, int]]:
+    """在 UIAutomator XML 中找到含有特定 text 或 content-desc 的元素中心座標"""
+    try:
+        root = ET.fromstring(xml_str)
+    except ET.ParseError:
+        return None
+    for node in root.iter("node"):
+        node_text = node.get("text", "")
+        node_desc = node.get("content-desc", "")
+        for t in texts:
+            if node_text == t or node_desc == t:
+                bounds = node.get("bounds", "")
+                m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', bounds)
+                if m:
+                    cx = (int(m.group(1)) + int(m.group(3))) // 2
+                    cy = (int(m.group(2)) + int(m.group(4))) // 2
+                    return cx, cy
+    return None
+
+
+def _ui_find_edittexts(xml_str: str) -> List[Tuple[int, int]]:
+    """找出所有 EditText 元素的中心座標（按 y 軸排序）"""
+    results = []
+    try:
+        root = ET.fromstring(xml_str)
+    except ET.ParseError:
+        return results
+    for node in root.iter("node"):
+        if "EditText" in node.get("class", ""):
+            bounds = node.get("bounds", "")
+            m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', bounds)
+            if m:
+                cx = (int(m.group(1)) + int(m.group(3))) // 2
+                cy = (int(m.group(2)) + int(m.group(4))) // 2
+                results.append((cx, cy))
+    results.sort(key=lambda p: p[1])  # 按 y 軸排序（email 在上，password 在下）
+    return results
+
+
+def _adb_input_text_safe(text: str):
+    """安全輸入含特殊字元（@ . !）的文字"""
+    # adb shell input text 對 @ 等字元有問題，逐字元用 keyevent 輸入
+    # 使用 am broadcast 傳入 clipboard 再貼上（相容性最好）
+    escaped = text.replace("\\", "\\\\").replace("'", "\\'").replace(" ", "%s")
+    adb_shell("input", "text", escaped, timeout=5)
+
+
+def login_test_account() -> bool:
+    """
+    使用 UIAutomator 自動登入測試帳號。
+    回傳 True = 登入成功（或已是登入狀態），False = 跳過。
+    """
+    _log(f"🔑 登入測試帳號: {TEST_ACCOUNT_EMAIL}")
+
+    start_app()
+    time.sleep(2)
+
+    # ── Step 1: 檢查是否已登入 ──────────────────────────────────────────────
+    xml = _get_ui_dump()
+    if _ui_find_by_text(xml, "登出", "Logout", "Sign Out"):
+        _log("✅ 已是登入狀態，跳過登入流程")
+        return True
+
+    # ── Step 2: 開啟側邊抽屜 ────────────────────────────────────────────────
+    w, h = get_screen_size()
+    adb_shell("input", "swipe",
+              "0", str(h // 2),
+              str(w // 3), str(h // 2),
+              "400")
+    time.sleep(1.2)
+
+    # ── Step 3: 點選「帳號」 ────────────────────────────────────────────────
+    xml = _get_ui_dump()
+    account_pos = _ui_find_by_text(xml, "帳號", "Account")
+    if not account_pos:
+        _log("⚠️  找不到「帳號」選項，請手動登入後再執行測試")
+        return False
+
+    adb_shell("input", "tap", str(account_pos[0]), str(account_pos[1]))
+    time.sleep(2)
+
+    # ── Step 4: 再次確認是否已登入 ──────────────────────────────────────────
+    xml = _get_ui_dump()
+    if _ui_find_by_text(xml, "登出", "Logout", "Sign Out"):
+        _log("✅ 已是登入狀態")
+        return True
+
+    # ── Step 5: 找 EditText 欄位（email 在前，password 在後）───────────────
+    fields = _ui_find_edittexts(xml)
+    if len(fields) < 2:
+        _log(f"⚠️  只找到 {len(fields)} 個輸入欄位（需要 2 個），嘗試備用方式")
+        # 備用：點擊 email hint 文字
+        email_pos = _ui_find_by_text(xml, "電子郵件", "Email", "帳號/電子郵件",
+                                     "email", "Username")
+        if email_pos:
+            fields_fallback = [email_pos]
+            adb_shell("input", "tap", str(email_pos[0]), str(email_pos[1]))
+            time.sleep(0.5)
+            xml2 = _get_ui_dump()
+            fields = _ui_find_edittexts(xml2)
+
+        if len(fields) < 2:
+            _log("⚠️  無法找到登入欄位，請手動登入")
+            return False
+
+    email_field, password_field = fields[0], fields[1]
+
+    # ── Step 6: 輸入 Email ──────────────────────────────────────────────────
+    adb_shell("input", "tap", str(email_field[0]), str(email_field[1]))
+    time.sleep(0.5)
+    adb_shell("input", "keyevent", "123")  # KEYCODE_MOVE_END（確保游標在最後）
+    # 清除現有內容
+    adb_shell("input", "keyevent", "KEYCODE_CTRL_A")
+    time.sleep(0.2)
+    _adb_input_text_safe(TEST_ACCOUNT_EMAIL)
+    time.sleep(0.5)
+
+    # ── Step 7: 輸入 Password ───────────────────────────────────────────────
+    adb_shell("input", "tap", str(password_field[0]), str(password_field[1]))
+    time.sleep(0.5)
+    adb_shell("input", "keyevent", "KEYCODE_CTRL_A")
+    time.sleep(0.2)
+    _adb_input_text_safe(TEST_ACCOUNT_PASSWORD)
+    time.sleep(0.5)
+
+    # ── Step 8: 隱藏鍵盤並點擊登入按鈕 ─────────────────────────────────────
+    adb_shell("input", "keyevent", "4")  # BACK（收鍵盤）
+    time.sleep(0.5)
+
+    xml = _get_ui_dump()
+    login_pos = _ui_find_by_text(xml, "登入", "Login", "Sign In", "登錄")
+    if not login_pos:
+        _log("⚠️  找不到登入按鈕，嘗試按 Enter")
+        adb_shell("input", "keyevent", "66")  # ENTER
+    else:
+        adb_shell("input", "tap", str(login_pos[0]), str(login_pos[1]))
+
+    _log("   登入請求已送出，等待回應...")
+    time.sleep(4)
+
+    # ── Step 9: 確認登入結果 ────────────────────────────────────────────────
+    xml = _get_ui_dump()
+    if _ui_find_by_text(xml, "登出", "Logout", "Sign Out"):
+        _log("✅ 登入成功！")
+        return True
+    else:
+        _log("⚠️  無法確認登入狀態（可能需要手動操作）")
+        return False
+
+
+# ── 測試結束清除 ──────────────────────────────────────────────────────────────
+
+def cleanup_test_alarms(test_cases: List[AlarmTestCase]):
+    """刪除所有測試產生的鬧鐘（透過 Deep Link nexalarm://delete?id=N）"""
+    _log("\n🧹 清除測試鬧鐘...")
+    ids_to_delete = [tc.alarm_db_id for tc in test_cases
+                     if tc.alarm_db_id is not None]
+    if not ids_to_delete:
+        _log("   沒有需要清除的鬧鐘")
+        return
+
+    deleted = 0
+    failed  = 0
+    for alarm_id in ids_to_delete:
+        open_deep_link(f"nexalarm://delete?id={alarm_id}")
+        deleted += 1
+        if deleted % 10 == 0:
+            _log(f"   已刪除 {deleted}/{len(ids_to_delete)}...")
+        time.sleep(0.15)  # 稍微放慢，避免 DB 寫入競爭
+
+    _log(f"✅ 清除完成：{deleted} 個鬧鐘已刪除")
 
 
 # ── NexAlarmTest logcat 監聽 ──────────────────────────────────────────────────
@@ -548,10 +810,21 @@ def add_alarm(test_id: str, alarm_time: datetime, scenario: str,
 
 class AlarmReliabilityTester:
 
-    def __init__(self, count: int, scenarios: List[str], keep_prob: float):
-        self.count     = count
-        self.scenarios = scenarios
-        self.keep_prob = keep_prob
+    def __init__(self, count: int, scenarios: List[str], keep_prob: float,
+                 hours: Optional[float] = None,
+                 offline: bool = False,
+                 do_install: bool = True,
+                 do_login: bool = True,
+                 do_cleanup: bool = True):
+        self.count      = count
+        self.scenarios  = scenarios
+        self.keep_prob  = keep_prob
+        self.hours      = hours          # None = 使用預設窗口；float = 分配到 N 小時
+        self.offline    = offline        # 是否啟用飛航模式
+        self.do_install = do_install
+        self.do_login   = do_login
+        self.do_cleanup = do_cleanup
+
         self.test_cases: List[AlarmTestCase] = []
         self.monitor = LogcatMonitor()
         self.stats: Dict[str, ScenarioStats] = {
@@ -560,18 +833,38 @@ class AlarmReliabilityTester:
         self.has_exact_alarm: bool = True
         self.doze_idle_at_batch_start: Optional[str] = None
 
+    def _calc_batch_window(self) -> int:
+        """計算本次測試的批次窗口寬度（秒）"""
+        if self.hours:
+            total_sec   = int(self.hours * 3600)
+            per_scenario = total_sec // len(self.scenarios)
+            window = per_scenario - BATCH_START_OFFSET - BATCH_TAIL_WAIT
+            return max(60, window)
+        return BATCH_WINDOW
+
     # ── 執行 ──────────────────────────────────────────────────────────────────
 
     def run(self):
+        batch_window = self._calc_batch_window()
+
         _log("=" * 65)
-        _log(f"NexAlarm 可靠性測試 v2.0  ({self.count} 個鬧鐘)")
+        _log(f"NexAlarm 可靠性測試 v3.0  ({self.count} 個鬧鐘)")
         _log(f"情境: {', '.join(self.scenarios)}")
+        if self.hours:
+            _log(f"測試時長: {self.hours:.1f} 小時  |  批次窗口: {batch_window}s")
+        _log(f"離線模式: {'是 ✈️' if self.offline else '否'}")
         _log("=" * 65)
 
         if not check_device():
             _log("[FATAL] ADB 裝置未連接")
             sys.exit(1)
         _log(f"裝置: {get_device_info()}")
+
+        # ── 安裝 APK ──────────────────────────────────────────────────────────
+        if self.do_install:
+            install_latest_apk()
+        else:
+            _log("⏩ 跳過 APK 安裝（--no-install）")
 
         # ── 事前權限檢查 ───────────────────────────────────────────────────────
         self.has_exact_alarm, perm_detail = check_exact_alarm_permission()
@@ -582,7 +875,21 @@ class AlarmReliabilityTester:
             _log("  ⚠️  所有鬧鐘將使用 setAndAllowWhileIdle（精度較低），"
                  "結果僅供參考")
 
-        reset_all()
+        # ── 重置裝置狀態（不重置網路，稍後在登入後再切換飛航）────────────────
+        reset_all(restore_network=False)
+
+        # ── 測試帳號登入（在切換飛航模式前）──────────────────────────────────
+        if self.do_login:
+            login_test_account()
+            time.sleep(1)
+        else:
+            _log("⏩ 跳過登入（--no-login）")
+
+        # ── 切換飛航模式 ───────────────────────────────────────────────────────
+        if self.offline:
+            set_airplane_mode(True)
+            time.sleep(1)
+
         self.monitor.start()
 
         # ── 分批執行 ──────────────────────────────────────────────────────────
@@ -596,9 +903,9 @@ class AlarmReliabilityTester:
             _log(f"情境: {ALL_SCENARIOS[scenario]}  ({batch_size} 個)")
             _log(f"{'─'*55}")
 
-            # 計算觸發時間
+            # 計算觸發時間（在批次窗口內隨機分散）
             alarm_times = sorted(
-                now + timedelta(seconds=time_offset + random.uniform(0, BATCH_WINDOW))
+                now + timedelta(seconds=time_offset + random.uniform(0, batch_window))
                 for _ in range(batch_size)
             )
             last_time = alarm_times[-1]
@@ -630,7 +937,8 @@ class AlarmReliabilityTester:
             wait_sec = (last_time + timedelta(seconds=BATCH_TAIL_WAIT)
                         - datetime.now()).total_seconds()
             if wait_sec > 0:
-                _log(f"\n  等待批次響鈴（最多 {wait_sec:.0f}s）...")
+                _log(f"\n  等待批次響鈴（最多 {wait_sec:.0f}s = "
+                     f"{wait_sec/60:.1f} 分鐘）...")
                 self._wait_with_progress(wait_sec, ALL_SCENARIOS[scenario])
 
             # Doze：結束時再記錄一次 idle 狀態（看是否脫出）
@@ -639,11 +947,19 @@ class AlarmReliabilityTester:
                 _log(f"  Doze idle state（批次結束）: {idle_end}")
 
             teardown_scenario(scenario)
-            time_offset += BATCH_WINDOW + BATCH_START_OFFSET
+            time_offset += batch_window + BATCH_START_OFFSET
 
         time.sleep(2)
         self.monitor.stop()
-        reset_all()
+
+        # ── 恢復網路 + 重置裝置 ───────────────────────────────────────────────
+        reset_all(restore_network=True)
+
+        # ── 清除測試鬧鐘 ──────────────────────────────────────────────────────
+        if self.do_cleanup:
+            cleanup_test_alarms(self.test_cases)
+        else:
+            _log("⏩ 跳過清除（--no-cleanup）")
 
         # ── 比對 + 報告 ───────────────────────────────────────────────────────
         self._match_events()
@@ -669,8 +985,16 @@ class AlarmReliabilityTester:
             elapsed = time.time() - start
             if elapsed >= seconds:
                 break
+            remaining = seconds - elapsed
             if elapsed - last_print >= 10:
-                _log(f"  [{desc}] 剩餘 {seconds - elapsed:.0f}s")
+                # 長時間測試顯示小時/分鐘格式
+                if remaining >= 3600:
+                    remain_str = f"{remaining/3600:.1f}h"
+                elif remaining >= 60:
+                    remain_str = f"{remaining/60:.1f}m"
+                else:
+                    remain_str = f"{remaining:.0f}s"
+                _log(f"  [{desc}] 剩餘 {remain_str}")
                 last_print = elapsed
             time.sleep(1)
 
@@ -865,12 +1189,14 @@ class AlarmReliabilityTester:
         tot_fr  = sum(self.stats[k].false_ring for k in rel_keys)
 
         report = {
-            "generated_at":   datetime.now().isoformat(),
+            "generated_at":    datetime.now().isoformat(),
             "device":          get_device_info(),
             "has_exact_alarm": self.has_exact_alarm,
             "total_alarms":    self.count,
             "keep_prob":       self.keep_prob,
             "scenarios":       self.scenarios,
+            "offline_mode":    self.offline,
+            "hours":           self.hours,
             "thresholds": {
                 "perfect_s": TOLERANCE_PERFECT,
                 "mild_s":    TOLERANCE_MILD,
@@ -889,16 +1215,16 @@ class AlarmReliabilityTester:
                 ) if (tot_p + tot_d + tot_m) > 0 else None,
             },
             "app_stopped_independent": {
-                "perfect":    self.stats.get("app_stopped",
-                              ScenarioStats("","")).perfect,
-                "mild_delay": self.stats.get("app_stopped",
-                              ScenarioStats("","")).mild_delay,
+                "perfect":      self.stats.get("app_stopped",
+                                ScenarioStats("","")).perfect,
+                "mild_delay":   self.stats.get("app_stopped",
+                                ScenarioStats("","")).mild_delay,
                 "severe_delay": self.stats.get("app_stopped",
                                 ScenarioStats("","")).severe_delay,
-                "missed":     self.stats.get("app_stopped",
-                              ScenarioStats("","")).missed,
-                "false_ring": self.stats.get("app_stopped",
-                              ScenarioStats("","")).false_ring,
+                "missed":       self.stats.get("app_stopped",
+                                ScenarioStats("","")).missed,
+                "false_ring":   self.stats.get("app_stopped",
+                                ScenarioStats("","")).false_ring,
             } if "app_stopped" in self.scenarios else None,
             "by_scenario": {
                 k: {
@@ -975,7 +1301,7 @@ class AlarmReliabilityTester:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="NexAlarm ADB 可靠性測試 v2.0",
+        description="NexAlarm ADB 可靠性測試 v3.0",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 情境：
@@ -987,13 +1313,28 @@ def main():
   app_stopped   App 強制停止（結果獨立輸出，不計入可靠性統計）
 
 範例：
+  # 快速測試（預設）
   python3 alarm_reliability_test.py -n 30
-  python3 alarm_reliability_test.py -n 50 --no-doze
-  python3 alarm_reliability_test.py -n 20 --scenarios normal battery_saver dnd
-  python3 alarm_reliability_test.py -n 10 --scenarios doze app_stopped
+
+  # 3 小時長時測試，200 個鬧鐘
+  python3 alarm_reliability_test.py -n 200 --hours 3
+
+  # 9 小時離線壓力測試，500 個鬧鐘，不含 Doze
+  python3 alarm_reliability_test.py -n 500 --hours 9 --offline --no-doze
+
+  # 指定情境，跳過安裝
+  python3 alarm_reliability_test.py -n 20 --scenarios normal battery_saver dnd --no-install
+
+  # 測試帳號（在腳本頂部修改 TEST_ACCOUNT_EMAIL / TEST_ACCOUNT_PASSWORD）
+  python3 alarm_reliability_test.py -n 30 --no-login  # 跳過自動登入
 """)
     parser.add_argument("-n", "--count", type=int, default=20,
-                        help="鬧鐘總數 10~100（預設 20）")
+                        help="鬧鐘總數（預設 20，無上限）")
+    parser.add_argument("--hours", type=float, default=None,
+                        help="測試總時長（小時）。設定後自動計算批次時間窗口。"
+                             "例: --hours 9 可執行約 9 小時的長時測試")
+    parser.add_argument("--offline", action="store_true", default=False,
+                        help="啟用飛航模式進行離線測試（登入後切換，結束後恢復）")
     parser.add_argument("--no-doze", action="store_true",
                         help="跳過 Doze 測試")
     parser.add_argument("--scenarios", nargs="+",
@@ -1004,9 +1345,15 @@ def main():
                         help="鬧鐘保留機率 0.0~1.0（預設 0.7）")
     parser.add_argument("--no-dumpsys", action="store_true",
                         help="跳過 dumpsys alarm 驗證（加快新增速度）")
+    parser.add_argument("--no-install", action="store_true",
+                        help="跳過安裝最新 APK")
+    parser.add_argument("--no-login", action="store_true",
+                        help="跳過測試帳號自動登入")
+    parser.add_argument("--no-cleanup", action="store_true",
+                        help="測試結束後不刪除測試鬧鐘")
     args = parser.parse_args()
 
-    count = max(10, min(100, args.count))
+    count = max(1, args.count)  # 無上限，最少 1 個
 
     if args.scenarios:
         scenarios = args.scenarios
@@ -1017,21 +1364,37 @@ def main():
 
     # 把 --no-dumpsys 旗標傳入 add_alarm
     if args.no_dumpsys:
-        import functools
         _orig = add_alarm
-        # monkey-patch: check_dumpsys=False
         globals()["add_alarm"] = lambda *a, **kw: _orig(
             *a, **{**kw, "check_dumpsys": False})
 
-    eta = len(scenarios) * (BATCH_START_OFFSET + BATCH_WINDOW + BATCH_TAIL_WAIT)
+    # 計算預估時間
+    batch_window_preview = (
+        max(60, int(args.hours * 3600 / len(scenarios)) - BATCH_START_OFFSET - BATCH_TAIL_WAIT)
+        if args.hours else BATCH_WINDOW
+    )
+    if args.hours:
+        eta_sec = int(args.hours * 3600)
+    else:
+        eta_sec = len(scenarios) * (BATCH_START_OFFSET + batch_window_preview + BATCH_TAIL_WAIT)
+
+    eta_h = eta_sec // 3600
+    eta_m = (eta_sec % 3600) // 60
+
     print()
     print("╔═══════════════════════════════════════════════════════════╗")
-    print("║        NexAlarm ADB 可靠性測試  v2.0                     ║")
+    print("║        NexAlarm ADB 可靠性測試  v3.0                     ║")
     print("╠═══════════════════════════════════════════════════════════╣")
-    print(f"║  鬧鐘數量: {count:<3}  保留機率: {args.keep_prob:.0%}"
-          f"  情境: {len(scenarios)} 個{' ':20}║")
-    print(f"║  閾值: ≤{TOLERANCE_PERFECT:.0f}s=完全準確  ≤{TOLERANCE_MILD:.0f}s=輕微延遲"
-          f"  預估: ~{eta//60}m{' ':14}║")
+    print(f"║  鬧鐘數量: {count:<5}  保留機率: {args.keep_prob:.0%}"
+          f"  情境: {len(scenarios)} 個{' ':18}║")
+    offline_tag = "✈️ 離線" if args.offline else "有網路"
+    print(f"║  閾值: ≤{TOLERANCE_PERFECT:.0f}s=完全準確  "
+          f"離線: {offline_tag}"
+          f"  批次窗口: {batch_window_preview}s{' ':6}║")
+    if eta_h > 0:
+        print(f"║  預估時長: {eta_h}h {eta_m:02d}m{' ':45}║")
+    else:
+        print(f"║  預估時長: ~{eta_m}m{' ':49}║")
     print("╚═══════════════════════════════════════════════════════════╝")
     print()
     print("注意：")
@@ -1039,9 +1402,19 @@ def main():
     print("  2. 確認 NexAlarm 已授予精確鬧鐘權限（設定 > 特殊應用程式存取）")
     print("  3. Doze 測試需實體裝置（模擬器可加 --no-doze）")
     print("  4. force-stop 場景測的是 AlarmManager 能否在 app 不在時喚醒裝置")
+    print(f"  5. 測試帳號: {TEST_ACCOUNT_EMAIL}")
     print()
 
-    AlarmReliabilityTester(count, scenarios, args.keep_prob).run()
+    AlarmReliabilityTester(
+        count=count,
+        scenarios=scenarios,
+        keep_prob=args.keep_prob,
+        hours=args.hours,
+        offline=args.offline,
+        do_install=not args.no_install,
+        do_login=not args.no_login,
+        do_cleanup=not args.no_cleanup,
+    ).run()
 
 
 if __name__ == "__main__":

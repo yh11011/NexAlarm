@@ -75,6 +75,10 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     private val _alarmLimitError = MutableSharedFlow<Unit>()
     val alarmLimitError: SharedFlow<Unit> = _alarmLimitError
 
+    /** 同資料夾已有相同時間的鬧鐘時觸發 */
+    private val _alarmDuplicateError = MutableSharedFlow<Unit>()
+    val alarmDuplicateError: SharedFlow<Unit> = _alarmDuplicateError
+
     // 所有鬧鐘
     private val _allAlarms = MutableStateFlow<List<AlarmEntity>>(emptyList())
     val allAlarms: StateFlow<List<AlarmEntity>> = _allAlarms
@@ -121,6 +125,11 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         val now = System.currentTimeMillis()
         val alarmWithTime = alarm.copy(updatedAt = now)
         viewModelScope.launch {
+            // 同資料夾相同時間衝突檢查（新增與編輯均適用）
+            if (repository.hasTimeConflict(alarmWithTime)) {
+                _alarmDuplicateError.emit(Unit)
+                return@launch
+            }
             if (alarmWithTime.id == 0L) {
                 // 新增鬧鐘：先檢查免費版上限
                 val currentCount = alarmDao.getTotalAlarmCount()

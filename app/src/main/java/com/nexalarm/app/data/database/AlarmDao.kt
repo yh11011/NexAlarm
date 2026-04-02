@@ -28,7 +28,8 @@ interface AlarmDao {
     @Query("SELECT * FROM alarms")
     suspend fun getAllAlarmsList(): List<AlarmEntity>
 
-    @Query("SELECT * FROM alarms WHERE hour = :hour AND minute = :minute AND title = :title AND folderId = :folderId AND repeatDays = :repeatDays AND is_deleted = 0 LIMIT 1")
+    // 顯式處理 folderId null：SQLite 中 NULL = NULL 為 FALSE，必須用 IS NULL 比對
+    @Query("SELECT * FROM alarms WHERE hour = :hour AND minute = :minute AND title = :title AND ((:folderId IS NULL AND folderId IS NULL) OR folderId = :folderId) AND repeatDays = :repeatDays AND is_deleted = 0 LIMIT 1")
     suspend fun findDuplicate(hour: Int, minute: Int, title: String, folderId: Long?, repeatDays: String): AlarmEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -60,4 +61,9 @@ interface AlarmDao {
 
     @Query("SELECT COUNT(*) FROM alarms WHERE is_deleted = 0")
     suspend fun getTotalAlarmCount(): Int
+
+    // 同一資料夾內是否已有相同時間的鬧鐘（排除自身）
+    // 顯式處理 folderId null：Room 的 IS + bound parameter 行為依驅動版本不穩定
+    @Query("SELECT * FROM alarms WHERE hour = :hour AND minute = :minute AND id != :excludeId AND ((:folderId IS NULL AND folderId IS NULL) OR folderId = :folderId) LIMIT 1")
+    suspend fun findTimeConflict(hour: Int, minute: Int, folderId: Long?, excludeId: Long): AlarmEntity?
 }

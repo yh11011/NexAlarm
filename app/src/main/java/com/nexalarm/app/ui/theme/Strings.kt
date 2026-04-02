@@ -123,6 +123,10 @@ object S {
     val cloudBackupRestore: String get() = if (isAppEnglish) "Cloud backup & restore" else "雲端備份與還原"
     val prioritySupport: String get() = if (isAppEnglish) "Priority support" else "優先客服支援"
     val premiumFeatures: String get() = if (isAppEnglish) "Premium features" else "付費版功能"
+    val alarmTimeDuplicate: String get() = if (isAppEnglish)
+        "An alarm already exists at this time in the same folder."
+    else
+        "此資料夾已有相同時間的鬧鐘，請選擇不同時間"
     val alarmLimitReached: String get() = if (isAppEnglish)
         "Alarm limit reached (${com.nexalarm.app.util.FeatureFlags.FREE_ALARM_LIMIT}). Upgrade to Premium for unlimited alarms."
     else

@@ -24,6 +24,7 @@ import com.nexalarm.app.util.NotificationHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -141,9 +142,13 @@ class AlarmService : Service() {
 
     /**
      * 開始播放鬧鐘
+     * 若會議模式啟用，強制僅震動（不響鈴）
      */
     private fun startAlarm() {
-        if (!vibrateOnly) {
+        val meetingModeActive = getSharedPreferences("meeting_mode_prefs", MODE_PRIVATE)
+            .getBoolean("meeting_mode_active", false)
+
+        if (!vibrateOnly && !meetingModeActive) {
             startRingtone()
         }
         startVibration()

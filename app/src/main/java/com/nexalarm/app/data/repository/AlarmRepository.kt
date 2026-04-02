@@ -48,4 +48,8 @@ class AlarmRepository(private val alarmDao: AlarmDao) {
 
     suspend fun getTodayAlarms(dayOfWeek: Int): List<AlarmEntity> =
         alarmDao.getTodayAlarms(dayOfWeek)
+
+    /** 同資料夾內是否已有相同時間（hour:minute）的鬧鐘，新增時 excludeId 傳 0L，編輯時傳自身 id */
+    suspend fun hasTimeConflict(alarm: AlarmEntity): Boolean =
+        alarmDao.findTimeConflict(alarm.hour, alarm.minute, alarm.folderId, alarm.id) != null
 }
