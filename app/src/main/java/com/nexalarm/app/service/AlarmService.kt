@@ -67,7 +67,13 @@ class AlarmService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
+        // START_STICKY 被系統重啟時 intent 為 null，直接停止服務
+        // （鬧鐘由 AlarmManager 在下次觸發時重新喚醒 AlarmReceiver）
+        if (intent == null) {
+            stopSelf()
+            return START_STICKY
+        }
+        when (intent.action) {
             ACTION_START_ALARM -> {
                 val newAlarmId = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1)
                 val prevAlarmId = alarmId  // 記錄被取代的鬧鐘 id
@@ -105,7 +111,7 @@ class AlarmService : Service() {
             }
         }
 
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

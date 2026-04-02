@@ -50,6 +50,19 @@ object ApiClient {
             }
         }
 
+    /** DELETE，token 非 null 時自動帶入 Authorization header */
+    suspend fun delete(url: String, token: String? = null): Response =
+        withContext(Dispatchers.IO) {
+            withRetry {
+                val conn = open(url, "DELETE", token)
+                try {
+                    read(conn)
+                } finally {
+                    conn.disconnect()
+                }
+            }
+        }
+
     private fun open(url: String, method: String, token: String?): HttpURLConnection =
         (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = method
@@ -82,6 +95,10 @@ object ApiClient {
                 val result = block()
                 // 如果是 Response，4xx 不重試
                 if (result is Response && result.code in 400..499) return result
+                // 5xx 視為可重試的伺服器錯誤
+                if (result is Response && result.code >= 500) {
+                    throw IOException("Server error: ${result.code}")
+                }
                 return result
             } catch (e: IOException) {
                 lastEx = e
