@@ -3,8 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
-    id("com.google.gms.google-services") version "4.4.1"
-    id("com.google.firebase.crashlytics") version "3.0.3"
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 android {
@@ -102,12 +102,12 @@ dependencies {
 
     // Firebase Crashlytics for remote crash reporting (free tier)
     // Initialize via google-services.json (obtained from Firebase Console)
-    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
-    implementation("com.google.firebase:firebase-crashlytics-ktx")
-    implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
 
     // LeakCanary for memory leak detection (debug only)
-    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+    debugImplementation(libs.leakcanary.android)
 
     // 加密儲存（保護 JWT token）
     implementation(libs.security.crypto)
@@ -120,7 +120,7 @@ dependencies {
 
     // Unit tests (JVM — no device needed)
     testImplementation(libs.junit)
-    testImplementation("org.json:json:20240303")
+    testImplementation(libs.json)
 
     // Instrumented tests (require a connected device or emulator)
     androidTestImplementation(libs.androidx.test.junit)
