@@ -16,9 +16,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.annotation.DrawableRes
@@ -175,7 +175,7 @@ private fun TimezoneCard(
                 modifier = Modifier.weight(1f)
             )
             Icon(
-                Icons.Default.KeyboardArrowRight,
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = TextSecondary,
                 modifier = Modifier.size(20.dp)
@@ -446,7 +446,7 @@ private fun AiIntegrationCard(onClick: () -> Unit) {
             Text(S.aiIntegrationDesc, fontSize = 13.sp, color = TextSecondary)
         }
         Icon(
-            Icons.Default.KeyboardArrowRight,
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
             tint = TextSecondary,
             modifier = Modifier.size(20.dp)

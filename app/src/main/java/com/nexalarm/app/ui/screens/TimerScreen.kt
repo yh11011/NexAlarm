@@ -543,7 +543,7 @@ private fun playTimerFinishAlert(context: Context) {
     } catch (_: Exception) { }
 
     try {
-        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        val vibrator = context.getSystemService(Vibrator::class.java) ?: return
         vibrator.vibrate(
             VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300), -1)
         )

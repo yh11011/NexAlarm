@@ -2,7 +2,7 @@ package com.nexalarm.app.data
 
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 
 class SettingsManager(context: Context) {
     // 一般設定（非敏感，使用普通 SharedPreferences）
@@ -10,11 +10,13 @@ class SettingsManager(context: Context) {
 
     // 敏感認證資料（使用 EncryptedSharedPreferences，AES256 加密）
     private val securePrefs = runCatching {
-        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
         EncryptedSharedPreferences.create(
-            "nexalarm_auth_secure",
-            masterKeyAlias,
             context,
+            "nexalarm_auth_secure",
+            masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )

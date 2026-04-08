@@ -63,7 +63,7 @@ class AlarmService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        vibrator = getSystemService(Vibrator::class.java)
         serviceScope = CoroutineScope(Dispatchers.Main + Job())
         // 同步設定，確保背景服務中的狀態與 SharedPreferences 一致
         AppSettingsProvider.syncFromSharedPreferences()
