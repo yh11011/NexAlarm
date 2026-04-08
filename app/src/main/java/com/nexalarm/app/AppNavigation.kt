@@ -88,7 +88,6 @@ fun NexAlarmMainContent(
 
     // ── 帳號狀態（單一來源：SettingsManager；本地 state 僅作 Compose 重組觸發器）──
     val settingsManager = remember { SettingsManager(context) }
-    val isFirstLaunch = remember { settingsManager.isFirstLaunch }
     // 用一個整數 tick 作為重組觸發器，避免 username/displayName 各自存一份造成不同步
     var authTick by remember { mutableIntStateOf(0) }
     // remember(authTick) 確保 authTick 變更時重新讀取最新值
@@ -266,12 +265,11 @@ fun NexAlarmMainContent(
                 // - 其餘 routes → NavController push 進入的子頁面
                 NavHost(
                     navController = navController,
-                    startDestination = if (isFirstLaunch) "login?onboarding=true" else "tabs",
+                    startDestination = "tabs",
                     modifier = Modifier.padding(padding)
                 ) {
                     // ── 登入 / 註冊頁 ──
-                    // 用明確的路由參數 onboarding=true/false 取代 previousBackStackEntry 判斷，
-                    // 避免 APP 被系統回收後重建時判斷錯誤
+                    // 保留可重用的登入頁，從帳號頁進入時不強迫 onboarding。
                     composable(
                         route = "login?onboarding={onboarding}",
                         arguments = listOf(
