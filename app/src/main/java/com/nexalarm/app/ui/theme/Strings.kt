@@ -42,6 +42,10 @@ object S {
     val hourFullLabel: String get() = if (isAppEnglish) "Hour" else "小時"
     val minuteFullLabel: String get() = if (isAppEnglish) "Minute" else "分鐘"
     fun minutesSuffix(min: Int): String = if (isAppEnglish) "$min min" else "$min 分鐘"
+    val ringtoneLabel: String get() = if (isAppEnglish) "Ringtone" else "鈴聲"
+    val ringtoneDefault: String get() = if (isAppEnglish) "Default alarm sound" else "預設鬧鐘鈴聲"
+    val ringtoneSilent: String get() = if (isAppEnglish) "Silent" else "靜音"
+    val ringtonePickerTitle: String get() = if (isAppEnglish) "Select ringtone" else "選擇鈴聲"
 
     // Alarm ringing screen
     fun snoozeReminder(min: Int): String = if (isAppEnglish) "Remind in $min min" else "${min}分鐘後提醒"
@@ -120,7 +124,7 @@ object S {
     val deactivatePremium: String get() = if (isAppEnglish) "Deactivate Premium" else "停用付費版"
     val unlimitedFolders: String get() = if (isAppEnglish) "Unlimited folders" else "無限資料夾"
     val unlimitedAlarms: String get() = if (isAppEnglish) "Unlimited alarms" else "無限鬧鐘"
-    val cloudBackupRestore: String get() = if (isAppEnglish) "Cloud backup & restore" else "雲端備份與還原"
+    val cloudBackupRestore: String get() = if (isAppEnglish) "Cloud sync" else "雲端同步"
     val prioritySupport: String get() = if (isAppEnglish) "Priority support" else "優先客服支援"
     val premiumFeatures: String get() = if (isAppEnglish) "Premium features" else "付費版功能"
     val alarmTimeDuplicate: String get() = if (isAppEnglish)

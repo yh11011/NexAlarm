@@ -81,6 +81,7 @@ object AlarmSyncRepository {
         put("folderId",         alarm.folderId ?: JSONObject.NULL)
         put("vibrateOnly",      alarm.vibrateOnly)
         put("volume",           alarm.volume)
+        put("ringtoneUri",      alarm.ringtoneUri)
         put("snoozeDelay",      alarm.snoozeDelay)
         put("maxSnoozeCount",   alarm.maxSnoozeCount)
         put("keepAfterRinging", alarm.keepAfterRinging)
@@ -108,6 +109,7 @@ object AlarmSyncRepository {
             folderId        = if (json.isNull("folderId")) null else json.optLong("folderId"),
             vibrateOnly     = json.optBoolean("vibrateOnly", false),
             volume          = json.optInt("volume", 80),
+            ringtoneUri     = json.optString("ringtoneUri", ""),
             snoozeDelay     = json.optInt("snoozeDelay", 10),
             maxSnoozeCount  = json.optInt("maxSnoozeCount", 3),
             keepAfterRinging = json.optBoolean("keepAfterRinging", false),

@@ -39,6 +39,7 @@ class AlarmScheduler(private val context: Context) {
             putExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, alarm.vibrateOnly)
             putExtra(AlarmReceiver.EXTRA_ALARM_SNOOZE_ENABLED, alarm.snoozeEnabled)
             putExtra(AlarmReceiver.EXTRA_ALARM_VOLUME, alarm.volume)
+            putExtra(AlarmReceiver.EXTRA_ALARM_RINGTONE_URI, alarm.ringtoneUri)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
@@ -115,6 +116,7 @@ class AlarmScheduler(private val context: Context) {
                 putExtra(AlarmReceiver.EXTRA_ALARM_TITLE, alarm.title)
                 putExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, alarm.vibrateOnly)
                 putExtra(AlarmReceiver.EXTRA_ALARM_VOLUME, alarm.volume)
+                putExtra(AlarmReceiver.EXTRA_ALARM_RINGTONE_URI, alarm.ringtoneUri)
             }
             val piFallback = PendingIntent.getBroadcast(
                 context, alarm.id.toInt(), intentFallback,
@@ -132,6 +134,7 @@ class AlarmScheduler(private val context: Context) {
             putExtra(AlarmReceiver.EXTRA_ALARM_TITLE, alarm.title)
             putExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, alarm.vibrateOnly)
             putExtra(AlarmReceiver.EXTRA_ALARM_VOLUME, alarm.volume)
+            putExtra(AlarmReceiver.EXTRA_ALARM_RINGTONE_URI, alarm.ringtoneUri)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
@@ -160,70 +163,7 @@ class AlarmScheduler(private val context: Context) {
      * 計算下次觸發時間
      */
     private fun calculateNextTriggerTime(alarm: AlarmEntity): Long {
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, alarm.hour)
-            set(Calendar.MINUTE, alarm.minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        val now = System.currentTimeMillis()
-
-        // 如果是重複鬧鐘
-        if (alarm.isRecurring && alarm.repeatDays.isNotEmpty()) {
-            // 找出下一個應該觸發的日期
-            val currentDayOfWeek = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
-            val sortedDays = alarm.repeatDays.sorted()
-
-            // 轉換：我們的格式 1=週一，Calendar 格式 1=週日
-            val targetDays = sortedDays.map {
-                when (it) {
-                    7 -> Calendar.SUNDAY
-                    else -> it + 1
-                }
-            }
-
-            // 尋找下一個觸發日
-            var found = false
-
-            for (i in 0..7) {
-                val checkDay = (currentDayOfWeek + i - 1) % 7 + 1
-                if (targetDays.contains(checkDay)) {
-                    val tempCal = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, alarm.hour)
-                        set(Calendar.MINUTE, alarm.minute)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                        add(Calendar.DAY_OF_MONTH, i)
-                    }
-
-                    // 如果是今天，檢查時間是否已過
-                    if (i == 0 && tempCal.timeInMillis <= now) {
-                        continue
-                    }
-
-                    calendar.timeInMillis = tempCal.timeInMillis
-                    found = true
-                    break
-                }
-            }
-
-            if (!found) {
-                // 找第一個重複日
-                val firstDay = targetDays.first()
-                val daysToAdd = (firstDay - currentDayOfWeek + 7) % 7
-                val adjustedDays = if (daysToAdd == 0) 7 else daysToAdd
-                calendar.add(Calendar.DAY_OF_MONTH, adjustedDays)
-            }
-        } else {
-            // 單次鬧鐘
-            // 如果時間已過，設定為明天
-            if (calendar.timeInMillis <= now) {
-                calendar.add(Calendar.DAY_OF_MONTH, 1)
-            }
-        }
-
-        return calendar.timeInMillis
+        return AlarmTriggerCalculator.calculateNextTriggerTime(alarm, System.currentTimeMillis())
     }
 
     /**
@@ -290,6 +230,70 @@ class AlarmScheduler(private val context: Context) {
          */
         fun scheduleSnooze(context: Context, alarm: AlarmEntity, snoozeMinutes: Int) {
             AlarmScheduler(context).scheduleSnooze(alarm, snoozeMinutes)
+        }
+    }
+}
+
+internal object AlarmTriggerCalculator {
+
+    fun calculateNextTriggerTime(
+        alarm: AlarmEntity,
+        nowMs: Long,
+        timeZone: TimeZone = TimeZone.getDefault()
+    ): Long {
+        val calendar = Calendar.getInstance(timeZone).apply {
+            timeInMillis = nowMs
+            set(Calendar.HOUR_OF_DAY, alarm.hour)
+            set(Calendar.MINUTE, alarm.minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        if (alarm.isRecurring && alarm.repeatDays.isNotEmpty()) {
+            val currentDayOfWeek = Calendar.getInstance(timeZone).apply {
+                timeInMillis = nowMs
+            }.get(Calendar.DAY_OF_WEEK)
+
+            val targetDays = alarm.repeatDays
+                .sorted()
+                .map { repeatDayToCalendarDay(it) }
+
+            for (daysToAdd in 0..7) {
+                val checkDay = (currentDayOfWeek + daysToAdd - 1) % 7 + 1
+                if (!targetDays.contains(checkDay)) continue
+
+                val candidate = Calendar.getInstance(timeZone).apply {
+                    timeInMillis = nowMs
+                    set(Calendar.HOUR_OF_DAY, alarm.hour)
+                    set(Calendar.MINUTE, alarm.minute)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                    add(Calendar.DAY_OF_MONTH, daysToAdd)
+                }
+
+                if (daysToAdd == 0 && candidate.timeInMillis <= nowMs) {
+                    continue
+                }
+
+                return candidate.timeInMillis
+            }
+
+            val firstDay = targetDays.first()
+            val daysToAdd = (firstDay - currentDayOfWeek + 7) % 7
+            calendar.add(Calendar.DAY_OF_MONTH, if (daysToAdd == 0) 7 else daysToAdd)
+            return calendar.timeInMillis
+        }
+
+        if (calendar.timeInMillis <= nowMs) {
+            calendar.add(Calendar.DAY_OF_MONTH, 1)
+        }
+        return calendar.timeInMillis
+    }
+
+    private fun repeatDayToCalendarDay(day: Int): Int {
+        return when (day) {
+            7 -> Calendar.SUNDAY
+            else -> day + 1
         }
     }
 }

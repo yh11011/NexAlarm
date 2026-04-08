@@ -194,6 +194,17 @@ class BillingManager(private val context: Context) {
     /** 優惠碼兌換成功後呼叫，直接啟用 premium（不經過 Google Play） */
     fun activatePremiumFromPromo() = setPremiumStatus(true)
 
+    /**
+     * 以帳號資料同步 Premium 狀態。
+     * 若使用者已有 Google Play 有效購買，不因伺服器回傳 false 而降級。
+     */
+    fun syncPremiumStatusFromAccount(accountIsPremium: Boolean) {
+        when {
+            accountIsPremium -> setPremiumStatus(true)
+            !_hasPlayStorePurchase.value -> setPremiumStatus(false)
+        }
+    }
+
     /** 手動停用 premium（優惠碼版本，不影響 Play Store 購買紀錄） */
     fun deactivatePremium() = setPremiumStatus(false)
 

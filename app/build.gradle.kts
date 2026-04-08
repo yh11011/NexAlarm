@@ -120,6 +120,7 @@ dependencies {
 
     // Unit tests (JVM — no device needed)
     testImplementation(libs.junit)
+    testImplementation("org.json:json:20240303")
 
     // Instrumented tests (require a connected device or emulator)
     androidTestImplementation(libs.androidx.test.junit)

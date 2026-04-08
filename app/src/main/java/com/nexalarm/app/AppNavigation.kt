@@ -287,10 +287,9 @@ fun NexAlarmMainContent(
                                 settingsManager.authUsername = user.username ?: user.email
                                 settingsManager.authDisplayName = user.displayName
                                 settingsManager.isFirstLaunch = false
-                                // 從伺服器同步 Premium 狀態（帳號綁定）
-                                if (user.isPremium && !com.nexalarm.app.util.FeatureFlags.isPremium) {
-                                    billingManager.activatePremiumFromPromo()
-                                }
+                                // 從伺服器同步 Premium 狀態（帳號綁定），
+                                // 但若本機已有 Google Play 購買，不因帳號狀態而降級。
+                                billingManager.syncPremiumStatusFromAccount(user.isPremium)
                                 authTick++ // 觸發帳號狀態重組
                                 if (isOnboarding) {
                                     navController.navigate("tabs") {

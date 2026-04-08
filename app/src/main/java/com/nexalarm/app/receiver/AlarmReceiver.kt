@@ -32,6 +32,7 @@ class AlarmReceiver : BroadcastReceiver() {
         const val EXTRA_ALARM_VIBRATE_ONLY = "alarm_vibrate_only"
         const val EXTRA_ALARM_SNOOZE_ENABLED = "alarm_snooze_enabled"
         const val EXTRA_ALARM_VOLUME = "alarm_volume"
+        const val EXTRA_ALARM_RINGTONE_URI = "alarm_ringtone_uri"
 
         private const val SNOOZE_PREFS = "nexalarm_snooze_counts"
     }
@@ -54,6 +55,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra(EXTRA_ALARM_TITLE) ?: ""
         val vibrateOnly = intent.getBooleanExtra(EXTRA_ALARM_VIBRATE_ONLY, false)
         val snoozeEnabled = intent.getBooleanExtra(EXTRA_ALARM_SNOOZE_ENABLED, true)
+        val ringtoneUri = intent.getStringExtra(EXTRA_ALARM_RINGTONE_URI).orEmpty()
 
         Log.d("AlarmReceiver", "Alarm triggered: ID=$alarmId, Title=$title")
         // [NexAlarmTest] 事件 3/4：BroadcastReceiver.onReceive 被系統呼叫
@@ -68,6 +70,7 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra(EXTRA_ALARM_VIBRATE_ONLY, vibrateOnly)
             putExtra(EXTRA_ALARM_SNOOZE_ENABLED, snoozeEnabled)
             putExtra(EXTRA_ALARM_VOLUME, volume)
+            putExtra(EXTRA_ALARM_RINGTONE_URI, ringtoneUri)
         }
 
         context.startForegroundService(serviceIntent)

@@ -1,5 +1,11 @@
 ﻿package com.nexalarm.app.ui.screens
 
+import android.app.Activity
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +30,8 @@ import com.nexalarm.app.ui.components.NexToggle
 import com.nexalarm.app.ui.components.WheelPicker
 import com.nexalarm.app.ui.theme.*
 import java.util.Calendar
+
+private const val SILENT_RINGTONE_URI = "__silent__"
 
 @Composable
 fun AlarmEditScreen(
@@ -47,6 +56,7 @@ private fun AlarmEditContent(
     onBack: () -> Unit,
     onDelete: ((AlarmEntity) -> Unit)?
 ) {
+    val context = LocalContext.current
     val now = remember { Calendar.getInstance() }
     var hour by remember { mutableIntStateOf(alarm?.hour ?: now.get(Calendar.HOUR_OF_DAY)) }
     var minute by remember { mutableIntStateOf(alarm?.minute ?: now.get(Calendar.MINUTE)) }
@@ -59,6 +69,7 @@ private fun AlarmEditContent(
     var snoozeDelay by remember { mutableIntStateOf(alarm?.snoozeDelay ?: 10) }
     var maxSnoozeCount by remember { mutableIntStateOf(alarm?.maxSnoozeCount ?: 3) }
     var keepAfterRinging by remember { mutableStateOf(alarm?.keepAfterRinging ?: false) }
+    var ringtoneUri by remember { mutableStateOf(alarm?.ringtoneUri ?: "") }
     var showFolderPicker by remember { mutableStateOf(false) }
     var showSnoozeDelayMenu by remember { mutableStateOf(false) }
     var showMaxSnoozeMenu by remember { mutableStateOf(false) }
@@ -67,6 +78,25 @@ private fun AlarmEditContent(
     val isFolderMode = selectedFolderId != null
     // 選單只顯示非系統資料夾
     val userFolders = remember(folders) { folders.filter { !it.isSystem } }
+    val ringtoneTitle = remember(ringtoneUri, context) {
+        getRingtoneDisplayName(context, ringtoneUri)
+    }
+    val ringtonePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val pickedUri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                result.data?.getParcelableExtra(
+                    RingtoneManager.EXTRA_RINGTONE_PICKED_URI,
+                    Uri::class.java
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            }
+            ringtoneUri = pickedUri?.toString() ?: SILENT_RINGTONE_URI
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -105,6 +135,7 @@ private fun AlarmEditContent(
                             folderId = selectedFolderId,
                             vibrateOnly = vibrateOnly,
                             volume = alarm?.volume ?: 80,
+                            ringtoneUri = ringtoneUri,
                             snoozeDelay = snoozeDelay,
                             maxSnoozeCount = maxSnoozeCount,
                             // 資料夾模式：無「響鈴後保留」，固定為 false
@@ -315,6 +346,29 @@ private fun AlarmEditContent(
                         }
                     }
                     EditDiv()
+                    EditRow(S.ringtoneLabel, ringtoneTitle, true) {
+                        val existingUri = when {
+                            ringtoneUri == SILENT_RINGTONE_URI -> null
+                            ringtoneUri.isNotBlank() -> Uri.parse(ringtoneUri)
+                            else -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                        }
+                        val pickerIntent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, S.ringtonePickerTitle)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                            putExtra(
+                                RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+                                existingUri ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                            )
+                            putExtra(
+                                RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI,
+                                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                            )
+                        }
+                        ringtonePickerLauncher.launch(pickerIntent)
+                    }
+                    EditDiv()
                     // 最多貪睡次數 — 點擊展開下拉選單
                     Box {
                         EditRow(
@@ -435,4 +489,14 @@ private fun EditToggleRow(
 @Composable
 private fun EditDiv() {
     HorizontalDivider(color = DarkBorder, thickness = 1.dp)
+}
+
+private fun getRingtoneDisplayName(context: android.content.Context, ringtoneUri: String): String {
+    if (ringtoneUri.isBlank()) return S.ringtoneDefault
+    if (ringtoneUri == SILENT_RINGTONE_URI) return S.ringtoneSilent
+
+    val uri = runCatching { Uri.parse(ringtoneUri) }.getOrNull() ?: return S.ringtoneDefault
+    val title = runCatching { RingtoneManager.getRingtone(context, uri)?.getTitle(context) }.getOrNull()
+
+    return if (title.isNullOrBlank()) S.ringtoneDefault else title
 }

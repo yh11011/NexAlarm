@@ -70,7 +70,6 @@ fun AccountScreen(
                 showUpgradeDialog = false
                 val activity = context as? Activity ?: return@UpgradeDialog
                 billingManager.launchPurchaseFlow(activity)
-                onPremiumStatusChanged(true)
             }
         )
     }
@@ -313,7 +312,6 @@ fun AccountScreen(
                         freeLimit = if (!isPremium) FeatureFlags.FREE_FOLDER_LIMIT else null
                     )
                     FeatureRow(text = S.cloudBackupRestore, enabled = isPremium)
-                    FeatureRow(text = S.prioritySupport, enabled = isPremium)
                 }
             }
 

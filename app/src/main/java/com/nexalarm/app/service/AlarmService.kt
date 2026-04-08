@@ -8,6 +8,7 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.VibrationEffect
@@ -58,6 +59,7 @@ class AlarmService : Service() {
     private var vibrateOnly: Boolean = false
     private var snoozeEnabled: Boolean = true
     private var alarmVolume: Int = 80
+    private var ringtoneUri: String = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -77,6 +79,7 @@ class AlarmService : Service() {
                 vibrateOnly = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_VIBRATE_ONLY, false)
                 snoozeEnabled = intent.getBooleanExtra(AlarmReceiver.EXTRA_ALARM_SNOOZE_ENABLED, true)
                 alarmVolume = intent.getIntExtra(AlarmReceiver.EXTRA_ALARM_VOLUME, 80)
+                ringtoneUri = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_RINGTONE_URI).orEmpty()
 
                 // [NexAlarmTest] 事件 4/4：ForegroundService 已啟動，鈴聲即將播放
                 android.util.Log.i("NexAlarmTest",
@@ -159,7 +162,14 @@ class AlarmService : Service() {
      */
     private fun startRingtone() {
         try {
-            val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            if (ringtoneUri == "__silent__") {
+                android.util.Log.d("AlarmService", "Ringtone muted by alarm setting")
+                return
+            }
+
+            val configuredUri = ringtoneUri.takeIf { it.isNotBlank() }?.let(Uri::parse)
+            val alarmUri = configuredUri
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
 
             mediaPlayer = MediaPlayer().apply {
@@ -178,7 +188,7 @@ class AlarmService : Service() {
                 start()
             }
 
-            android.util.Log.d("AlarmService", "Ringtone started")
+            android.util.Log.d("AlarmService", "Ringtone started with uri=$alarmUri")
         } catch (e: Exception) {
             android.util.Log.e("AlarmService", "Failed to start ringtone", e)
         }
