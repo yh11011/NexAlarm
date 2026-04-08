@@ -2,6 +2,7 @@ package com.nexalarm.app.ui.screens
 
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,10 +34,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nexalarm.app.data.AuthRepository
 import com.nexalarm.app.R
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.util.AppSettingsProvider
+import kotlinx.coroutines.launch
 import java.util.TimeZone
 
 @Composable
@@ -457,6 +460,10 @@ private fun AiModelPickerDialog(
     onDismiss: () -> Unit,
     onOpenUrl: (String) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    var openingModelId by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DarkSurface,
@@ -474,33 +481,58 @@ private fun AiModelPickerDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(AI_MODELS) { model ->
+                        val isOpening = openingModelId == model.id
                         Column(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(DarkCard)
-                                .clickable(enabled = authToken != null) {
-                                    val url = "https://login.nex11.me/ai-setup?model=${model.id}&token=${Uri.encode(authToken!!)}"
-                                    onOpenUrl(url)
+                                .clickable(enabled = authToken != null && openingModelId == null) {
+                                    errorMessage = null
+                                    openingModelId = model.id
+                                    scope.launch {
+                                        val result = AuthRepository.createAiSetupSession(
+                                            modelId = model.id,
+                                            token = authToken!!
+                                        )
+                                        openingModelId = null
+                                        result
+                                            .onSuccess { session -> onOpenUrl(session.launchUrl) }
+                                            .onFailure { error ->
+                                                errorMessage = error.message ?: S.aiSetupFailed
+                                            }
+                                    }
                                 }
                                 .padding(vertical = 12.dp, horizontal = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Image(
-                                painter = painterResource(model.logoRes),
-                                contentDescription = model.name,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .then(
-                                        if (authToken == null)
-                                            Modifier.alpha(0.4f)
-                                        else Modifier
+                            Box(
+                                modifier = Modifier.size(36.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(model.logoRes),
+                                    contentDescription = model.name,
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .then(
+                                            if (authToken == null || isOpening)
+                                                Modifier.alpha(0.4f)
+                                            else Modifier
+                                        )
+                                )
+                                if (isOpening) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = PrimaryBlue
                                     )
-                            )
+                                }
+                            }
                             Text(
                                 text = model.name,
                                 fontSize = 11.sp,
-                                color = if (authToken == null) TextSecondary.copy(alpha = 0.4f) else TextSecondary,
+                                color = if (authToken == null || isOpening) TextSecondary.copy(alpha = 0.4f) else TextSecondary,
                                 textAlign = TextAlign.Center,
                                 maxLines = 2
                             )
@@ -514,12 +546,32 @@ private fun AiModelPickerDialog(
                         color = DangerRed,
                         fontSize = 12.sp
                     )
+                } else if (errorMessage != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = errorMessage!!,
+                        color = DangerRed,
+                        fontSize = 12.sp
+                    )
                 }
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            if (authToken == null) {
+                OutlinedButton(
+                    onClick = {
+                        errorMessage = null
+                        onOpenUrl("https://login.nex11.me/ai-setup")
+                    },
+                    enabled = openingModelId == null,
+                    border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.4f))
+                ) {
+                    Text(S.aiOpenLoginPage, color = TextSecondary)
+                }
+            }
+        },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = openingModelId == null) {
                 Text(S.cancel, color = TextSecondary)
             }
         }

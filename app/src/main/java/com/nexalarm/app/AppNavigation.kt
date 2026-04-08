@@ -66,7 +66,9 @@ private val allDrawerItems get() = listOf(
 )
 
 @Composable
-fun NexAlarmMainContent() {
+fun NexAlarmMainContent(
+    onFirstAlarmCreated: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val alarmViewModel: AlarmViewModel = viewModel()
     val folderViewModel: FolderViewModel = viewModel()
@@ -417,10 +419,14 @@ fun NexAlarmMainContent() {
                                 folders = folders,
                                 defaultFolderId = defaultFolderId,
                                 onSave = { result ->
+                                    val isFirstAlarmCreation = alarmId <= 0 && alarms.isEmpty()
                                     if (alarmId > 0) {
                                         alarmViewModel.updateAlarm(result)
                                     } else {
                                         alarmViewModel.saveAlarm(result)
+                                        if (isFirstAlarmCreation) {
+                                            onFirstAlarmCreated()
+                                        }
                                     }
                                     navController.popBackStack()
                                 },

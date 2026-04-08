@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+        if (intent.action in SUPPORTED_BOOT_ACTIONS) {
             Log.d("BootReceiver", "Device booted, rescheduling alarms")
 
             // 使用協程重新排程鬧鐘
@@ -51,5 +51,12 @@ class BootReceiver : BroadcastReceiver() {
             scheduler.schedule(alarm)
             Log.d("BootReceiver", "Rescheduled alarm: ${alarm.id} - ${alarm.title}")
         }
+    }
+
+    private companion object {
+        val SUPPORTED_BOOT_ACTIONS = setOf(
+            Intent.ACTION_BOOT_COMPLETED,
+            "android.intent.action.QUICKBOOT_POWERON"
+        )
     }
 }

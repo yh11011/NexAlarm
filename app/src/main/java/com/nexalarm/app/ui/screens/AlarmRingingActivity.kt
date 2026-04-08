@@ -1,5 +1,6 @@
 package com.nexalarm.app.ui.screens
 
+import android.annotation.SuppressLint
 import android.app.KeyguardManager
 import android.app.WallpaperManager
 import android.content.Intent
@@ -43,6 +44,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.Calendar
+
+@SuppressLint("MissingPermission")
+private fun loadWallpaperBitmap(context: android.content.Context) =
+    runCatching {
+        val wm = WallpaperManager.getInstance(context)
+        val drawable = wm.drawable ?: return@runCatching null
+        val dm = context.resources.displayMetrics
+        val w = dm.widthPixels.coerceAtLeast(1)
+        val h = dm.heightPixels.coerceAtLeast(1)
+        val bm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bm)
+        drawable.setBounds(0, 0, w, h)
+        drawable.draw(canvas)
+        bm.asImageBitmap()
+    }.getOrNull()
 
 /**
  * 全螢幕鬧鐘觸發 Activity
@@ -183,20 +199,7 @@ fun AlarmRingingScreen(
 
     // Load device wallpaper once as a blurred background
     val wallpaperBitmap = remember {
-        try {
-            val wm = WallpaperManager.getInstance(context)
-            val drawable = wm.drawable
-            if (drawable != null) {
-                val dm = context.resources.displayMetrics
-                val w = dm.widthPixels.coerceAtLeast(1)
-                val h = dm.heightPixels.coerceAtLeast(1)
-                val bm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-                val canvas = android.graphics.Canvas(bm)
-                drawable.setBounds(0, 0, w, h)
-                drawable.draw(canvas)
-                bm.asImageBitmap()
-            } else null
-        } catch (_: Exception) { null }
+        loadWallpaperBitmap(context)
     }
 
     val snoozeMin = alarm?.snoozeDelay ?: 10

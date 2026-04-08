@@ -184,4 +184,6 @@ object S {
     val aiSelectModel: String get() = if (isAppEnglish) "Select AI Model" else "選擇 AI 模型"
     val aiSelectHint: String get() = if (isAppEnglish) "Tap an AI to connect — it will open automatically" else "點擊 AI 即可連接，自動開啟設定頁面"
     val aiLoginRequired: String get() = if (isAppEnglish) "Please sign in first to use AI integration" else "請先登入帳號才能使用 AI 整合"
+    val aiSetupFailed: String get() = if (isAppEnglish) "Unable to start secure AI setup. Please try again later." else "無法啟動安全的 AI 連接流程，請稍後再試。"
+    val aiOpenLoginPage: String get() = if (isAppEnglish) "Open Login Page" else "開啟登入頁"
 }

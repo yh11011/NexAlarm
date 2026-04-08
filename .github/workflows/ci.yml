@@ -68,7 +68,6 @@ jobs:
 
       - name: 執行單元測試
         run: ./gradlew test --no-daemon
-        continue-on-error: true
 
       - name: 上傳單元測試報告
         if: always()

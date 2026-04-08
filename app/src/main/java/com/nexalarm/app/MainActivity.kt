@@ -32,8 +32,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestPermissions()
-        checkFirstLaunchPermissions()
         handleDeepLink(intent)
 
         // AppSettingsProvider 已在 NexAlarmApp.onCreate() 初始化
@@ -41,12 +39,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             NexAlarmTheme {
-                NexAlarmMainContent()
+                NexAlarmMainContent(
+                    onFirstAlarmCreated = ::guideAlarmAccessAfterFirstAlarm
+                )
             }
         }
     }
 
-    private fun requestPermissions() {
+    private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
@@ -60,10 +60,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkFirstLaunchPermissions() {
+    fun guideAlarmAccessAfterFirstAlarm() {
+        requestNotificationPermission()
+
         val settings = SettingsManager(this)
 
-        // 精確鬧鐘權限（Android 12, API 31-32）——需要使用者手動開啟設定
+        // 精確鬧鐘權限改為首個鬧鐘建立後才導引，避免首頁直接打斷流程。
         if (Build.VERSION.SDK_INT == Build.VERSION_CODES.S ||
             Build.VERSION.SDK_INT == Build.VERSION_CODES.S_V2
         ) {
@@ -79,19 +81,17 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // 電池優化白名單——讓鬧鐘在 Doze 模式下也能正常觸發
+        // 不將電池白名單設為預設流程，僅在第一次建立鬧鐘後提示使用者自行評估是否需要。
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         if (!powerManager.isIgnoringBatteryOptimizations(packageName) &&
             !settings.hasShownBatteryOptDialog
         ) {
             settings.hasShownBatteryOptDialog = true
-            try {
-                startActivity(
-                    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                        data = Uri.parse("package:$packageName")
-                    }
-                )
-            } catch (_: Exception) {}
+            Toast.makeText(
+                this,
+                "若裝置省電機制造成漏響，再到設定將 NexAlarm 設為不受限制。",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 

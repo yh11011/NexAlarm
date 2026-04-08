@@ -3,6 +3,8 @@ package com.nexalarm.app.data
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 data class AuthUser(
     val id: Int,
@@ -13,9 +15,14 @@ data class AuthUser(
     val isPremium: Boolean = false
 )
 
+data class AiSetupSession(
+    val launchUrl: String
+)
+
 object AuthRepository {
     // alarm.nex11.me/auth/* proxy 轉發到 auth 服務（port 9000）
     private const val BASE_URL = "https://alarm.nex11.me/auth"
+    private const val AI_SETUP_URL = "https://login.nex11.me/ai-setup"
 
     suspend fun login(usernameOrEmail: String, password: String): Result<AuthUser> =
         withContext(Dispatchers.IO) {
@@ -103,6 +110,51 @@ object AuthRepository {
                 Unit
             }
         }
+
+    /**
+     * 建立 AI 整合設定的一次性授權 session。
+     * 僅接受短期授權碼或 server-side exchange URL，避免 token 落在 query string。
+     */
+    suspend fun createAiSetupSession(modelId: String, token: String): Result<AiSetupSession> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val body = JSONObject().apply { put("model", modelId) }
+                val resp = ApiClient.post("$BASE_URL/ai/setup-session", body, token)
+                if (resp.code !in 200..299) {
+                    val raw = runCatching {
+                        JSONObject(resp.body).optString("detail").takeIf { it.isNotBlank() }
+                    }.getOrNull() ?: resp.body
+                    throw Exception(toFriendlyMessage(resp.code, raw))
+                }
+
+                val json = JSONObject(resp.body)
+                val exchangeUrl = json.optString("exchange_url").takeIf { it.isNotBlank() }
+                val shortLivedCode = json.optString("code").takeIf { it.isNotBlank() }
+                    ?: json.optString("authorization_code").takeIf { it.isNotBlank() }
+
+                val launchUrl = when {
+                    exchangeUrl != null -> validateAiLaunchUrl(exchangeUrl)
+                    shortLivedCode != null -> {
+                        val encodedModel = URLEncoder.encode(modelId, StandardCharsets.UTF_8.name())
+                        val encodedCode = URLEncoder.encode(shortLivedCode, StandardCharsets.UTF_8.name())
+                        "$AI_SETUP_URL?model=$encodedModel&code=$encodedCode"
+                    }
+                    else -> throw Exception("AI setup session response missing exchange_url or code")
+                }
+
+                AiSetupSession(launchUrl = launchUrl)
+            }
+        }
+
+    private fun validateAiLaunchUrl(url: String): String {
+        val parsed = android.net.Uri.parse(url)
+        val forbiddenKeys = setOf("token", "access_token", "id_token", "jwt", "auth_token")
+        val queryKeys = parsed.queryParameterNames.map { it.lowercase() }.toSet()
+        if (queryKeys.any { it in forbiddenKeys }) {
+            throw Exception("Unsafe AI setup URL rejected")
+        }
+        return url
+    }
 
     private fun parseAuthResponse(resp: ApiClient.Response): AuthUser {
         if (resp.code !in 200..299) {
