@@ -27,6 +27,7 @@ import com.nexalarm.app.util.AlarmScheduler
 import com.nexalarm.app.util.AppSettingsProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
@@ -152,7 +153,11 @@ class MainActivity : ComponentActivity() {
         AlarmScheduler.schedule(this, scheduledAlarm)
 
         runOnUiThread {
-            Toast.makeText(this, "Alarm added: $title ${String.format("%02d:%02d", hour, minute)}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "Alarm added: $title ${String.format(Locale.getDefault(), "%02d:%02d", hour, minute)}",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 

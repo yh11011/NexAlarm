@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import com.nexalarm.app.ui.theme.*
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 fun TimePickerSheet(
@@ -269,7 +270,7 @@ fun WheelPicker(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = String.format("%02d", item),
+                            text = String.format(Locale.getDefault(), "%02d", item),
                             fontSize = fontSize,
                             fontWeight = fontWeight,
                             color = TextPrimary.copy(alpha = textAlpha)

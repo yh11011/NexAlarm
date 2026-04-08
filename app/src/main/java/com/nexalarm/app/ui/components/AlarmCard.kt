@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.ui.theme.*
+import java.util.Locale
 @Composable
 fun AlarmCard(
     alarm: AlarmEntity,
@@ -34,7 +35,7 @@ fun AlarmCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = String.format("%02d:%02d", alarm.hour, alarm.minute),
+                    text = String.format(Locale.getDefault(), "%02d:%02d", alarm.hour, alarm.minute),
                     fontSize = 52.sp,
                     fontWeight = FontWeight.Light,
                     color = if (alarm.isEnabled) TextPrimary else TextSecondary,

@@ -47,6 +47,7 @@ import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.viewmodel.TimerViewModel
 import kotlin.math.cos
 import kotlin.math.sin
+import java.util.Locale
 
 @Composable
 fun TimerScreen(
@@ -523,7 +524,7 @@ private fun formatTimer(totalSeconds: Int): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
-    return "%02d:%02d:%02d".format(hours, minutes, seconds)
+    return String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
 }
 
 private fun formatTotalDuration(totalSeconds: Int): String = S.totalDuration(totalSeconds)
@@ -543,13 +544,8 @@ private fun playTimerFinishAlert(context: Context) {
 
     try {
         val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(
-                VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300), -1)
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(longArrayOf(0, 300, 200, 300), -1)
-        }
+        vibrator.vibrate(
+            VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300), -1)
+        )
     } catch (_: Exception) { }
 }

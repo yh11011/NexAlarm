@@ -44,6 +44,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.Calendar
+import java.util.Locale
 
 @SuppressLint("MissingPermission")
 private fun loadWallpaperBitmap(context: android.content.Context) =
@@ -259,7 +260,7 @@ fun AlarmRingingScreen(
             val hour = now.get(Calendar.HOUR_OF_DAY)
             val minute = now.get(Calendar.MINUTE)
             Text(
-                text = String.format("%02d:%02d", hour, minute),
+                text = String.format(Locale.getDefault(), "%02d:%02d", hour, minute),
                 fontSize = 88.sp,
                 fontWeight = FontWeight.Thin,
                 color = Color.White.copy(alpha = 0.93f),

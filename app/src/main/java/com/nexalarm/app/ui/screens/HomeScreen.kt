@@ -19,6 +19,7 @@ import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.util.AlarmScheduler
 import androidx.compose.ui.platform.LocalContext
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -84,7 +85,7 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     if (nextAlarm != null) {
                         Text(
-                            text = String.format("%02d:%02d", nextAlarm.hour, nextAlarm.minute),
+                            text = String.format(Locale.getDefault(), "%02d:%02d", nextAlarm.hour, nextAlarm.minute),
                             fontSize = 48.sp,
                             fontWeight = FontWeight.Light,
                             color = TextPrimary,
