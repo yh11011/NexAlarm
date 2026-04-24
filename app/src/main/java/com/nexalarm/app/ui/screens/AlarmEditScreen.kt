@@ -98,7 +98,7 @@ private fun AlarmEditContent(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 頂部導航列
             Row(
@@ -128,7 +128,7 @@ private fun AlarmEditContent(
                             hour = hour,
                             minute = minute,
                             title = title,
-                            isEnabled = true,
+                            isEnabled = alarm?.isEnabled ?: true,
                             // 資料夾模式：不支援重複日，強制為單次
                             isRecurring = if (isFolderMode) false else isRecurring,
                             repeatDays = if (isFolderMode) emptyList() else (if (isRecurring) repeatDays else emptyList()),
@@ -141,7 +141,10 @@ private fun AlarmEditContent(
                             // 資料夾模式：無「響鈴後保留」，固定為 false
                             keepAfterRinging = if (isFolderMode) false else keepAfterRinging,
                             snoozeEnabled = snoozeEnabled,
-                            createdAt = alarm?.createdAt ?: System.currentTimeMillis()
+                            createdAt = alarm?.createdAt ?: System.currentTimeMillis(),
+                            clientId = alarm?.clientId ?: java.util.UUID.randomUUID().toString(),
+                            updatedAt = alarm?.updatedAt ?: System.currentTimeMillis(),
+                            isDeleted = alarm?.isDeleted ?: false
                         )
                     )
                 }) {
@@ -159,7 +162,7 @@ private fun AlarmEditContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .background(DarkSurface, RoundedCornerShape(18.dp))
+                        .nexGlassSurface(18.dp, elevated = true)
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -217,7 +220,7 @@ private fun AlarmEditContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .background(DarkSurface, RoundedCornerShape(18.dp))
+                        .nexGlassSurface(18.dp)
                         .clickable { showFolderPicker = !showFolderPicker }
                 ) {
                     Row(
@@ -317,7 +320,7 @@ private fun AlarmEditContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .background(DarkSurface, RoundedCornerShape(18.dp))
+                        .nexGlassSurface(18.dp)
                 ) {
                     EditToggleRow(S.snoozeLabel, S.snoozeSubtitle, snoozeEnabled) { snoozeEnabled = it }
                     EditDiv()

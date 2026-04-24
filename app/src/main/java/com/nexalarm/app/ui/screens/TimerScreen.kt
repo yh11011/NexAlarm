@@ -214,8 +214,7 @@ private fun TimerSetupContent(
                     listOf(1 to 60, 5 to 300, 10 to 600, 30 to 1800, 60 to 3600).forEach { (mins, seconds) ->
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(DarkSurface)
+                                .nexGlassSurface(20.dp)
                                 .clickable { onPresetSelected(seconds) }
                                 .padding(horizontal = 16.dp, vertical = 7.dp)
                         ) {
@@ -244,8 +243,7 @@ private fun TimerSetupContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
+                    .nexGlassSurface(30.dp)
                     .clickable { onStart(selectedHour, selectedMinute, selectedSecond) },
                 contentAlignment = Alignment.Center
             ) {
@@ -372,8 +370,7 @@ private fun TimerRunningContent(
             ) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(DarkSurface)
+                        .nexGlassSurface(20.dp)
                         .clickable { onAddOneMinute() }
                         .padding(horizontal = 24.dp, vertical = 8.dp)
                 ) {
@@ -393,8 +390,7 @@ private fun TimerRunningContent(
             Box(
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
+                    .nexGlassSurface(36.dp)
                     .clickable { onReset() },
                 contentAlignment = Alignment.Center
             ) {
@@ -408,8 +404,7 @@ private fun TimerRunningContent(
             Box(
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
+                    .nexGlassSurface(36.dp)
                     .clickable { onToggle() },
                 contentAlignment = Alignment.Center
             ) {

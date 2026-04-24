@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.receiver.AlarmReceiver
 import java.util.*
@@ -163,7 +164,14 @@ class AlarmScheduler(private val context: Context) {
      * 計算下次觸發時間
      */
     private fun calculateNextTriggerTime(alarm: AlarmEntity): Long {
-        return AlarmTriggerCalculator.calculateNextTriggerTime(alarm, System.currentTimeMillis())
+        val timeZone = SettingsManager(context).timeZoneId
+            ?.let(TimeZone::getTimeZone)
+            ?: TimeZone.getDefault()
+        return AlarmTriggerCalculator.calculateNextTriggerTime(
+            alarm = alarm,
+            nowMs = System.currentTimeMillis(),
+            timeZone = timeZone
+        )
     }
 
     /**

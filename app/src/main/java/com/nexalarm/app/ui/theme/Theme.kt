@@ -27,7 +27,7 @@ fun NexAlarmTheme(
     val colorScheme = if (isDarkTheme) {
         darkColorScheme(
             primary = PrimaryBlue,
-            onPrimary = Color.White,
+            onPrimary = TextOnPrimary,
             primaryContainer = PrimaryBlueVariant,
             secondary = SecondaryBlue,
             background = DarkBackground,
@@ -42,7 +42,7 @@ fun NexAlarmTheme(
     } else {
         lightColorScheme(
             primary = PrimaryBlue,
-            onPrimary = Color.White,
+            onPrimary = TextOnPrimary,
             primaryContainer = PrimaryBlueVariant,
             secondary = SecondaryBlue,
             background = DarkBackground,

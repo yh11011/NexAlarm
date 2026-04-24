@@ -89,7 +89,7 @@ fun SingleAlarmScreen(
             containerColor = PrimaryBlue,
             shape = androidx.compose.foundation.shape.CircleShape
         ) {
-            Text("+", fontSize = 24.sp, color = TextPrimary)
+            Text("+", fontSize = 24.sp, color = TextOnPrimary)
         }
     }
 }

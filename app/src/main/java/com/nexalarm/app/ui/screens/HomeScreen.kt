@@ -72,7 +72,7 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(DarkSurface, RoundedCornerShape(20.dp))
+                    .nexGlassSurface(20.dp, elevated = true)
                     .padding(horizontal = 20.dp, vertical = 20.dp)
             ) {
                 Column {
@@ -170,7 +170,7 @@ fun HomeScreen(
 private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .background(DarkSurface, RoundedCornerShape(16.dp))
+            .nexGlassSurface(16.dp)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Column {

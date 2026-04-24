@@ -16,14 +16,12 @@
 
 # ============ Android & Jetpack ============
 
-# Keep Android classes
--keep class androidx.** { *; }
--keep class android.** { *; }
-
-# Keep Jetpack Compose
+# Keep AndroidX and Android classes - optimized to only keep necessary reflection-based libraries
 -keep class androidx.compose.** { *; }
-
-# Keep Material Design 3
+-keep class androidx.room.** { *; }
+-keep class androidx.lifecycle.** { *; }
+-keep class androidx.work.** { *; }
+-keep class com.android.billingclient.** { *; }
 -keep class com.google.android.material.** { *; }
 
 # ============ Room Database ============
@@ -125,8 +123,7 @@
 }
 
 # Remove unused code and resources during optimization
--dontshrink
--dontoptimize
+# Note: -dontshrink and -dontoptimize have been removed to enable proper ProGuard optimization
 -verbose
 
 # ============ Warnings ============
@@ -140,8 +137,9 @@
 # ============ Debug ============
 
 # Log configuration (useful for debugging ProGuard issues)
-# Uncomment to see detailed ProGuard logs
+# Enable mapping file generation for Crashlytics de-obfuscation
+-printmapping mapping.txt
+# Uncomment to see detailed ProGuard logs (if needed for debugging)
 # -printconfiguration configuration.txt
 # -printseeds seeds.txt
 # -printusage usage.txt
-# -printmapping mapping.txt

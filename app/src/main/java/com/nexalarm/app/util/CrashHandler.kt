@@ -3,7 +3,6 @@ package com.nexalarm.app.util
 import android.content.Context
 import android.os.Build
 import android.util.Log
-import androidx.core.content.pm.PackageInfoCompat
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -86,7 +85,13 @@ object CrashHandler {
     private fun getAppVersion(context: Context): String {
         return try {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            "${pInfo.versionName} (${PackageInfoCompat.getLongVersionCode(pInfo)})"
+            val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pInfo.longVersionCode.toString()
+            } else {
+                @Suppress("DEPRECATION")
+                pInfo.versionCode.toString()
+            }
+            "${pInfo.versionName} ($versionCode)"
         } catch (e: Exception) {
             "unknown"
         }

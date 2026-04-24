@@ -1,14 +1,14 @@
 [versions]
 kotlin = "2.1.0"
-agp = "8.7.3"
+agp = "8.9.1"
 ksp = "2.1.0-1.0.29"
 
 core = "1.15.0"
 lifecycle = "2.8.7"
 activity-compose = "1.9.3"
 compose-bom = "2025.01.00"
-navigation = "2.8.5"
-room = "2.6.1"
+navigation = "2.9.7"
+room = "2.8.4"
 billing = "8.3.0"
 security-crypto = "1.1.0"
 work = "2.11.2"
@@ -18,6 +18,7 @@ google-services = "4.4.4"
 firebase-crashlytics-plugin = "3.0.6"
 leakcanary = "2.14"
 json = "20240303"
+kotlinx-serialization = "1.8.0"
 
 # Unit test (JVM)
 junit = "4.13.2"
@@ -56,6 +57,7 @@ firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakcanary" }
 json = { module = "org.json:json", version.ref = "json" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
 # Unit test (JVM)
 junit = { module = "junit:junit", version.ref = "junit" }

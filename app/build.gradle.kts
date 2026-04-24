@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
+    kotlin("plugin.serialization") version "2.1.0"
 }
 
 android {
@@ -73,8 +74,9 @@ android {
     }
 
     // Room schema 匯出路徑（用於追蹤資料庫遷移歷史）
+    // 暫時禁用以解決 Kotlin 2.1.0 與 Room 2.8.4 的序列化相容性問題
     ksp {
-        arg("room.schemaLocation", "$projectDir/schemas")
+        // arg("room.schemaLocation", "$projectDir/schemas")
     }
 }
 
@@ -117,6 +119,9 @@ dependencies {
 
     // 背景同步（WorkManager）
     implementation(libs.work.runtime)
+
+    // kotlinx.serialization for Room schema compatibility
+    implementation(libs.kotlinx.serialization.json)
 
     // Unit tests (JVM — no device needed)
     testImplementation(libs.junit)

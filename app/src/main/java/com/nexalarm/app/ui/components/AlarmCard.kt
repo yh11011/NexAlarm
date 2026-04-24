@@ -24,7 +24,7 @@ fun AlarmCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkSurface, RoundedCornerShape(18.dp))
+            .nexGlassSurface(18.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {

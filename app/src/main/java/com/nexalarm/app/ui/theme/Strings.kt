@@ -137,6 +137,8 @@ object S {
         "鬧鐘已達上限（${com.nexalarm.app.util.FeatureFlags.FREE_ALARM_LIMIT} 個），升級付費版可建立無限鬧鐘"
     fun alarmUsage(used: Int, limit: Int): String =
         if (isAppEnglish) "$used / $limit alarms" else "$used / $limit 個鬧鐘"
+    val premiumUnlocked: String get() = if (isAppEnglish) "Premium Unlocked" else "付費版已解鎖"
+    val usageLimits: String get() = if (isAppEnglish) "Free plan usage limits:" else "免費版使用限制："
 
     // Other
     val welcomeNexAlarm: String get() = if (isAppEnglish) "Welcome to NexAlarm" else "歡迎使用 NexAlarm"
@@ -181,6 +183,11 @@ object S {
     val themeStyle: String get() = if (isAppEnglish) "Theme Style" else "主題風格"
     val themeStyleDesc: String get() = if (isAppEnglish) "Choose your visual style" else "選擇你的視覺風格"
     val themePreview: String get() = if (isAppEnglish) "Preview" else "預覽"
+
+    // 會議模式
+    val meetingMode: String get() = if (isAppEnglish) "Meeting Mode" else "會議模式"
+    val meetingModeDesc: String get() = if (isAppEnglish) "All alarms will vibrate only without ringing" else "所有鬆鐘將只震動而不響鈴"
+    val meetingModeActive: String get() = if (isAppEnglish) "Meeting mode is ON" else "會議模式已開啟"
 
     // AI 整合
     val aiIntegration: String get() = if (isAppEnglish) "AI Integration" else "AI 整合"

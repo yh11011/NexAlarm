@@ -133,7 +133,7 @@ fun TimePickerSheet(
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrimaryBlue,
-                    contentColor = Color.White
+                    contentColor = TextOnPrimary
                 )
             ) {
                 Text("確認", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)

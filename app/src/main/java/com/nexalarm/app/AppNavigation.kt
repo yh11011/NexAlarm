@@ -1,29 +1,22 @@
 package com.nexalarm.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.PI
-import kotlin.math.roundToInt
 import kotlin.math.sin
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -35,6 +28,8 @@ import androidx.navigation.navArgument
 import com.nexalarm.app.data.AuthRepository
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.model.AlarmEntity
+import com.nexalarm.app.ui.components.BottomTab
+import com.nexalarm.app.ui.components.PagerBottomBar
 import com.nexalarm.app.util.FeatureFlags
 import com.nexalarm.app.ui.screens.*
 import com.nexalarm.app.ui.theme.*
@@ -42,14 +37,6 @@ import com.nexalarm.app.viewmodel.AlarmViewModel
 import com.nexalarm.app.viewmodel.FolderViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
-// ── Bottom Nav Items (4 tabs) ──
-enum class BottomTab(val label: String, val icon: ImageVector, val route: String) {
-    ALARM("鬧鐘", Icons.Default.Notifications, "alarm"),
-    FOLDERS("資料夾", Icons.Default.Folder, "folders"),
-    STOPWATCH("碼錶", Icons.Default.Timer, "stopwatch"),
-    TIMER("計時", Icons.Default.HourglassBottom, "timer")
-}
 
 // ── All nav items for side drawer ──
 // tabIndex: non-null means this item lives inside the pager (tabs route)
@@ -132,6 +119,7 @@ fun NexAlarmMainContent(
     val openMenu: () -> Unit = { scope.launch { drawerState.open() } }
 
     CompositionLocalProvider(LocalMenuAction provides openMenu) {
+        NexBackground {
         ModalNavigationDrawer(
             drawerState = drawerState,
             drawerContent = {
@@ -200,7 +188,7 @@ fun NexAlarmMainContent(
             }
         ) {
             Scaffold(
-                containerColor = DarkBackground,
+                containerColor = Color.Transparent,
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
                     if (showBottomBar) {
@@ -254,7 +242,7 @@ fun NexAlarmMainContent(
                             containerColor = PrimaryBlue,
                             shape = CircleShape
                         ) {
-                            Text("+", fontSize = 24.sp, color = TextPrimary)
+                            Text("+", fontSize = 24.sp, color = TextOnPrimary)
                         }
                     }
                 }
@@ -459,94 +447,6 @@ fun NexAlarmMainContent(
                 }
             }
         }
-    }
-}
-
-
-/**
- * Custom bottom nav bar with a sliding underline indicator that tracks pager position
- * in real-time during swipe gestures — matching the Samsung Clock app reference style.
- */
-@Composable
-private fun PagerBottomBar(
-    tabs: List<BottomTab>,
-    pagerState: PagerState,
-    currentRoute: String?,
-    onTabClick: (Int) -> Unit
-) {
-    val onTabs = currentRoute == "tabs"
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(DarkBackground)
-    ) {
-        // Tab items
-        Row(modifier = Modifier.fillMaxWidth()) {
-            tabs.forEachIndexed { index, tab ->
-                val selected = onTabs && pagerState.currentPage == index
-                val label = when (tab) {
-                    BottomTab.ALARM -> S.alarm
-                    BottomTab.FOLDERS -> S.folders
-                    BottomTab.STOPWATCH -> S.stopwatch
-                    BottomTab.TIMER -> S.timer
-                }
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() }
-                        ) { onTabClick(index) }
-                        .padding(top = 10.dp, bottom = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Icon(
-                        tab.icon,
-                        contentDescription = label,
-                        modifier = Modifier.size(22.dp),
-                        tint = if (selected) TextPrimary else TextSecondary.copy(alpha = 0.45f)
-                    )
-                    Text(
-                        label,
-                        fontSize = 10.sp,
-                        color = if (selected) TextPrimary else TextSecondary.copy(alpha = 0.45f)
-                    )
-                }
-            }
-        }
-
-        // Sliding underline indicator — uses layout-phase offset lambda to avoid composition
-        // recomposition on every swipe frame (only re-layouts the indicator Box itself)
-        if (onTabs) {
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomStart)
-            ) {
-                val tabWidthPx = with(androidx.compose.ui.platform.LocalDensity.current) {
-                    (maxWidth / tabs.size).toPx()
-                }
-                val indicatorWidthFraction = 0.45f
-                val indicatorWidthPx = tabWidthPx * indicatorWidthFraction
-                val indicatorWidthDp = with(androidx.compose.ui.platform.LocalDensity.current) {
-                    indicatorWidthPx.toDp()
-                }
-                val startOffsetPx = (tabWidthPx - indicatorWidthPx) / 2f
-
-                Box(
-                    modifier = Modifier
-                        .width(indicatorWidthDp)
-                        .height(2.dp)
-                        // Lambda form: reads pagerState during layout phase, not composition
-                        .offset {
-                            val pos = pagerState.currentPage + pagerState.currentPageOffsetFraction
-                            IntOffset((startOffsetPx + tabWidthPx * pos).roundToInt(), 0)
-                        }
-                        .background(TextPrimary, RoundedCornerShape(1.dp))
-                )
-            }
         }
     }
 }

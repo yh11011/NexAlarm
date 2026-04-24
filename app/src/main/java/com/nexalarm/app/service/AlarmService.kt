@@ -115,8 +115,7 @@ class AlarmService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     /**
-     * 排程被取代的鬧鐘：確保重複鬧鐘下次仍能觸發，單次鬧鐘則刪除或停用。
-     * 邏輯與 AlarmReceiver.handlePostDismiss 一致。
+     * 排程被取代的鬧鐘：所有鬧鐘都排程下一次觸發
      */
     private fun rescheduleDisplacedAlarm(displacedAlarmId: Long) {
         serviceScope?.launch {
@@ -124,19 +123,9 @@ class AlarmService : Service() {
                 val db = NexAlarmDatabase.getDatabase(this@AlarmService)
                 val alarm = withContext(Dispatchers.IO) { db.alarmDao().getAlarmById(displacedAlarmId) }
                     ?: return@launch
-                if (alarm.isRecurring) {
-                    // 重複鬧鐘：排程下次觸發
-                    AlarmScheduler(this@AlarmService).schedule(alarm)
-                    android.util.Log.d("AlarmService", "Rescheduled displaced recurring alarm $displacedAlarmId")
-                } else if (!alarm.keepAfterRinging) {
-                    // 單次鬧鐘（不保留）：從 DB 刪除
-                    withContext(Dispatchers.IO) { db.alarmDao().deleteById(displacedAlarmId) }
-                    android.util.Log.d("AlarmService", "Deleted displaced one-time alarm $displacedAlarmId")
-                } else {
-                    // 單次鬧鐘（保留）：停用
-                    withContext(Dispatchers.IO) { db.alarmDao().setEnabled(displacedAlarmId, false) }
-                    android.util.Log.d("AlarmService", "Disabled displaced one-time alarm $displacedAlarmId")
-                }
+                // 所有鬧鐘都排程下一次觸發
+                AlarmScheduler(this@AlarmService).schedule(alarm)
+                android.util.Log.d("AlarmService", "Rescheduled displaced alarm $displacedAlarmId (always keep active)")
             } catch (e: Exception) {
                 android.util.Log.e("AlarmService", "Failed to reschedule displaced alarm $displacedAlarmId", e)
             }
@@ -148,8 +137,9 @@ class AlarmService : Service() {
      * 若會議模式啟用，強制僅震動（不響鈴）
      */
     private fun startAlarm() {
-        val meetingModeActive = getSharedPreferences("meeting_mode_prefs", MODE_PRIVATE)
-            .getBoolean("meeting_mode_active", false)
+        // 讀取會議模式設定
+        val settingsManager = com.nexalarm.app.data.SettingsManager(this)
+        val meetingModeActive = settingsManager.isMeetingMode
 
         if (!vibrateOnly && !meetingModeActive) {
             startRingtone()

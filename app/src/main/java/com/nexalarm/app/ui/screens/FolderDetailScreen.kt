@@ -101,7 +101,7 @@ fun FolderDetailScreen(
             containerColor = PrimaryBlue,
             shape = CircleShape
         ) {
-            Text("+", fontSize = 24.sp, color = TextPrimary)
+            Text("+", fontSize = 24.sp, color = TextOnPrimary)
         }
     }
 }

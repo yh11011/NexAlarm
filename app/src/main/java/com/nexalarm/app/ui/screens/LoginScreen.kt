@@ -1,7 +1,6 @@
 package com.nexalarm.app.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -55,7 +55,6 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
     ) {
         // ── 頂部導覽列 ──
         Box(
@@ -96,7 +95,7 @@ fun LoginScreen(
         // ── 分頁標籤：登入 / 註冊 ──
         TabRow(
             selectedTabIndex = selectedTab,
-            containerColor = DarkBackground,
+            containerColor = Color.Transparent,
             contentColor = PrimaryBlue,
             divider = { HorizontalDivider(color = DarkCard) }
         ) {
@@ -243,7 +242,7 @@ fun LoginScreen(
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrimaryBlue,
-                    contentColor = TextPrimary,
+                    contentColor = TextOnPrimary,
                     disabledContainerColor = DarkCard,
                     disabledContentColor = TextTertiary
                 )
@@ -251,7 +250,7 @@ fun LoginScreen(
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(22.dp),
-                        color = TextPrimary,
+                        color = TextOnPrimary,
                         strokeWidth = 2.dp
                     )
                 } else {

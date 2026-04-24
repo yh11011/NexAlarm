@@ -7,7 +7,7 @@
         <item name="android:windowLightStatusBar">false</item>
     </style>
 
-    <!-- 全螢幕鬧鐘 Activity 主題 -->
+    <!-- 全螢幕鬆鐘 Activity 主題 -->
     <style name="Theme.NexAlarm.FullScreen">
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowNoTitle">true</item>

@@ -1,17 +1,13 @@
 package com.nexalarm.app.ui.screens
 
-import android.annotation.SuppressLint
 import android.app.KeyguardManager
-import android.app.WallpaperManager
 import android.content.Intent
-import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -23,13 +19,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,26 +32,12 @@ import com.nexalarm.app.receiver.AlarmReceiver
 import com.nexalarm.app.service.AlarmService
 import com.nexalarm.app.ui.theme.NexAlarmTheme
 import com.nexalarm.app.ui.theme.S
+import com.nexalarm.app.ui.theme.isAppEnglish
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.Locale
-
-@SuppressLint("MissingPermission")
-private fun loadWallpaperBitmap(context: android.content.Context) =
-    runCatching {
-        val wm = WallpaperManager.getInstance(context)
-        val drawable = wm.drawable ?: return@runCatching null
-        val dm = context.resources.displayMetrics
-        val w = dm.widthPixels.coerceAtLeast(1)
-        val h = dm.heightPixels.coerceAtLeast(1)
-        val bm = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(bm)
-        drawable.setBounds(0, 0, w, h)
-        drawable.draw(canvas)
-        bm.asImageBitmap()
-    }.getOrNull()
 
 /**
  * 全螢幕鬧鐘觸發 Activity
@@ -121,6 +99,10 @@ class AlarmRingingActivity : ComponentActivity() {
                     onSnooze = {
                         sendSnooze(activeAlarmId.longValue)
                         finish()
+                    },
+                    onSave = {
+                        sendSaveAndDismiss(activeAlarmId.longValue)
+                        finish()
                     }
                 )
             }
@@ -140,6 +122,25 @@ class AlarmRingingActivity : ComponentActivity() {
     private fun updateFromIntent(intent: Intent) {
         activeAlarmId.longValue = intent.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1L)
         activeAlarmTitle.value = intent.getStringExtra(AlarmReceiver.EXTRA_ALARM_TITLE) ?: S.alarmDefaultTitle
+    }
+
+    /**
+     * 發送關閉鬧鐘並保存指令到 AlarmReceiver
+     * 使用者選擇保存時呼叫，鬧鐘會保持存在並重新排程
+     */
+    private fun sendSaveAndDismiss(alarmId: Long) {
+        // 先停止 AlarmService 的鈴聲/震動
+        val stopIntent = Intent(this, AlarmService::class.java).apply {
+            action = AlarmService.ACTION_STOP_ALARM
+        }
+        startService(stopIntent)
+
+        // 通知 AlarmReceiver 處理後續（保存鬧鐘並重新排程）
+        val intent = Intent(this, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_DISMISS_AND_SAVE
+            putExtra(AlarmReceiver.EXTRA_ALARM_ID, alarmId)
+        }
+        sendBroadcast(intent)
     }
 
     /**
@@ -184,9 +185,9 @@ fun AlarmRingingScreen(
     alarm: AlarmEntity?,
     fallbackTitle: String = S.alarmDefaultTitle,
     onDismiss: () -> Unit,
-    onSnooze: () -> Unit
+    onSnooze: () -> Unit,
+    onSave: () -> Unit
 ) {
-    val context = LocalContext.current
     val density = LocalDensity.current
 
     // Current time, ticking every second
@@ -196,11 +197,6 @@ fun AlarmRingingScreen(
             delay(1000L)
             now = Calendar.getInstance()
         }
-    }
-
-    // Load device wallpaper once as a blurred background
-    val wallpaperBitmap = remember {
-        loadWallpaperBitmap(context)
     }
 
     val snoozeMin = alarm?.snoozeDelay ?: 10
@@ -222,26 +218,15 @@ fun AlarmRingingScreen(
             }
     ) {
         // ── Background ──────────────────────────────────────────────────────
-        if (wallpaperBitmap != null) {
-            Image(
-                bitmap = wallpaperBitmap,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(28.dp)
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color(0xFF3D2318), Color(0xFF5C3820), Color(0xFF1C0D06))
-                        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF3D2318), Color(0xFF5C3820), Color(0xFF1C0D06))
                     )
-            )
-        }
+                )
+        )
         // Subtle dark overlay for text contrast
         Box(
             modifier = Modifier
@@ -279,6 +264,15 @@ fun AlarmRingingScreen(
                 color = Color.White.copy(alpha = 0.72f)
             )
 
+            val displayTitle = alarm?.title?.takeIf { it.isNotBlank() } ?: fallbackTitle
+            Text(
+                text = displayTitle,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.9f),
+                modifier = Modifier.padding(top = 18.dp, start = 32.dp, end = 32.dp)
+            )
+
             Spacer(modifier = Modifier.weight(1f))
 
             // ── Snooze card（僅在貪睡功能啟用時顯示）────────────────────────
@@ -309,6 +303,33 @@ fun AlarmRingingScreen(
                             text = S.snoozeReminder(snoozeMin),
                             color = Color(0xFF1A1A1A),
                             fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // ── Save card（僅對一般鬧鐘顯示）──────────────────────────────
+            if (alarm?.folderId == null) {
+                Surface(
+                    onClick = onSave,
+                    modifier = Modifier
+                        .padding(horizontal = 36.dp)
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF4CAF50).copy(alpha = 0.9f),
+                    shadowElevation = 0.dp
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (isAppEnglish) "Save Alarm" else "保存此鬧鐘",
+                            color = Color.White,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Medium
                         )
                     }
