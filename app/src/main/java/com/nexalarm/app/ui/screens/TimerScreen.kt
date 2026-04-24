@@ -47,6 +47,7 @@ import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.viewmodel.TimerViewModel
 import kotlin.math.cos
 import kotlin.math.sin
+import java.util.Locale
 
 @Composable
 fun TimerScreen(
@@ -213,8 +214,7 @@ private fun TimerSetupContent(
                     listOf(1 to 60, 5 to 300, 10 to 600, 30 to 1800, 60 to 3600).forEach { (mins, seconds) ->
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(DarkSurface)
+                                .nexGlassSurface(20.dp)
                                 .clickable { onPresetSelected(seconds) }
                                 .padding(horizontal = 16.dp, vertical = 7.dp)
                         ) {
@@ -243,8 +243,7 @@ private fun TimerSetupContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
+                    .nexGlassSurface(30.dp)
                     .clickable { onStart(selectedHour, selectedMinute, selectedSecond) },
                 contentAlignment = Alignment.Center
             ) {
@@ -371,8 +370,7 @@ private fun TimerRunningContent(
             ) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(DarkSurface)
+                        .nexGlassSurface(20.dp)
                         .clickable { onAddOneMinute() }
                         .padding(horizontal = 24.dp, vertical = 8.dp)
                 ) {
@@ -392,8 +390,7 @@ private fun TimerRunningContent(
             Box(
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
+                    .nexGlassSurface(36.dp)
                     .clickable { onReset() },
                 contentAlignment = Alignment.Center
             ) {
@@ -407,8 +404,7 @@ private fun TimerRunningContent(
             Box(
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
+                    .nexGlassSurface(36.dp)
                     .clickable { onToggle() },
                 contentAlignment = Alignment.Center
             ) {
@@ -523,7 +519,7 @@ private fun formatTimer(totalSeconds: Int): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
-    return "%02d:%02d:%02d".format(hours, minutes, seconds)
+    return String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
 }
 
 private fun formatTotalDuration(totalSeconds: Int): String = S.totalDuration(totalSeconds)
@@ -542,14 +538,9 @@ private fun playTimerFinishAlert(context: Context) {
     } catch (_: Exception) { }
 
     try {
-        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(
-                VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300), -1)
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(longArrayOf(0, 300, 200, 300), -1)
-        }
+        val vibrator = context.getSystemService(Vibrator::class.java) ?: return
+        vibrator.vibrate(
+            VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300), -1)
+        )
     } catch (_: Exception) { }
 }

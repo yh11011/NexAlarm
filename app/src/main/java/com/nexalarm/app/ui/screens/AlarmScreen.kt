@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,27 +72,28 @@ fun AlarmScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.Center
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .nexGlassSurface(24.dp)
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 tabs.forEachIndexed { index, title ->
                     val selected = selectedTab == index
                     Box(
                         modifier = Modifier
+                            .weight(1f)
                             .clip(RoundedCornerShape(20.dp))
-                            .background(if (selected) PrimaryBlue else DarkSurface)
+                            .background(if (selected) PrimaryBlue else Color.Transparent)
                             .clickable { selectedTab = index }
-                            .padding(horizontal = 24.dp, vertical = 8.dp)
+                            .padding(horizontal = 20.dp, vertical = 9.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             title,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (selected) TextPrimary else TextSecondary
+                            color = if (selected) TextOnPrimary else TextSecondary
                         )
-                    }
-                    if (index < tabs.lastIndex) {
-                        Spacer(modifier = Modifier.width(12.dp))
                     }
                 }
             }

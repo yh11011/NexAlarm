@@ -1,19 +1,16 @@
 package com.nexalarm.app.service
 
-import android.content.SharedPreferences
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import com.nexalarm.app.data.SettingsManager
+import com.nexalarm.app.ui.theme.S
+import com.nexalarm.app.ui.theme.isAppEnglish
 
 class MeetingModeTileService : TileService() {
 
-    companion object {
-        private const val PREFS_NAME = "meeting_mode_prefs"
-        private const val KEY_ACTIVE = "meeting_mode_active"
-    }
-
-    private val prefs: SharedPreferences by lazy {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+    private val settingsManager: SettingsManager by lazy {
+        SettingsManager(applicationContext)
     }
 
     override fun onStartListening() {
@@ -23,16 +20,20 @@ class MeetingModeTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-        val isActive = prefs.getBoolean(KEY_ACTIVE, false)
-        prefs.edit().putBoolean(KEY_ACTIVE, !isActive).apply()
+        val isActive = settingsManager.isMeetingMode
+        settingsManager.isMeetingMode = !isActive
         updateTile()
     }
 
     private fun updateTile() {
         val tile = qsTile ?: return
-        val isActive = prefs.getBoolean(KEY_ACTIVE, false)
+        val isActive = settingsManager.isMeetingMode
         tile.state = if (isActive) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-        tile.label = if (isActive) "Meeting Mode ON" else "Meeting Mode"
+        tile.label = if (isActive) {
+            if (isAppEnglish) "Meeting Mode ON" else "會議模式已開啟"
+        } else {
+            S.meetingMode
+        }
         tile.updateTile()
     }
 }

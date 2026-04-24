@@ -134,8 +134,7 @@ fun StopwatchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp)
-                        .clip(CircleShape)
-                        .background(DarkSurface)
+                        .nexGlassSurface(30.dp)
                         .clickable { viewModel.toggle() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -159,8 +158,7 @@ fun StopwatchScreen(
             Box(
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
+                    .nexGlassSurface(36.dp)
                     .then(
                         when {
                             isRunning -> Modifier.clickable { viewModel.lap() }
@@ -192,8 +190,7 @@ fun StopwatchScreen(
             Box(
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
+                    .nexGlassSurface(36.dp)
                     .clickable { viewModel.toggle() },
                 contentAlignment = Alignment.Center
             ) {

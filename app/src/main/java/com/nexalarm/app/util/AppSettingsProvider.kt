@@ -32,7 +32,7 @@ object AppSettingsProvider {
     // Compose 層使用（自動感應 UI 更新）
     val isDarkThemeMutableState = mutableStateOf(true)
     val isAppEnglishMutableState = mutableStateOf(false)
-    val currentThemeMutableState = mutableStateOf(AppTheme.MINIMALIST)
+    val currentThemeMutableState = mutableStateOf(AppTheme.GLASSMORPHISM)
 
     /**
      * 初始化設定提供者

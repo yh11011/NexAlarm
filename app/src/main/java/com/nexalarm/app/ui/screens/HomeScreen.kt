@@ -19,6 +19,7 @@ import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.util.AlarmScheduler
 import androidx.compose.ui.platform.LocalContext
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -71,7 +72,7 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(DarkSurface, RoundedCornerShape(20.dp))
+                    .nexGlassSurface(20.dp, elevated = true)
                     .padding(horizontal = 20.dp, vertical = 20.dp)
             ) {
                 Column {
@@ -84,7 +85,7 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     if (nextAlarm != null) {
                         Text(
-                            text = String.format("%02d:%02d", nextAlarm.hour, nextAlarm.minute),
+                            text = String.format(Locale.getDefault(), "%02d:%02d", nextAlarm.hour, nextAlarm.minute),
                             fontSize = 48.sp,
                             fontWeight = FontWeight.Light,
                             color = TextPrimary,
@@ -169,7 +170,7 @@ fun HomeScreen(
 private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .background(DarkSurface, RoundedCornerShape(16.dp))
+            .nexGlassSurface(16.dp)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Column {

@@ -6,12 +6,11 @@ package com.nexalarm.app.util
  * 免費版（一般使用者）：
  *   - 最多 FREE_ALARM_LIMIT  個鬧鐘
  *   - 最多 FREE_FOLDER_LIMIT 個自訂資料夾
- *   - 基本雲端同步、計時器、碼錶、AI 整合
+ *   - 計時器、碼錶、AI 整合
  *
  * 付費版（重度使用者）：
  *   - 無限鬧鐘 + 無限資料夾
- *   - 完整雲端備份與還原
- *   - 優先客服支援
+ *   - 雲端同步
  */
 object FeatureFlags {
     var isPremium: Boolean = false

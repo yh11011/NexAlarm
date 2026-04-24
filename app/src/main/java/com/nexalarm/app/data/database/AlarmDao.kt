@@ -64,6 +64,6 @@ interface AlarmDao {
 
     // 同一資料夾內是否已有相同時間的鬧鐘（排除自身）
     // 顯式處理 folderId null：Room 的 IS + bound parameter 行為依驅動版本不穩定
-    @Query("SELECT * FROM alarms WHERE hour = :hour AND minute = :minute AND id != :excludeId AND ((:folderId IS NULL AND folderId IS NULL) OR folderId = :folderId) LIMIT 1")
+    @Query("SELECT * FROM alarms WHERE hour = :hour AND minute = :minute AND id != :excludeId AND is_deleted = 0 AND ((:folderId IS NULL AND folderId IS NULL) OR folderId = :folderId) LIMIT 1")
     suspend fun findTimeConflict(hour: Int, minute: Int, folderId: Long?, excludeId: Long): AlarmEntity?
 }

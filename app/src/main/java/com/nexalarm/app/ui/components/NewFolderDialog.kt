@@ -41,7 +41,7 @@ fun NewFolderDialog(
         Column(
             modifier = Modifier
                 .width(310.dp)
-                .background(DarkCard, RoundedCornerShape(22.dp))
+                .nexGlassSurface(22.dp, elevated = true)
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
             Text(
@@ -142,7 +142,7 @@ fun NewFolderDialog(
                     enabled = name.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = PrimaryBlue,
-                        contentColor = Color.White
+                        contentColor = TextOnPrimary
                     )
                 ) {
                     Text("建立", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)

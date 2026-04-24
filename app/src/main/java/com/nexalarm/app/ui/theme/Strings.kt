@@ -42,6 +42,10 @@ object S {
     val hourFullLabel: String get() = if (isAppEnglish) "Hour" else "小時"
     val minuteFullLabel: String get() = if (isAppEnglish) "Minute" else "分鐘"
     fun minutesSuffix(min: Int): String = if (isAppEnglish) "$min min" else "$min 分鐘"
+    val ringtoneLabel: String get() = if (isAppEnglish) "Ringtone" else "鈴聲"
+    val ringtoneDefault: String get() = if (isAppEnglish) "Default alarm sound" else "預設鬧鐘鈴聲"
+    val ringtoneSilent: String get() = if (isAppEnglish) "Silent" else "靜音"
+    val ringtonePickerTitle: String get() = if (isAppEnglish) "Select ringtone" else "選擇鈴聲"
 
     // Alarm ringing screen
     fun snoozeReminder(min: Int): String = if (isAppEnglish) "Remind in $min min" else "${min}分鐘後提醒"
@@ -120,7 +124,7 @@ object S {
     val deactivatePremium: String get() = if (isAppEnglish) "Deactivate Premium" else "停用付費版"
     val unlimitedFolders: String get() = if (isAppEnglish) "Unlimited folders" else "無限資料夾"
     val unlimitedAlarms: String get() = if (isAppEnglish) "Unlimited alarms" else "無限鬧鐘"
-    val cloudBackupRestore: String get() = if (isAppEnglish) "Cloud backup & restore" else "雲端備份與還原"
+    val cloudBackupRestore: String get() = if (isAppEnglish) "Cloud sync" else "雲端同步"
     val prioritySupport: String get() = if (isAppEnglish) "Priority support" else "優先客服支援"
     val premiumFeatures: String get() = if (isAppEnglish) "Premium features" else "付費版功能"
     val alarmTimeDuplicate: String get() = if (isAppEnglish)
@@ -133,6 +137,8 @@ object S {
         "鬧鐘已達上限（${com.nexalarm.app.util.FeatureFlags.FREE_ALARM_LIMIT} 個），升級付費版可建立無限鬧鐘"
     fun alarmUsage(used: Int, limit: Int): String =
         if (isAppEnglish) "$used / $limit alarms" else "$used / $limit 個鬧鐘"
+    val premiumUnlocked: String get() = if (isAppEnglish) "Premium Unlocked" else "付費版已解鎖"
+    val usageLimits: String get() = if (isAppEnglish) "Free plan usage limits:" else "免費版使用限制："
 
     // Other
     val welcomeNexAlarm: String get() = if (isAppEnglish) "Welcome to NexAlarm" else "歡迎使用 NexAlarm"
@@ -177,6 +183,11 @@ object S {
     val themeStyle: String get() = if (isAppEnglish) "Theme Style" else "主題風格"
     val themeStyleDesc: String get() = if (isAppEnglish) "Choose your visual style" else "選擇你的視覺風格"
     val themePreview: String get() = if (isAppEnglish) "Preview" else "預覽"
+
+    // 會議模式
+    val meetingMode: String get() = if (isAppEnglish) "Meeting Mode" else "會議模式"
+    val meetingModeDesc: String get() = if (isAppEnglish) "All alarms will vibrate only without ringing" else "所有鬆鐘將只震動而不響鈴"
+    val meetingModeActive: String get() = if (isAppEnglish) "Meeting mode is ON" else "會議模式已開啟"
 
     // AI 整合
     val aiIntegration: String get() = if (isAppEnglish) "AI Integration" else "AI 整合"

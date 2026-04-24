@@ -3,8 +3,9 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
-    id("com.google.gms.google-services") version "4.4.1"
-    id("com.google.firebase.crashlytics") version "3.0.3"
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
+    kotlin("plugin.serialization") version "2.1.0"
 }
 
 android {
@@ -73,8 +74,9 @@ android {
     }
 
     // Room schema 匯出路徑（用於追蹤資料庫遷移歷史）
+    // 暫時禁用以解決 Kotlin 2.1.0 與 Room 2.8.4 的序列化相容性問題
     ksp {
-        arg("room.schemaLocation", "$projectDir/schemas")
+        // arg("room.schemaLocation", "$projectDir/schemas")
     }
 }
 
@@ -102,12 +104,12 @@ dependencies {
 
     // Firebase Crashlytics for remote crash reporting (free tier)
     // Initialize via google-services.json (obtained from Firebase Console)
-    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
-    implementation("com.google.firebase:firebase-crashlytics-ktx")
-    implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
 
     // LeakCanary for memory leak detection (debug only)
-    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+    debugImplementation(libs.leakcanary.android)
 
     // 加密儲存（保護 JWT token）
     implementation(libs.security.crypto)
@@ -118,8 +120,12 @@ dependencies {
     // 背景同步（WorkManager）
     implementation(libs.work.runtime)
 
+    // kotlinx.serialization for Room schema compatibility
+    implementation(libs.kotlinx.serialization.json)
+
     // Unit tests (JVM — no device needed)
     testImplementation(libs.junit)
+    testImplementation(libs.json)
 
     // Instrumented tests (require a connected device or emulator)
     androidTestImplementation(libs.androidx.test.junit)

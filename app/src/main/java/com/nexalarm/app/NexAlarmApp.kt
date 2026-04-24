@@ -1,6 +1,8 @@
 package com.nexalarm.app
 
+import android.app.Activity
 import android.app.Application
+import android.os.Bundle
 import androidx.work.*
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.util.AppSettingsProvider
@@ -17,11 +19,35 @@ import java.util.concurrent.TimeUnit
  */
 class NexAlarmApp : Application() {
 
+    companion object {
+        @Volatile
+        private var visibleActivityCount = 0
+
+        val isAppVisible: Boolean
+            get() = visibleActivityCount > 0
+    }
+
     /** Application 級單例，避免每次重組重建 BillingClient 連線 */
     val billingManager: BillingManager by lazy { BillingManager(this) }
 
     override fun onCreate() {
         super.onCreate()
+
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityStarted(activity: Activity) {
+                visibleActivityCount++
+            }
+
+            override fun onActivityStopped(activity: Activity) {
+                visibleActivityCount = (visibleActivityCount - 1).coerceAtLeast(0)
+            }
+
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+            override fun onActivityResumed(activity: Activity) = Unit
+            override fun onActivityPaused(activity: Activity) = Unit
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+            override fun onActivityDestroyed(activity: Activity) = Unit
+        })
 
         // 初始化遠程崩潰報告（最先初始化，自動安裝本地和遠程異常處理器）
         CrashReportingManager.init(this)

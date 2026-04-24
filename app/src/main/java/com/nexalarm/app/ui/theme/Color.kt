@@ -13,6 +13,7 @@ val LapSlow = Color(0xFFEA4335)
 private fun t(): ThemeColors = AppSettingsProvider.currentThemeMutableState.value.colors()
 
 val PrimaryBlue: Color       get() = t().primary
+val TextOnPrimary: Color     get() = t().onPrimary
 val PrimaryBlueVariant: Color get() = t().primaryVariant
 val SecondaryBlue: Color     get() = t().secondary
 val AccentDim: Color         get() = t().primary.copy(alpha = 0.15f)

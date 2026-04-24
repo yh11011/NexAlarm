@@ -2,5 +2,4 @@
 <resources>
     <string name="app_name">Nex Alarm</string>
     <string name="meeting_mode">會議模式</string>
-    <string name="meeting_mode_on">會議模式已開啟</string>
 </resources>

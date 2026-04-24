@@ -89,7 +89,7 @@ fun FolderManageScreen(
                         .fillMaxWidth()
                         .border(
                             width = 1.5.dp,
-                            color = Color.White.copy(alpha = 0.14f),
+                            color = DarkBorder,
                             shape = RoundedCornerShape(18.dp)
                         )
                         .clip(RoundedCornerShape(18.dp))
@@ -156,7 +156,7 @@ private fun FolderListCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkSurface, RoundedCornerShape(18.dp))
+            .nexGlassSurface(18.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 16.dp)
     ) {

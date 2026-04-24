@@ -12,8 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.nexalarm.app.ui.theme.PrimaryBlue
+import com.nexalarm.app.ui.theme.TextOnPrimary
 import com.nexalarm.app.ui.theme.ToggleOff
 
 @Composable
@@ -43,10 +45,10 @@ fun NexToggle(
     ) {
         Box(
             modifier = Modifier
-                .offset(x = 3.dp + thumbOffset)
+                .offset { IntOffset(x = (3.dp + thumbOffset).roundToPx(), y = 0) }
                 .size(25.dp)
                 .clip(CircleShape)
-                .background(Color.White)
+                .background(if (checked) TextOnPrimary else Color.White)
         )
     }
 }

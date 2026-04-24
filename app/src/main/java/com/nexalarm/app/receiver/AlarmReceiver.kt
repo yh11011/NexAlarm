@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.nexalarm.app.NexAlarmApp
 import com.nexalarm.app.data.AlarmSyncRepository
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.database.NexAlarmDatabase
@@ -26,13 +27,14 @@ class AlarmReceiver : BroadcastReceiver() {
         const val ACTION_ALARM_TRIGGER = "com.nexalarm.app.ALARM_TRIGGER"
         const val ACTION_SNOOZE = "com.nexalarm.app.ALARM_SNOOZE"
         const val ACTION_DISMISS = "com.nexalarm.app.ALARM_DISMISS"
+        const val ACTION_DISMISS_AND_SAVE = "com.nexalarm.app.ALARM_DISMISS_AND_SAVE"
 
         const val EXTRA_ALARM_ID = "alarm_id"
         const val EXTRA_ALARM_TITLE = "alarm_title"
         const val EXTRA_ALARM_VIBRATE_ONLY = "alarm_vibrate_only"
         const val EXTRA_ALARM_SNOOZE_ENABLED = "alarm_snooze_enabled"
         const val EXTRA_ALARM_VOLUME = "alarm_volume"
-
+        const val EXTRA_ALARM_RINGTONE_URI = "alarm_ringtone_uri"
         private const val SNOOZE_PREFS = "nexalarm_snooze_counts"
     }
 
@@ -43,6 +45,7 @@ class AlarmReceiver : BroadcastReceiver() {
             ACTION_ALARM_TRIGGER -> handleAlarmTrigger(context, intent)
             ACTION_SNOOZE -> handleSnooze(context, intent)
             ACTION_DISMISS -> handleDismiss(context, intent)
+            ACTION_DISMISS_AND_SAVE -> handleDismissAndSave(context, intent)
         }
     }
 
@@ -54,6 +57,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra(EXTRA_ALARM_TITLE) ?: ""
         val vibrateOnly = intent.getBooleanExtra(EXTRA_ALARM_VIBRATE_ONLY, false)
         val snoozeEnabled = intent.getBooleanExtra(EXTRA_ALARM_SNOOZE_ENABLED, true)
+        val ringtoneUri = intent.getStringExtra(EXTRA_ALARM_RINGTONE_URI).orEmpty()
 
         Log.d("AlarmReceiver", "Alarm triggered: ID=$alarmId, Title=$title")
         // [NexAlarmTest] 事件 3/4：BroadcastReceiver.onReceive 被系統呼叫
@@ -68,11 +72,12 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra(EXTRA_ALARM_VIBRATE_ONLY, vibrateOnly)
             putExtra(EXTRA_ALARM_SNOOZE_ENABLED, snoozeEnabled)
             putExtra(EXTRA_ALARM_VOLUME, volume)
+            putExtra(EXTRA_ALARM_RINGTONE_URI, ringtoneUri)
         }
 
         context.startForegroundService(serviceIntent)
 
-        if (isScreenLocked(context) || isLauncherApp(context)) {
+        if (NexAlarmApp.isAppVisible || isScreenLocked(context) || isLauncherApp(context)) {
             startFullScreenActivity(context, alarmId, title)
         }
     }
@@ -158,34 +163,80 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     /**
-     * 關閉後處理：刪除單次鬧鐘 / 停用 / 排程下一次，並同步雲端
+     * 處理關閉並保存鬧鐘（使用者選擇保存時呼叫）
+     * 無論是否為資料夾鬧鐘，都重新排程（因為使用者選擇保存）
      */
+    private fun handleDismissAndSave(context: Context, intent: Intent) {
+        val alarmId = intent.getLongExtra(EXTRA_ALARM_ID, -1)
+        Log.d("AlarmReceiver", "Dismiss and save alarm: $alarmId")
+
+        val stopIntent = Intent(context, AlarmService::class.java).apply {
+            action = AlarmService.ACTION_STOP_ALARM
+        }
+        context.startService(stopIntent)
+
+        clearSnoozeCount(context, alarmId)
+
+        val db = NexAlarmDatabase.getDatabase(context)
+        val repo = AlarmRepository(db.alarmDao())
+        val pendingResult = goAsync()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val alarm = repo.getAlarmById(alarmId)
+                if (alarm != null) {
+                    // 無論是否為資料夾鬧鐘，都重新排程（因為使用者選擇保存）
+                    AlarmScheduler(context).schedule(alarm)
+                    Log.d("AlarmReceiver", "Saved alarm ${alarm.id} after user request")
+
+                    // 同步狀態到雲端
+                    val token = SettingsManager(context).authToken
+                    if (token != null) {
+                        AlarmSyncRepository.sync(token, db.alarmDao().getAllAlarmsList())
+                    }
+                }
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
     private suspend fun handlePostDismiss(context: Context, alarm: AlarmEntity, repo: AlarmRepository) {
         val db = NexAlarmDatabase.getDatabase(context)
+        val alarmDao = db.alarmDao()
+        val scheduler = AlarmScheduler(context)
         val token = SettingsManager(context).authToken
 
-        if (!alarm.isRecurring && !alarm.keepAfterRinging) {
-            repo.deleteById(alarm.id)
-            Log.d("AlarmReceiver", "Deleted one-time alarm ${alarm.id}")
-            // 同步軟刪除到雲端
-            if (token != null) {
-                val deletedAt = System.currentTimeMillis()
-                AlarmSyncRepository.sync(
-                    token = token,
-                    localAlarms = db.alarmDao().getAllAlarmsList(),
-                    deletedClientIds = listOf(alarm.clientId to deletedAt)
-                )
+        when {
+            alarm.folderId != null -> {
+                scheduler.schedule(alarm)
+                Log.d("AlarmReceiver", "Rescheduled folder alarm ${alarm.id} (keep active)")
             }
-        } else if (!alarm.isRecurring) {
-            repo.setEnabled(alarm.id, false)
-            Log.d("AlarmReceiver", "Disabled one-time alarm ${alarm.id} (keepAfterRinging)")
-            // 同步停用狀態到雲端
-            if (token != null) {
-                AlarmSyncRepository.sync(token, db.alarmDao().getAllAlarmsList())
+            alarm.isRecurring -> {
+                scheduler.schedule(alarm)
+                Log.d("AlarmReceiver", "Rescheduled recurring alarm ${alarm.id}")
             }
-        } else {
-            AlarmScheduler(context).schedule(alarm)
-            Log.d("AlarmReceiver", "Rescheduled recurring alarm ${alarm.id}")
+            alarm.keepAfterRinging -> {
+                repo.setEnabled(alarm.id, false)
+                Log.d("AlarmReceiver", "Disabled one-time alarm ${alarm.id} (keepAfterRinging)")
+                if (token != null) {
+                    AlarmSyncRepository.sync(token, alarmDao.getAllAlarmsList())
+                }
+            }
+            else -> {
+                scheduler.cancel(alarm)
+                if (token == null) {
+                    repo.deleteById(alarm.id)
+                } else {
+                    val deletedAt = System.currentTimeMillis()
+                    alarmDao.update(alarm.copy(isEnabled = false, isDeleted = true, updatedAt = deletedAt))
+                    val syncResult = AlarmSyncRepository.sync(token, alarmDao.getAllAlarmsList())
+                    if (syncResult.isSuccess) {
+                        repo.deleteById(alarm.id)
+                    }
+                }
+                Log.d("AlarmReceiver", "Deleted one-time alarm ${alarm.id} after ringing")
+            }
         }
     }
 
