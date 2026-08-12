@@ -14,29 +14,29 @@
 - `./gradlew lintDebug`：失敗
 - Lint 結果：3 個 error、93 個 warning
 
-這和專案內部文件宣稱「完全準備就緒」是矛盾的，見 [LAUNCH_READINESS_CHECKLIST.md](C:/Users/user/desktop/work/project/NexAlarm/LAUNCH_READINESS_CHECKLIST.md:4)。
+這和專案內部文件宣稱「完全準備就緒」是矛盾的，見 [LAUNCH_READINESS_CHECKLIST.md](LAUNCH_READINESS_CHECKLIST.md:4)。
 
 ## 一、技術品質：11/30
 
-- 架構不算乾淨。表面上是 MVVM，但 `MainActivity` 直接建立 DB 與 repository 處理 deep link，見 [MainActivity.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/MainActivity.kt:103)。
-- `AlarmViewModel` 直接握 DAO、scheduler、sync 邏輯，見 [AlarmViewModel.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/viewmodel/AlarmViewModel.kt:26)。
-- `AppNavigation` 也塞了大量帳號與流程控制，見 [AppNavigation.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/AppNavigation.kt:68)。
+- 架構不算乾淨。表面上是 MVVM，但 `MainActivity` 直接建立 DB 與 repository 處理 deep link，見 [MainActivity.kt](app/src/main/java/com/nexalarm/app/MainActivity.kt:103)。
+- `AlarmViewModel` 直接握 DAO、scheduler、sync 邏輯，見 [AlarmViewModel.kt](app/src/main/java/com/nexalarm/app/viewmodel/AlarmViewModel.kt:26)。
+- `AppNavigation` 也塞了大量帳號與流程控制，見 [AppNavigation.kt](app/src/main/java/com/nexalarm/app/AppNavigation.kt:68)。
 - 這不是 Clean Architecture，沒有 DI、沒有 use case layer、邊界很鬆。
 
 明顯安全問題：
 
-- 登入 token 被直接放進 URL query string 打開網頁，見 [SettingsScreen.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/ui/screens/SettingsScreen.kt:482)。
+- 登入 token 被直接放進 URL query string 打開網頁，見 [SettingsScreen.kt](app/src/main/java/com/nexalarm/app/ui/screens/SettingsScreen.kt:482)。
 - 這會進瀏覽器歷史、server access log、代理層與第三方觀測資料。正式產品不應這樣做。
 
 明顯 Android 風險：
 
-- `AlarmRingingActivity` 直接讀 wallpaper，Lint 已報權限問題，見 [AlarmRingingActivity.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/ui/screens/AlarmRingingActivity.kt:188)。
-- `CrashHandler` 與 `CrashReportingManager` 在 `minSdk 26` 下直接用 `longVersionCode`，Lint 已報 `NewApi` error，見 [CrashHandler.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/util/CrashHandler.kt:88)、[CrashReportingManager.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/util/CrashReportingManager.kt:153)。
+- `AlarmRingingActivity` 直接讀 wallpaper，Lint 已報權限問題，見 [AlarmRingingActivity.kt](app/src/main/java/com/nexalarm/app/ui/screens/AlarmRingingActivity.kt:188)。
+- `CrashHandler` 與 `CrashReportingManager` 在 `minSdk 26` 下直接用 `longVersionCode`，Lint 已報 `NewApi` error，見 [CrashHandler.kt](app/src/main/java/com/nexalarm/app/util/CrashHandler.kt:88)、[CrashReportingManager.kt](app/src/main/java/com/nexalarm/app/util/CrashReportingManager.kt:153)。
 
 邏輯缺口：
 
-- Manifest 註冊了 `QUICKBOOT_POWERON`，見 [AndroidManifest.xml](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/AndroidManifest.xml:133)。
-- 但 `BootReceiver` 只處理 `BOOT_COMPLETED`，見 [BootReceiver.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/receiver/BootReceiver.kt:19)。
+- Manifest 註冊了 `QUICKBOOT_POWERON`，見 [AndroidManifest.xml](app/src/main/AndroidManifest.xml:133)。
+- 但 `BootReceiver` 只處理 `BOOT_COMPLETED`，見 [BootReceiver.kt](app/src/main/java/com/nexalarm/app/receiver/BootReceiver.kt:19)。
 
 依賴問題：
 
@@ -47,13 +47,13 @@
 
 - `app/src/main/java` 約 53 個檔、8363 行。
 - JVM test 只有 2 個檔、81 行。
-- 內容基本上只是 `FeatureFlags` 與 `RepeatDaysConverter`，見 [FeatureFlagsTest.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/test/java/com/nexalarm/app/FeatureFlagsTest.kt)、[RepeatDaysConverterTest.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/test/java/com/nexalarm/app/data/model/RepeatDaysConverterTest.kt)。
+- 內容基本上只是 `FeatureFlags` 與 `RepeatDaysConverter`，見 [FeatureFlagsTest.kt](app/src/test/java/com/nexalarm/app/FeatureFlagsTest.kt)、[RepeatDaysConverterTest.kt](app/src/test/java/com/nexalarm/app/data/model/RepeatDaysConverterTest.kt)。
 - `androidTest` 雖然不少，但沒有本次裝置驗證結果可佐證，而且 CI 沒有實跑 connected tests。
 
 CI 問題：
 
-- Lint 目前會直接紅燈，見 [ci.yml](C:/Users/user/desktop/work/project/NexAlarm/.github/workflows/ci.yml:37)。
-- 單元測試被設成 `continue-on-error: true`，見 [ci.yml](C:/Users/user/desktop/work/project/NexAlarm/.github/workflows/ci.yml:69)。
+- Lint 目前會直接紅燈，見 [ci.yml](.github/workflows/ci.yml:37)。
+- 單元測試被設成 `continue-on-error: true`，見 [ci.yml](.github/workflows/ci.yml:69)。
 - 這等於測試失敗也能往下走。
 
 維護難度：中高。
@@ -65,9 +65,9 @@ CI 問題：
 
 主要缺口：
 
-- 你賣「Cloud backup & restore」與 premium 功能，但實作上看到的是 alarm sync，不是一套完整的備份/還原產品流程，見 [FeatureFlags.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/util/FeatureFlags.kt:9)、[AccountScreen.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/ui/screens/AccountScreen.kt:315)。
-- 自訂鈴聲看起來是半成品。資料模型有 `ringtoneUri`，見 [AlarmEntity.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/data/model/AlarmEntity.kt:22)，但 `AlarmService` 仍固定使用系統預設鈴聲，見 [AlarmService.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/service/AlarmService.kt:162)。
-- 首次體驗過重。第一個進入點就可能先看到登入 onboarding，見 [AppNavigation.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/AppNavigation.kt:267)，然後再被要求通知、精確鬧鐘、電池白名單等權限，見 [MainActivity.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/MainActivity.kt:63)。
+- 你賣「Cloud backup & restore」與 premium 功能，但實作上看到的是 alarm sync，不是一套完整的備份/還原產品流程，見 [FeatureFlags.kt](app/src/main/java/com/nexalarm/app/util/FeatureFlags.kt:9)、[AccountScreen.kt](app/src/main/java/com/nexalarm/app/ui/screens/AccountScreen.kt:315)。
+- 自訂鈴聲看起來是半成品。資料模型有 `ringtoneUri`，見 [AlarmEntity.kt](app/src/main/java/com/nexalarm/app/data/model/AlarmEntity.kt:22)，但 `AlarmService` 仍固定使用系統預設鈴聲，見 [AlarmService.kt](app/src/main/java/com/nexalarm/app/service/AlarmService.kt:162)。
+- 首次體驗過重。第一個進入點就可能先看到登入 onboarding，見 [AppNavigation.kt](app/src/main/java/com/nexalarm/app/AppNavigation.kt:267)，然後再被要求通知、精確鬧鐘、電池白名單等權限，見 [MainActivity.kt](app/src/main/java/com/nexalarm/app/MainActivity.kt:63)。
 - UI/UX 可用，但不到上架精品水準。Lint 對 icon、monochrome icon、資源規範都在報警，代表 polish 不夠。
 
 ## 三、市場競爭力：8/25
@@ -119,30 +119,30 @@ CI 問題：
 ## 第 1 階段：先救命，Day 1-10
 
 1. 修掉所有會讓 `lint` 失敗的 error。
-   - [AlarmRingingActivity.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/ui/screens/AlarmRingingActivity.kt:188)
-   - [CrashHandler.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/util/CrashHandler.kt:88)
-   - [CrashReportingManager.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/util/CrashReportingManager.kt:153)
+   - [AlarmRingingActivity.kt](app/src/main/java/com/nexalarm/app/ui/screens/AlarmRingingActivity.kt:188)
+   - [CrashHandler.kt](app/src/main/java/com/nexalarm/app/util/CrashHandler.kt:88)
+   - [CrashReportingManager.kt](app/src/main/java/com/nexalarm/app/util/CrashReportingManager.kt:153)
 
 2. 移除 token 放在 URL query string 的做法，改成短期授權碼或 server-side session exchange。
-   - [SettingsScreen.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/ui/screens/SettingsScreen.kt:482)
+   - [SettingsScreen.kt](app/src/main/java/com/nexalarm/app/ui/screens/SettingsScreen.kt:482)
    - 這一條是安全紅線，優先級最高。
 
 3. 停止首頁直接彈一堆權限與電池白名單請求，改成「建立第一個鬧鐘時」再逐步引導。
-   - [MainActivity.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/MainActivity.kt:63)
-   - [MainActivity.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/MainActivity.kt:90)
+   - [MainActivity.kt](app/src/main/java/com/nexalarm/app/MainActivity.kt:63)
+   - [MainActivity.kt](app/src/main/java/com/nexalarm/app/MainActivity.kt:90)
    - `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` 很容易踩 Play 政策，不要當預設流程。
 
 4. 修正開機廣播行為一致性。
    - Manifest 宣告了 `QUICKBOOT_POWERON`，但 `BootReceiver` 沒處理。
-   - [AndroidManifest.xml](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/AndroidManifest.xml:133)
-   - [BootReceiver.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/receiver/BootReceiver.kt:19)
+   - [AndroidManifest.xml](app/src/main/AndroidManifest.xml:133)
+   - [BootReceiver.kt](app/src/main/java/com/nexalarm/app/receiver/BootReceiver.kt:19)
 
 5. 把 CI 改成真的會擋錯誤。
    - 移除 `continue-on-error: true`
-   - [ci.yml](C:/Users/user/desktop/work/project/NexAlarm/.github/workflows/ci.yml:69)
+   - [ci.yml](.github/workflows/ci.yml:69)
 
 6. 刪掉或重寫「完全準備就緒」這種失真文件，避免你自己被假訊號騙。
-   - [LAUNCH_READINESS_CHECKLIST.md](C:/Users/user/desktop/work/project/NexAlarm/LAUNCH_READINESS_CHECKLIST.md:4)
+   - [LAUNCH_READINESS_CHECKLIST.md](LAUNCH_READINESS_CHECKLIST.md:4)
 
 ## 第 2 階段：能上架，Day 11-20
 
@@ -170,8 +170,8 @@ CI 問題：
 
 5. 收斂 premium 文案，刪掉沒做好的承諾。
    - 現在寫了 `Cloud backup & restore`，但看到的是 sync，不是完整 restore 產品。
-   - [FeatureFlags.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/util/FeatureFlags.kt:9)
-   - [AccountScreen.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/ui/screens/AccountScreen.kt:315)
+   - [FeatureFlags.kt](app/src/main/java/com/nexalarm/app/util/FeatureFlags.kt:9)
+   - [AccountScreen.kt](app/src/main/java/com/nexalarm/app/ui/screens/AccountScreen.kt:315)
 
 6. 補隱私政策與商店敘述。
    - 要明確說明：
@@ -185,9 +185,9 @@ CI 問題：
 
 1. 先凍結架構大改，只做低風險整理。
    - 先把最肥的三個檔拆薄：
-   - [MainActivity.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/MainActivity.kt)
-   - [AppNavigation.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/AppNavigation.kt)
-   - [AlarmViewModel.kt](C:/Users/user/desktop/work/project/NexAlarm/app/src/main/java/com/nexalarm/app/viewmodel/AlarmViewModel.kt)
+   - [MainActivity.kt](app/src/main/java/com/nexalarm/app/MainActivity.kt)
+   - [AppNavigation.kt](app/src/main/java/com/nexalarm/app/AppNavigation.kt)
+   - [AlarmViewModel.kt](app/src/main/java/com/nexalarm/app/viewmodel/AlarmViewModel.kt)
 
 2. 定義真正的付費切入點，只留一個。
    - 不要再同時講 AI、資料夾、同步、客服。
