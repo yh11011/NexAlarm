@@ -9,7 +9,7 @@
 | Medium | 0 |
 | Low | 2 |
 
-**Overall risk:** Low  
+**Overall risk:** Low
 **Recommendation:** Conditional approval — fix the widget-wide tap target before merging.
 
 **Key metrics:**
@@ -37,9 +37,9 @@ The four new source/resource files are staged, while the Manifest registration i
 
 ### Low: Only the clock glyphs are tappable
 
-**File:** `app/src/main/java/com/nexalarm/app/widget/ClockWidgetProvider.kt:37`  
-**Affected layout:** `app/src/main/res/layout/widget_clock.xml:2-19`  
-**Blast radius:** every widget instance  
+**File:** `app/src/main/java/com/nexalarm/app/widget/ClockWidgetProvider.kt:37`
+**Affected layout:** `app/src/main/res/layout/widget_clock.xml:2-19`
+**Blast radius:** every widget instance
 **Test coverage:** none
 
 `setOnClickPendingIntent()` is assigned to `widget_text_clock`, not to the root `RelativeLayout`. Consequently, tapping the padding/background (and most of a resized widget) has no effect, even though it visually appears to be a single launchable control.
@@ -48,8 +48,8 @@ Give the root layout an ID and attach the same `PendingIntent` to that root. Thi
 
 ### Low: Trailing whitespace fails the repository whitespace gate
 
-**File:** `app/src/main/java/com/nexalarm/app/widget/ClockWidgetProvider.kt:28`  
-**Blast radius:** source-quality gate only  
+**File:** `app/src/main/java/com/nexalarm/app/widget/ClockWidgetProvider.kt:28`
+**Blast radius:** source-quality gate only
 **Test coverage:** `git diff --cached --check` fails
 
 The blank line before the `RemoteViews` construction contains trailing whitespace. It has no runtime impact, but it makes Git's standard whitespace check fail and should be removed before the change is committed.
