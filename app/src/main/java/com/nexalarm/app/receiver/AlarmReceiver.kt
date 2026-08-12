@@ -207,11 +207,16 @@ class AlarmReceiver : BroadcastReceiver() {
         val scheduler = AlarmScheduler(context)
         val token = SettingsManager(context).authToken
 
+        val groupIsActive = alarm.folderId
+            ?.let { db.folderDao().getFolderById(it)?.isEnabled ?: true }
+            ?: true
+        if (!groupIsActive) {
+            scheduler.cancel(alarm)
+            Log.d("AlarmReceiver", "Skipped inactive schedule-group alarm ${alarm.id}")
+            return
+        }
+
         when {
-            alarm.folderId != null -> {
-                scheduler.schedule(alarm)
-                Log.d("AlarmReceiver", "Rescheduled folder alarm ${alarm.id} (keep active)")
-            }
             alarm.isRecurring -> {
                 scheduler.schedule(alarm)
                 Log.d("AlarmReceiver", "Rescheduled recurring alarm ${alarm.id}")

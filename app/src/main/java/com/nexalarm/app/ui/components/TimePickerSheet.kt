@@ -73,7 +73,7 @@ fun TimePickerSheet(
                 modifier = Modifier
                     .width(36.dp)
                     .height(4.dp)
-                    .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(2.dp))
+                    .background(DarkBorder, RoundedCornerShape(2.dp))
                     .align(Alignment.CenterHorizontally)
             )
 
@@ -288,11 +288,11 @@ fun WheelPicker(
                 ) {
                     HorizontalDivider(
                         modifier = Modifier.align(Alignment.TopStart),
-                        color = Color.White.copy(alpha = 0.12f)
+                        color = DarkBorder
                     )
                     HorizontalDivider(
                         modifier = Modifier.align(Alignment.BottomStart),
-                        color = Color.White.copy(alpha = 0.12f)
+                        color = DarkBorder
                     )
                 }
             }

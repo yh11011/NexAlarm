@@ -16,11 +16,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nexalarm.app.ui.theme.AccentDim
 import com.nexalarm.app.ui.theme.S
+import com.nexalarm.app.ui.theme.SecondaryBlue
 import com.nexalarm.app.ui.theme.TextPrimary
 import com.nexalarm.app.ui.theme.TextSecondary
 import com.nexalarm.app.ui.theme.nexGlassSurface
@@ -58,7 +61,8 @@ fun PagerBottomBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .nexGlassSurface(26.dp)
+                .nexGlassSurface(28.dp, elevated = true)
+                .padding(6.dp)
         ) {
             // Tab items
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -73,11 +77,13 @@ fun PagerBottomBar(
                     Column(
                         modifier = Modifier
                             .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (selected) AccentDim else androidx.compose.ui.graphics.Color.Transparent)
                             .clickable(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() }
                             ) { onTabClick(index) }
-                            .padding(top = 10.dp, bottom = 12.dp),
+                            .padding(top = 9.dp, bottom = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp)
                     ) {
@@ -123,7 +129,7 @@ fun PagerBottomBar(
                                 val pos = pagerState.currentPage + pagerState.currentPageOffsetFraction
                                 IntOffset((startOffsetPx + tabWidthPx * pos).roundToInt(), 0)
                             }
-                            .background(TextPrimary, RoundedCornerShape(1.dp))
+                            .background(SecondaryBlue, RoundedCornerShape(1.dp))
                     )
                 }
             }

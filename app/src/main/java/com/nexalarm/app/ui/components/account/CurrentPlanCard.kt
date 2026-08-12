@@ -101,7 +101,7 @@ private fun ChangePasswordButton(
     androidx.compose.material3.OutlinedButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(8.dp),
         colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
             contentColor = TextSecondary
         ),

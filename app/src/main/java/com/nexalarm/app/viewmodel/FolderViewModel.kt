@@ -7,27 +7,31 @@ import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.data.repository.FolderRepository
 import com.nexalarm.app.ui.theme.S
+import com.nexalarm.app.util.AlarmScheduler
 import com.nexalarm.app.util.FeatureFlags
+import com.nexalarm.app.util.ScheduleCommand
+import com.nexalarm.app.util.ScheduleGroupPlanner
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class FolderViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val database = NexAlarmDatabase.getDatabase(application)
     private val repository: FolderRepository
+    private val scheduler = AlarmScheduler(application)
     val allFolders: StateFlow<List<FolderEntity>>
 
     private val _errorMessage = MutableSharedFlow<String>()
     val errorMessage: SharedFlow<String> = _errorMessage
 
     init {
-        val db = NexAlarmDatabase.getDatabase(application)
-        repository = FolderRepository(db.folderDao())
+        repository = FolderRepository(database.folderDao())
 
         allFolders = repository.getAllFolders()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     }
 
-    fun addFolder(name: String, color: String = "#1A73E8", emoji: String = "📁") {
+    fun addFolder(name: String, color: String = "#1A73E8", emoji: String = "calendar") {
         viewModelScope.launch {
             val count = repository.getUserFolderCount()
             if (!FeatureFlags.canCreateFolder(count)) {
@@ -55,7 +59,17 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
     fun toggleFolder(folderId: Long) {
         viewModelScope.launch {
             val folder = repository.getFolderById(folderId) ?: return@launch
-            repository.setEnabled(folderId, !folder.isEnabled)
+            val groupEnabled = !folder.isEnabled
+            repository.setEnabled(folderId, groupEnabled)
+            ScheduleGroupPlanner.plan(
+                alarms = database.alarmDao().getAlarmsByFolderList(folderId),
+                groupEnabled = groupEnabled
+            ).forEach { command ->
+                when (command) {
+                    is ScheduleCommand.Schedule -> scheduler.schedule(command.alarm)
+                    is ScheduleCommand.Cancel -> scheduler.cancel(command.alarm)
+                }
+            }
         }
     }
 

@@ -4,7 +4,7 @@ object S {
     // Navigation & Screen titles
     val home: String get() = if (isAppEnglish) "Home" else "首頁"
     val alarm: String get() = if (isAppEnglish) "Alarm" else "鬧鐘"
-    val folders: String get() = if (isAppEnglish) "Folders" else "資料夾"
+    val folders: String get() = if (isAppEnglish) "Schedule groups" else "行程群組"
     val stopwatch: String get() = if (isAppEnglish) "Stopwatch" else "碼錶"
     val timer: String get() = if (isAppEnglish) "Timer" else "計時"
     val settings: String get() = if (isAppEnglish) "Settings" else "設定"
@@ -18,12 +18,23 @@ object S {
     val noSingleAlarms: String get() = if (isAppEnglish) "No single alarms" else "尚無單次鬧鐘"
     val noRepeatAlarms: String get() = if (isAppEnglish) "No repeat alarms" else "尚無重複鬧鐘"
     val tapPlusToAdd: String get() = if (isAppEnglish) "Tap + to add" else "點擊 + 新增"
+    val nextAlarmShort: String get() = if (isAppEnglish) "Next" else "下一響"
+    val enabledShort: String get() = if (isAppEnglish) "Enabled" else "已啟用"
+    val once: String get() = if (isAppEnglish) "Once" else "單次"
+    val everyDay: String get() = if (isAppEnglish) "Every day" else "每天"
+    val weekdays: String get() = if (isAppEnglish) "Weekdays" else "平日"
+    val weekend: String get() = if (isAppEnglish) "Weekend" else "週末"
+    fun weekdayName(day: Int): String {
+        val zh = listOf("", "週一", "週二", "週三", "週四", "週五", "週六", "週日")
+        val en = listOf("", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        return if (isAppEnglish) en.getOrElse(day) { "?" } else zh.getOrElse(day) { "?" }
+    }
 
     // Alarm edit screen
     val editAlarm: String get() = if (isAppEnglish) "Edit Alarm" else "編輯鬧鐘"
     val newAlarm: String get() = if (isAppEnglish) "New Alarm" else "新增鬧鐘"
     val save: String get() = if (isAppEnglish) "Save" else "儲存"
-    val folderLabel: String get() = if (isAppEnglish) "Folder" else "資料夾"
+    val folderLabel: String get() = if (isAppEnglish) "Schedule group" else "行程群組"
     val repeatDaysLabel: String get() = if (isAppEnglish) "Repeat days" else "重複日"
     val snoozeLabel: String get() = if (isAppEnglish) "Snooze" else "貪睡"
     val snoozeSubtitle: String get() = if (isAppEnglish) "Delay alarm" else "延後響鈴"
@@ -85,7 +96,9 @@ object S {
     val timezoneReset: String get() = if (isAppEnglish) "Reset to System" else "重置為系統時區"
 
     // Folders
-    val newFolder: String get() = if (isAppEnglish) "New Folder" else "新增資料夾"
+    val newFolder: String get() = if (isAppEnglish) "New schedule group" else "新增行程群組"
+    val customFolders: String get() = if (isAppEnglish) "Schedule groups" else "行程群組"
+    val emptyFolder: String get() = if (isAppEnglish) "This schedule group has no alarms" else "此行程群組尚無鬧鐘"
     val folderLimitReached: String get() = if (isAppEnglish) "Folder limit reached. Upgrade to Premium for unlimited folders." else "資料夾已達上限，升級付費版可建立無限資料夾"
     fun alarmCount(count: Int): String = if (isAppEnglish) "$count alarms" else "$count 個鬧鐘"
     fun folderQuota(used: Int, max: Int): String =
@@ -115,6 +128,20 @@ object S {
     val homeNoActiveAlarm: String get() = if (isAppEnglish) "No alarms set" else "尚未設定鬧鐘"
     fun homeActiveCount(n: Int): String = if (isAppEnglish) "$n active" else "$n 個已啟用"
     val goToAlarms: String get() = if (isAppEnglish) "View all alarms" else "查看所有鬧鐘"
+    val reliabilityTitle: String get() = if (isAppEnglish) "Alarm reliability" else "鬧鐘可靠性"
+    val reliabilityReady: String get() = if (isAppEnglish) "Ready to ring" else "已準備好響鈴"
+    val reliabilityNeedsAttention: String get() = if (isAppEnglish) "Needs attention" else "需要處理"
+    val reliabilityReadyDesc: String get() = if (isAppEnglish) "Core alarm safeguards are enabled." else "核心鬧鐘保護已啟用。"
+    val reliabilityNeedsAttentionDesc: String get() = if (isAppEnglish) "Some settings may affect alarm delivery." else "部分設定可能影響鬧鐘準時響鈴。"
+    val testAlarm: String get() = if (isAppEnglish) "Test in 30 sec" else "30 秒後測試"
+    val testAlarmScheduled: String get() = if (isAppEnglish) "Test alarm will ring in 30 seconds." else "測試鬧鐘將在 30 秒後響鈴。"
+    val reliabilityNotifications: String get() = if (isAppEnglish) "Notifications" else "通知權限"
+    val reliabilityExactAlarm: String get() = if (isAppEnglish) "Exact alarms" else "精確鬧鐘"
+    val reliabilityFullScreen: String get() = if (isAppEnglish) "Full-screen alert" else "全螢幕提醒"
+    val reliabilityBattery: String get() = if (isAppEnglish) "Battery unrestricted" else "省電限制"
+    val reliabilityBoot: String get() = if (isAppEnglish) "Boot reschedule" else "開機重排"
+    val reliabilityOk: String get() = if (isAppEnglish) "OK" else "正常"
+    val reliabilityCheck: String get() = if (isAppEnglish) "Check" else "檢查"
 
     // Account screen
     val currentPlan: String get() = if (isAppEnglish) "Current Plan" else "目前方案"

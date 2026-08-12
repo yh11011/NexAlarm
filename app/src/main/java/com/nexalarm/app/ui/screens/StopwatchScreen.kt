@@ -6,9 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.nexalarm.app.ui.components.NexTopBar
 import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.viewmodel.StopwatchViewModel
 
@@ -34,31 +35,7 @@ fun StopwatchScreen(
     val laps by viewModel.laps.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 10.dp)
-        ) {
-            IconButton(
-                onClick = openMenu,
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
-                Icon(
-                    Icons.Default.Menu,
-                    contentDescription = S.menu,
-                    tint = TextPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = S.stopwatch,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
+        NexTopBar(title = S.stopwatch, onMenuClick = openMenu)
 
         // Big time display
         Box(
@@ -67,16 +44,25 @@ fun StopwatchScreen(
                 .then(
                     if (laps.isEmpty()) Modifier.weight(1f)
                     else Modifier.padding(vertical = 28.dp)
-                ),
+                )
+                .padding(horizontal = 18.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = formatStopwatch(elapsedMs),
-                fontSize = if (laps.isEmpty()) 80.sp else 72.sp,
-                fontWeight = FontWeight.Light,
-                color = TextPrimary,
-                letterSpacing = (-3).sp
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .nexGlassSurface(28.dp, elevated = true)
+                    .padding(vertical = if (laps.isEmpty()) 44.dp else 34.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = formatStopwatch(elapsedMs),
+                    fontSize = if (laps.isEmpty()) 72.sp else 64.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    letterSpacing = 0.sp
+                )
+            }
         }
 
         // Lap list
@@ -134,14 +120,15 @@ fun StopwatchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp)
-                        .nexGlassSurface(30.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(PrimaryBlue)
                         .clickable { viewModel.toggle() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = S.start,
-                        tint = PrimaryBlue,
+                        tint = TextOnPrimary,
                         modifier = Modifier.size(30.dp)
                     )
                 }
@@ -190,14 +177,15 @@ fun StopwatchScreen(
             Box(
                 modifier = Modifier
                     .size(72.dp)
-                    .nexGlassSurface(36.dp)
+                    .clip(CircleShape)
+                    .background(PrimaryBlue)
                     .clickable { viewModel.toggle() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (isRunning) S.pause else S.start,
-                    tint = PrimaryBlue,
+                    tint = TextOnPrimary,
                     modifier = Modifier.size(28.dp)
                 )
             }

@@ -74,8 +74,6 @@ private fun AlarmEditContent(
     var showSnoozeDelayMenu by remember { mutableStateOf(false) }
     var showMaxSnoozeMenu by remember { mutableStateOf(false) }
 
-    // 有資料夾時為資料夾模式（隱藏重複日與響鈴後保留）
-    val isFolderMode = selectedFolderId != null
     // 選單只顯示非系統資料夾
     val userFolders = remember(folders) { folders.filter { !it.isSystem } }
     val ringtoneTitle = remember(ringtoneUri, context) {
@@ -129,17 +127,15 @@ private fun AlarmEditContent(
                             minute = minute,
                             title = title,
                             isEnabled = alarm?.isEnabled ?: true,
-                            // 資料夾模式：不支援重複日，強制為單次
-                            isRecurring = if (isFolderMode) false else isRecurring,
-                            repeatDays = if (isFolderMode) emptyList() else (if (isRecurring) repeatDays else emptyList()),
+                            isRecurring = isRecurring,
+                            repeatDays = if (isRecurring) repeatDays else emptyList(),
                             folderId = selectedFolderId,
                             vibrateOnly = vibrateOnly,
                             volume = alarm?.volume ?: 80,
                             ringtoneUri = ringtoneUri,
                             snoozeDelay = snoozeDelay,
                             maxSnoozeCount = maxSnoozeCount,
-                            // 資料夾模式：無「響鈴後保留」，固定為 false
-                            keepAfterRinging = if (isFolderMode) false else keepAfterRinging,
+                            keepAfterRinging = keepAfterRinging,
                             snoozeEnabled = snoozeEnabled,
                             createdAt = alarm?.createdAt ?: System.currentTimeMillis(),
                             clientId = alarm?.clientId ?: java.util.UUID.randomUUID().toString(),
@@ -201,7 +197,7 @@ private fun AlarmEditContent(
                     placeholder = { Text(S.alarmTitleHint, color = TextTertiary) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedContainerColor = DarkSurface,
                         focusedContainerColor = DarkSurface,
@@ -232,7 +228,7 @@ private fun AlarmEditContent(
                     ) {
                         Text(S.folderLabel, fontSize = 15.sp, color = TextPrimary)
                         Text(
-                            (userFolders.find { it.id == selectedFolderId }?.let { it.emoji + " " + it.name } ?: S.noneLabel) + " >",
+                            (userFolders.find { it.id == selectedFolderId }?.name ?: S.noneLabel) + " >",
                             fontSize = 14.sp,
                             color = TextSecondary
                         )
@@ -270,7 +266,7 @@ private fun AlarmEditContent(
                                     .padding(vertical = 10.dp)
                             ) {
                                 Text(
-                                    f.emoji + " " + f.name,
+                                    f.name,
                                     fontSize = 14.sp,
                                     color = if (selectedFolderId == f.id) SecondaryBlue else TextSecondary
                                 )
@@ -279,11 +275,10 @@ private fun AlarmEditContent(
                     }
                 }
 
-                // 重複日選擇（資料夾模式下隱藏）
-                if (!isFolderMode) {
-                    Spacer(modifier = Modifier.height(14.dp))
-                    EditLabel(S.repeatDaysLabel)
-                    Row(
+                // 行程群組可包含每週班表、課表與多段行程。
+                Spacer(modifier = Modifier.height(14.dp))
+                EditLabel(S.repeatDaysLabel)
+                Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
@@ -309,7 +304,6 @@ private fun AlarmEditContent(
                                 )
                             }
                         }
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -401,11 +395,8 @@ private fun AlarmEditContent(
                             }
                         }
                     }
-                    // 響鈴後保留（資料夾模式下隱藏）
-                    if (!isFolderMode) {
-                        EditDiv()
-                        EditToggleRow(S.keepAfterRingingLabel, S.keepAfterRingingSubtitle, keepAfterRinging) { keepAfterRinging = it }
-                    }
+                    EditDiv()
+                    EditToggleRow(S.keepAfterRingingLabel, S.keepAfterRingingSubtitle, keepAfterRinging) { keepAfterRinging = it }
                     EditDiv()
                     EditToggleRow(S.vibrateOnlyLabel, S.vibrateOnlySubtitle, vibrateOnly) { vibrateOnly = it }
                 }
@@ -417,7 +408,7 @@ private fun AlarmEditContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
-                            .background(DangerRed.copy(alpha = 0.1f), RoundedCornerShape(14.dp))
+                            .background(DangerRed.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
                             .clickable { onDelete(alarm) }
                             .padding(vertical = 15.dp),
                         contentAlignment = Alignment.Center

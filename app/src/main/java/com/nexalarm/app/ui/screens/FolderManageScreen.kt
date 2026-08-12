@@ -8,9 +8,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,8 +22,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.model.FolderEntity
+import com.nexalarm.app.ui.components.NexIconBadge
+import com.nexalarm.app.ui.components.NexMetricCard
 import com.nexalarm.app.ui.components.NexToggle
+import com.nexalarm.app.ui.components.NexTopBar
 import com.nexalarm.app.ui.components.NewFolderDialog
+import com.nexalarm.app.ui.components.ScheduleGroupIcon
 import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.util.FeatureFlags
 
@@ -39,40 +43,36 @@ fun FolderManageScreen(
     onAddFolderClick: () -> Unit
 ) {
     val openMenu = LocalMenuAction.current
+    val userFolders = folders.filter { !it.isSystem }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header
-        Box(
+        NexTopBar(title = S.folders, onMenuClick = openMenu)
+
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 10.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            IconButton(
-                onClick = openMenu,
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
-                Icon(
-                    Icons.Default.Menu,
-                    contentDescription = S.menu,
-                    tint = TextPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = S.folders,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary,
-                modifier = Modifier.align(Alignment.Center)
+            NexMetricCard(
+                value = userFolders.size.toString(),
+                label = S.customFolders,
+                modifier = Modifier.weight(1f),
+                elevated = true
+            )
+            NexMetricCard(
+                value = "${userFolders.size}/${FeatureFlags.FREE_FOLDER_LIMIT}",
+                label = S.freePlan,
+                modifier = Modifier.weight(1f)
             )
         }
 
         LazyColumn(
-            contentPadding = PaddingValues(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.weight(1f)
         ) {
-            items(folders.filter { !it.isSystem }) { folder ->
+            items(userFolders) { folder ->
                 val count = alarmCountMap[folder.id] ?: 0
                 FolderListCard(
                     folder = folder,
@@ -87,12 +87,13 @@ fun FolderManageScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .nexGlassSurface(20.dp)
                         .border(
                             width = 1.5.dp,
                             color = DarkBorder,
-                            shape = RoundedCornerShape(18.dp)
+                            shape = RoundedCornerShape(8.dp)
                         )
-                        .clip(RoundedCornerShape(18.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .clickable { onAddFolderClick() }
                         .padding(horizontal = 18.dp, vertical = 16.dp)
                 ) {
@@ -100,14 +101,11 @@ fun FolderManageScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(AccentDim, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("＋", fontSize = 22.sp, color = PrimaryBlue)
-                        }
+                        NexIconBadge(
+                            icon = Icons.Default.Add,
+                            contentDescription = S.newFolder,
+                            selected = false
+                        )
                         Text(
                             text = S.newFolder,
                             fontSize = 15.sp,
@@ -120,9 +118,8 @@ fun FolderManageScreen(
 
             // Quota display
             item {
-                val userCount = folders.count { !it.isSystem }
                 Text(
-                    text = S.folderQuota(userCount, FeatureFlags.FREE_FOLDER_LIMIT),
+                    text = S.folderQuota(userFolders.size, FeatureFlags.FREE_FOLDER_LIMIT),
                     fontSize = 12.sp,
                     color = TextTertiary,
                     modifier = Modifier
@@ -156,7 +153,7 @@ private fun FolderListCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .nexGlassSurface(18.dp)
+            .nexGlassSurface(20.dp, elevated = folder.isEnabled)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 16.dp)
     ) {
@@ -165,12 +162,18 @@ private fun FolderListCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Emoji
-            Text(
-                text = folder.emoji,
-                fontSize = 26.sp,
-                lineHeight = 26.sp
-            )
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(AccentDim, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                ScheduleGroupIcon(
+                    savedValue = folder.emoji,
+                    contentDescription = null,
+                    modifier = Modifier.size(21.dp)
+                )
+            }
 
             // Name & count
             Column(modifier = Modifier.weight(1f)) {

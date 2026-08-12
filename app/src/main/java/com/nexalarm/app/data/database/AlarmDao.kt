@@ -19,6 +19,9 @@ interface AlarmDao {
     @Query("SELECT * FROM alarms WHERE folderId = :folderId AND is_deleted = 0 ORDER BY hour, minute")
     fun getAlarmsByFolder(folderId: Long): Flow<List<AlarmEntity>>
 
+    @Query("SELECT * FROM alarms WHERE folderId = :folderId AND is_deleted = 0 ORDER BY hour, minute")
+    suspend fun getAlarmsByFolderList(folderId: Long): List<AlarmEntity>
+
     @Query("SELECT * FROM alarms WHERE id = :id")
     suspend fun getAlarmById(id: Long): AlarmEntity?
 

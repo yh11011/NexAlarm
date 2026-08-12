@@ -242,7 +242,7 @@ fun NexAlarmMainContent(
                             containerColor = PrimaryBlue,
                             shape = CircleShape
                         ) {
-                            Text("+", fontSize = 24.sp, color = TextOnPrimary)
+                            Icon(Icons.Default.Add, contentDescription = S.newAlarm, tint = TextOnPrimary)
                         }
                     }
                 }
@@ -330,6 +330,7 @@ fun NexAlarmMainContent(
                     composable("home") {
                         HomeScreen(
                             alarms = alarms,
+                            groups = folders,
                             onGoToAlarms = {
                                 navController.navigate("tabs") {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }

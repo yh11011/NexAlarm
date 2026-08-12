@@ -8,6 +8,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -19,8 +20,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -30,9 +29,15 @@ import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.receiver.AlarmReceiver
 import com.nexalarm.app.service.AlarmService
+import com.nexalarm.app.ui.theme.DarkBackground
+import com.nexalarm.app.ui.theme.DarkBorder
+import com.nexalarm.app.ui.theme.DarkCard
 import com.nexalarm.app.ui.theme.NexAlarmTheme
+import com.nexalarm.app.ui.theme.PrimaryBlue
 import com.nexalarm.app.ui.theme.S
-import com.nexalarm.app.ui.theme.isAppEnglish
+import com.nexalarm.app.ui.theme.TextOnPrimary
+import com.nexalarm.app.ui.theme.TextPrimary
+import com.nexalarm.app.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -200,7 +205,7 @@ fun AlarmRingingScreen(
     }
 
     val snoozeMin = alarm?.snoozeDelay ?: 10
-    val snoozeEnabled = alarm?.snoozeEnabled ?: true
+    val snoozeEnabled = alarm?.snoozeEnabled ?: false
     val dismissThresholdPx = with(density) { 100.dp.toPx() }
     var swipeDelta by remember { mutableFloatStateOf(0f) }
 
@@ -221,17 +226,7 @@ fun AlarmRingingScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color(0xFF3D2318), Color(0xFF5C3820), Color(0xFF1C0D06))
-                    )
-                )
-        )
-        // Subtle dark overlay for text contrast
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.28f))
+                .background(DarkBackground)
         )
 
         // ── Content ──────────────────────────────────────────────────────────
@@ -247,9 +242,9 @@ fun AlarmRingingScreen(
             Text(
                 text = String.format(Locale.getDefault(), "%02d:%02d", hour, minute),
                 fontSize = 88.sp,
-                fontWeight = FontWeight.Thin,
-                color = Color.White.copy(alpha = 0.93f),
-                letterSpacing = (-2).sp
+                fontWeight = FontWeight.Medium,
+                color = TextPrimary,
+                letterSpacing = 0.sp
             )
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -261,7 +256,7 @@ fun AlarmRingingScreen(
             Text(
                 text = "${month}月${day}日 星期${dowNames[now.get(Calendar.DAY_OF_WEEK)]}",
                 fontSize = 16.sp,
-                color = Color.White.copy(alpha = 0.72f)
+                color = TextSecondary
             )
 
             val displayTitle = alarm?.title?.takeIf { it.isNotBlank() } ?: fallbackTitle
@@ -269,7 +264,7 @@ fun AlarmRingingScreen(
                 text = displayTitle,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = 0.9f),
+                color = TextPrimary,
                 modifier = Modifier.padding(top = 18.dp, start = 32.dp, end = 32.dp)
             )
 
@@ -283,8 +278,9 @@ fun AlarmRingingScreen(
                         .padding(horizontal = 36.dp)
                         .fillMaxWidth()
                         .height(72.dp),
-                    shape = RoundedCornerShape(22.dp),
-                    color = Color(0xFFF2EDE6).copy(alpha = 0.88f),
+                    shape = RoundedCornerShape(8.dp),
+                    color = DarkCard,
+                    border = BorderStroke(1.dp, DarkBorder),
                     shadowElevation = 0.dp
                 ) {
                     Row(
@@ -295,13 +291,13 @@ fun AlarmRingingScreen(
                         Icon(
                             imageVector = Icons.Default.Alarm,
                             contentDescription = null,
-                            tint = Color(0xFF1A1A1A),
+                            tint = TextPrimary,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = S.snoozeReminder(snoozeMin),
-                            color = Color(0xFF1A1A1A),
+                            color = TextPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -310,15 +306,16 @@ fun AlarmRingingScreen(
             }
 
             // ── Save card（僅對一般鬧鐘顯示）──────────────────────────────
-            if (alarm?.folderId == null) {
+            if (alarm != null && alarm.folderId == null) {
+                Spacer(modifier = Modifier.height(12.dp))
                 Surface(
                     onClick = onSave,
                     modifier = Modifier
                         .padding(horizontal = 36.dp)
                         .fillMaxWidth()
                         .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF4CAF50).copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(8.dp),
+                    color = PrimaryBlue,
                     shadowElevation = 0.dp
                 ) {
                     Row(
@@ -327,8 +324,8 @@ fun AlarmRingingScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (isAppEnglish) "Save Alarm" else "保存此鬧鐘",
-                            color = Color.White,
+                            text = S.save,
+                            color = TextOnPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -352,7 +349,7 @@ fun AlarmRingingScreen(
             Icon(
                 imageVector = Icons.Default.KeyboardArrowUp,
                 contentDescription = S.slideToClose,
-                tint = Color.White.copy(alpha = 0.82f),
+                tint = TextSecondary,
                 modifier = Modifier
                     .size(28.dp)
                     .offset(y = arrowOffset.dp)
@@ -360,7 +357,7 @@ fun AlarmRingingScreen(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = S.slideToClose,
-                color = Color.White.copy(alpha = 0.82f),
+                color = TextSecondary,
                 fontSize = 15.sp
             )
 

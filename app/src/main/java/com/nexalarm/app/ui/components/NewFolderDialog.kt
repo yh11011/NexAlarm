@@ -21,11 +21,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.nexalarm.app.ui.theme.*
 
-val FOLDER_EMOJIS = listOf(
-    "📘", "💼", "🎉", "🏋️", "🌙", "☕",
-    "🎵", "🏠", "✈️", "📚", "🌿", "⚡"
-)
-
 @Composable
 fun NewFolderDialog(
     visible: Boolean,
@@ -35,7 +30,7 @@ fun NewFolderDialog(
     if (!visible) return
 
     var name by remember { mutableStateOf("") }
-    var selectedEmoji by remember { mutableStateOf(FOLDER_EMOJIS[0]) }
+    var selectedIconId by remember { mutableStateOf("briefcase") }
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -45,7 +40,7 @@ fun NewFolderDialog(
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
             Text(
-                text = "新增資料夾",
+                text = S.newFolder,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
@@ -55,18 +50,18 @@ fun NewFolderDialog(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Emoji grid
+            // Professional schedule categories, stored as stable IDs rather than emoji glyphs.
             LazyVerticalGrid(
-                columns = GridCells.Fixed(6),
+                columns = GridCells.Fixed(5),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.height(100.dp)
+                modifier = Modifier.height(116.dp)
             ) {
-                items(FOLDER_EMOJIS) { emoji ->
-                    val isSelected = emoji == selectedEmoji
+                items(scheduleGroupIconOptions) { option ->
+                    val isSelected = option.id == selectedIconId
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .height(54.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .background(
                                 if (isSelected) AccentDim else DarkSurface
@@ -78,10 +73,19 @@ fun NewFolderDialog(
                                     RoundedCornerShape(10.dp)
                                 ) else Modifier
                             )
-                            .clickable { selectedEmoji = emoji },
+                            .clickable { selectedIconId = option.id },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = emoji, fontSize = 22.sp)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            ScheduleGroupIcon(
+                                savedValue = option.id,
+                                contentDescription = option.label,
+                                modifier = Modifier.size(19.dp),
+                                tint = if (isSelected) PrimaryBlue else TextSecondary
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(option.label, fontSize = 10.sp, color = if (isSelected) PrimaryBlue else TextSecondary)
+                        }
                     }
                 }
             }
@@ -93,11 +97,11 @@ fun NewFolderDialog(
                 value = name,
                 onValueChange = { name = it },
                 placeholder = {
-                    Text("資料夾名稱", color = TextTertiary)
+                    Text(S.folderLabel, color = TextTertiary)
                 },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedContainerColor = DarkSurface,
                     focusedContainerColor = DarkSurface,
@@ -121,7 +125,7 @@ fun NewFolderDialog(
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DarkSurface,
                         contentColor = TextPrimary
@@ -132,13 +136,13 @@ fun NewFolderDialog(
                 Button(
                     onClick = {
                         if (name.isNotBlank()) {
-                            onConfirm(name.trim(), selectedEmoji)
+                            onConfirm(name.trim(), selectedIconId)
                         }
                     },
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     enabled = name.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = PrimaryBlue,

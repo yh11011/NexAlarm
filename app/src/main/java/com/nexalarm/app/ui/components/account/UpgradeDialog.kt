@@ -130,7 +130,7 @@ fun UpgradeDialog(
                     },
                     enabled = !isValidating && !promoSuccess,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = PrimaryBlue,
                         contentColor = TextOnPrimary
@@ -142,7 +142,7 @@ fun UpgradeDialog(
                 OutlinedButton(
                     onClick = onPurchase,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
                     border = BorderStroke(1.dp, DarkCard)
                 ) {

@@ -239,7 +239,7 @@ fun LoginScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 enabled = !isLoading && usernameOrEmail.isNotBlank() && password.isNotBlank(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrimaryBlue,
                     contentColor = TextOnPrimary,

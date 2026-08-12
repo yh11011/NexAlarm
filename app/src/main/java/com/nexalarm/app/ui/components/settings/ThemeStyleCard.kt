@@ -13,22 +13,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.util.AppSettingsProvider
 
-/**
- * 主題樣式選擇卡片
- * 顯示所有可用的主題樣式縮圖供選擇
- */
+/** Two deliberate working modes instead of an uncurated catalogue of styles. */
 @Composable
 fun ThemeStyleCard(settingsManager: com.nexalarm.app.data.SettingsManager) {
-    val currentTheme = AppSettingsProvider.currentThemeMutableState.value
-    val allThemes = AppTheme.entries
+    val currentTheme = AppSettingsProvider.currentThemeMutableState.value.toSupportedTheme()
 
     Column(
         modifier = Modifier
@@ -47,83 +45,103 @@ fun ThemeStyleCard(settingsManager: com.nexalarm.app.data.SettingsManager) {
                 text = if (isAppEnglish) currentTheme.displayNameEn else currentTheme.displayNameZh,
                 fontSize = 13.sp,
                 color = PrimaryBlue,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.SemiBold
             )
         }
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            modifier = Modifier.heightIn(max = 480.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            columns = GridCells.Fixed(1),
+            modifier = Modifier.heightIn(max = 300.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(allThemes) { theme ->
-                val isSelected = theme == currentTheme
-                val colors = theme.colors()
-                val swatches = theme.swatchColors()
-                Column(
+            items(AppTheme.selectableThemes) { theme ->
+                ThemeModeRow(theme = theme, selected = theme == currentTheme)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeModeRow(theme: AppTheme, selected: Boolean) {
+    val colors = theme.colors()
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (selected) PrimaryBlue.copy(alpha = 0.12f) else DarkCard)
+            .border(
+                width = if (selected) 1.5.dp else 1.dp,
+                color = if (selected) PrimaryBlue else DarkBorder,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .semantics {
+                role = Role.RadioButton
+                this.selected = selected
+            }
+            .clickable { AppSettingsProvider.setTheme(theme) }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(68.dp, 46.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(colors.background)
+        ) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(colors.background))
+                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(colors.card))
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .background(colors.primary)
+            )
+            if (selected) {
+                Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (isSelected) PrimaryBlue.copy(alpha = 0.12f) else DarkCard
-                        )
-                        .border(
-                            width = if (isSelected) 1.5.dp else 0.dp,
-                            color = if (isSelected) PrimaryBlue else Color.Transparent,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .clickable {
-                            AppSettingsProvider.setTheme(theme)
-                        }
-                        .padding(vertical = 10.dp, horizontal = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .size(14.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(PrimaryBlue),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // 縮圖：四色色塊
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp, 32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(colors.background)
-                    ) {
-                        Row(modifier = Modifier.fillMaxSize()) {
-                            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(colors.background))
-                            Box(modifier = Modifier.weight(1f).fillMaxHeight().background(colors.card))
-                        }
-                        // 主色條
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .height(5.dp)
-                                .background(colors.primary)
-                        )
-                        // 選取勾
-                        if (isSelected) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(3.dp)
-                                    .size(12.dp)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(PrimaryBlue),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("✓", fontSize = 7.sp, color = TextOnPrimary)
-                            }
-                        }
-                    }
-                    Text(
-                        text = if (isAppEnglish) theme.displayNameEn else theme.displayNameZh,
-                        fontSize = 10.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSelected) PrimaryBlue else TextSecondary,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        lineHeight = 13.sp
-                    )
+                    Text("✓", fontSize = 9.sp, color = TextOnPrimary)
                 }
             }
         }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (isAppEnglish) theme.displayNameEn else theme.displayNameZh,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (selected) PrimaryBlue else TextPrimary,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = themeDescription(theme),
+                fontSize = 12.sp,
+                color = TextSecondary,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+private fun themeDescription(theme: AppTheme): String = if (isAppEnglish) {
+    when (theme) {
+        AppTheme.FOCUS_BLUE -> "Bright, calm focus for daytime planning"
+        AppTheme.MINIMALIST -> "Dark, low-stimulation clarity for long sessions"
+        else -> ""
+    }
+} else {
+    when (theme) {
+        AppTheme.FOCUS_BLUE -> "日間規劃清晰明亮，長看不疲勞"
+        AppTheme.MINIMALIST -> "深色低刺激資訊層級，適合夜間專注"
+        else -> ""
     }
 }

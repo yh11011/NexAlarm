@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.ui.components.AlarmCard
+import com.nexalarm.app.ui.components.NexTopBar
 import com.nexalarm.app.ui.components.rememberCountdownText
 import com.nexalarm.app.ui.theme.*
 
@@ -42,37 +41,13 @@ fun AlarmScreen(
     val countdown = rememberCountdownText(filteredAlarms)
 
     Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 10.dp)
-            ) {
-                IconButton(
-                    onClick = openMenu,
-                    modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    Icon(
-                        Icons.Default.Menu,
-                        contentDescription = S.menu,
-                        tint = TextPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Text(
-                    text = S.alarm,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
+            NexTopBar(title = S.alarm, onMenuClick = openMenu)
 
             // Tab row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
                     .nexGlassSurface(24.dp)
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -82,7 +57,7 @@ fun AlarmScreen(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(6.dp))
                             .background(if (selected) PrimaryBlue else Color.Transparent)
                             .clickable { selectedTab = index }
                             .padding(horizontal = 20.dp, vertical = 9.dp),
@@ -99,16 +74,11 @@ fun AlarmScreen(
             }
 
             // Countdown
-            if (countdown.isNotEmpty()) {
-                Text(
-                    text = countdown,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = TextPrimary,
-                    letterSpacing = (-0.2).sp,
-                    modifier = Modifier.padding(start = 20.dp, top = 22.dp, bottom = 26.dp)
-                )
-            }
+            AlarmSummaryPanel(
+                countdown = countdown,
+                alarmCount = filteredAlarms.size,
+                enabledCount = filteredAlarms.count { it.isEnabled }
+            )
 
             // Alarm list
             if (filteredAlarms.isEmpty()) {
@@ -119,8 +89,8 @@ fun AlarmScreen(
                 EmptyState(emoji = emoji, title = title, subtitle = S.tapPlusToAdd)
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     items(filteredAlarms, key = { it.id }) { alarm ->
@@ -135,4 +105,60 @@ fun AlarmScreen(
                 }
             }
         }
+}
+
+@Composable
+private fun AlarmSummaryPanel(
+    countdown: String,
+    alarmCount: Int,
+    enabledCount: Int
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .nexGlassSurface(24.dp, elevated = true)
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = S.nextAlarmShort,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextTertiary
+                )
+                Text(
+                    text = countdown.ifEmpty { S.homeNoActiveAlarm },
+                    fontSize = if (countdown.isEmpty()) 20.sp else 24.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (countdown.isEmpty()) TextSecondary else TextPrimary,
+                    lineHeight = 30.sp
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                SummaryMetric(value = alarmCount.toString(), label = S.alarm)
+                SummaryMetric(value = enabledCount.toString(), label = S.enabledShort)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryMetric(value: String, label: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = value,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = TextTertiary
+        )
+    }
 }

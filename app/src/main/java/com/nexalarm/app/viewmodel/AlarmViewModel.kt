@@ -105,10 +105,10 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 // 使用 insertOrUpdate 防止相同鬧鐘重複新增（依 hour+minute+title+folderId+repeatDays 去重）
                 val newId = repository.insertOrUpdate(alarmWithTime)
-                scheduler.schedule(alarmWithTime.copy(id = newId))
+                scheduleIfGroupActive(alarmWithTime.copy(id = newId))
             } else {
                 alarmDao.update(alarmWithTime)
-                scheduler.schedule(alarmWithTime)
+                scheduleIfGroupActive(alarmWithTime)
             }
             triggerSync()
         }
@@ -122,7 +122,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         val updated = alarm.copy(isEnabled = !alarm.isEnabled, updatedAt = System.currentTimeMillis())
         viewModelScope.launch {
             alarmDao.update(updated)
-            if (updated.isEnabled) scheduler.schedule(updated) else scheduler.cancel(updated)
+            scheduleIfGroupActive(updated)
             triggerSync()
         }
     }
@@ -208,8 +208,16 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         val updated = alarm.copy(updatedAt = System.currentTimeMillis())
         viewModelScope.launch {
             alarmDao.update(updated)
-            if (updated.isEnabled) scheduler.schedule(updated) else scheduler.cancel(updated)
+            scheduleIfGroupActive(updated)
             triggerSync()
         }
+    }
+
+    private suspend fun scheduleIfGroupActive(alarm: AlarmEntity) {
+        val groupIsActive = alarm.folderId
+            ?.let { database.folderDao().getFolderById(it)?.isEnabled ?: true }
+            ?: true
+
+        if (alarm.isEnabled && groupIsActive) scheduler.schedule(alarm) else scheduler.cancel(alarm)
     }
 }

@@ -38,7 +38,7 @@ fun SettingCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(DarkCard, RoundedCornerShape(12.dp))
+                .background(DarkCard, RoundedCornerShape(8.dp))
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {

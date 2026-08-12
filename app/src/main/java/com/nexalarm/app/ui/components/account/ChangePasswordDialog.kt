@@ -163,7 +163,7 @@ fun ChangePasswordDialog(
                     },
                     enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = PrimaryBlue,
                         contentColor = TextOnPrimary

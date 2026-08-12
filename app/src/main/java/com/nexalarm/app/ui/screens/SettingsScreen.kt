@@ -1,6 +1,7 @@
 package com.nexalarm.app.ui.screens
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,9 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.nexalarm.app.data.SettingsManager
+import com.nexalarm.app.ui.components.AlarmReliabilityCard
 import com.nexalarm.app.ui.components.settings.*
 import com.nexalarm.app.ui.theme.*
-import kotlinx.coroutines.launch
+import com.nexalarm.app.util.AlarmReliabilityChecker
+import com.nexalarm.app.util.TestAlarmScheduler
 
 @Composable
 fun SettingsScreen() {
@@ -23,12 +26,25 @@ fun SettingsScreen() {
     var showTimezoneDialog by remember { mutableStateOf(false) }
     var selectedTimezoneId by remember { mutableStateOf(settingsManager.timeZoneId) }
     var showAiDialog by remember { mutableStateOf(false) }
+    val reliabilityState = AlarmReliabilityChecker.evaluate(context)
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         // Header
         SettingsHeader(openMenu = openMenu)
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        AlarmReliabilityCard(
+            state = reliabilityState,
+            showDetails = true,
+            onTestAlarm = {
+                TestAlarmScheduler.schedule(context)
+                Toast.makeText(context, S.testAlarmScheduled, Toast.LENGTH_LONG).show()
+            },
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Language setting
         SettingCard(

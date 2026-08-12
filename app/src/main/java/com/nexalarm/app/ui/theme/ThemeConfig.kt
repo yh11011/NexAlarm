@@ -1,11 +1,11 @@
 package com.nexalarm.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.pow
 
-/**
- * 應用主題色彩系統
- * 每個 AppTheme 定義完整的色彩集合，供 Color.kt 中的計算屬性讀取
- */
+/** Complete, opaque color tokens used by the app theme. */
 data class ThemeColors(
     val background: Color,
     val surface: Color,
@@ -24,229 +24,231 @@ data class ThemeColors(
 )
 
 enum class AppTheme(val id: String, val displayNameZh: String, val displayNameEn: String) {
-    MINIMALIST     ("minimalist",      "極簡風",     "Minimalist"),
-    MORNING_GLOW   ("morning_glow",    "晨曦漸層",   "Morning Glow"),
-    NIGHT_NEON     ("night_neon",      "深夜霓虹",   "Night Neon"),
-    FOREST_MIST    ("forest_mist",     "森霧自然",   "Forest Mist"),
-    GLASSMORPHISM  ("glassmorphism",   "光霧玻璃",   "Atmospheric Glass"),
-    RETRO_FLIP     ("retro_flip",      "復古翻頁鐘", "Retro Flip"),
-    FOCUS_BLUE     ("focus_blue",      "專注深藍",   "Focus Blue"),
-    CREAM_JOURNAL  ("cream_journal",   "奶油手帳",   "Cream Journal"),
-    STARRY_UNIVERSE("starry_universe", "星夜宇宙",   "Starry Universe"),
-    CANDY_JELLY    ("candy_jelly",     "糖果果凍",   "Candy Jelly"),
-    MATERIAL_YOU   ("material_you",    "Material You", "Material You");
+    MINIMALIST      ("minimalist", "夜間模式", "Night Mode"),
+    MORNING_GLOW    ("morning_glow", "晨曦漸層", "Morning Glow"),
+    FOREST_MIST     ("forest_mist", "森霧自然", "Forest Mist"),
+    GLASSMORPHISM   ("glassmorphism", "光霧玻璃", "Atmospheric Glass"),
+    RETRO_FLIP      ("retro_flip", "復古翻頁鐘", "Retro Flip"),
+    FOCUS_BLUE      ("focus_blue", "日間專注", "Focus Light"),
+    CREAM_JOURNAL   ("cream_journal", "奶油手帳", "Cream Journal"),
+    STARRY_UNIVERSE ("starry_universe", "星夜宇宙", "Starry Universe"),
+    CANDY_JELLY     ("candy_jelly", "糖果果凍", "Candy Jelly"),
+    MATERIAL_YOU    ("material_you", "Material You", "Material You");
 
     companion object {
+        val selectableThemes = listOf(FOCUS_BLUE, MINIMALIST)
+
         fun fromId(id: String) = entries.firstOrNull { it.id == id } ?: MINIMALIST
     }
 }
 
-// ── 11 個主題色彩定義 ─────────────────────────────────────────
+/** Maps retained stored IDs onto the two supported productivity themes. */
+fun AppTheme.toSupportedTheme(): AppTheme = when (this) {
+    AppTheme.FOCUS_BLUE, AppTheme.MINIMALIST -> this
+    AppTheme.MORNING_GLOW,
+    AppTheme.FOREST_MIST,
+    AppTheme.GLASSMORPHISM,
+    AppTheme.CREAM_JOURNAL,
+    AppTheme.CANDY_JELLY,
+    AppTheme.MATERIAL_YOU -> AppTheme.FOCUS_BLUE
+    AppTheme.RETRO_FLIP,
+    AppTheme.STARRY_UNIVERSE -> AppTheme.MINIMALIST
+}
+
+val focusBlueColors = ThemeColors(
+    background = Color(0xFFEFF4F9),
+    surface = Color(0xFFF7F9FC),
+    card = Color(0xFFFFFFFF),
+    border = Color(0xFFB8C7D6),
+    primary = Color(0xFF0369A1),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryVariant = Color(0xFF075985),
+    secondary = Color(0xFF0F5F8B),
+    textPrimary = Color(0xFF102A43),
+    textSecondary = Color(0xFF405A70),
+    textTertiary = Color(0xFF5E7184),
+    danger = Color(0xFFB42318),
+    toggleOff = Color(0xFFD3DEE8),
+    isDark = false,
+)
 
 val minimalistColors = ThemeColors(
-    background   = Color(0xFF000000),
-    surface      = Color(0xFF1C1C1E),
-    card         = Color(0xFF2C2C2E),
-    border       = Color(0x12FFFFFF),
-    primary      = Color(0xFF4DA6FF),
-    onPrimary    = Color(0xFFFFFFFF),
-    primaryVariant = Color(0xFF1558B0),
-    secondary    = Color(0xFF7CC4FF),
-    textPrimary  = Color(0xFFFFFFFF),
-    textSecondary= Color(0x8CFFFFFF),
-    textTertiary = Color(0x4DFFFFFF),
-    danger       = Color(0xFFFF4444),
-    toggleOff    = Color(0xFF3A3A3C),
-    isDark       = true,
+    background = Color(0xFF121417),
+    surface = Color(0xFF1B1E22),
+    card = Color(0xFF24282D),
+    border = Color(0xFF343A40),
+    primary = Color(0xFF38BDF8),
+    onPrimary = Color(0xFF121417),
+    primaryVariant = Color(0xFFCBD5E1),
+    secondary = Color(0xFFCBD5E1),
+    textPrimary = Color(0xFFF1F5F9),
+    textSecondary = Color(0xFFB8C2CC),
+    textTertiary = Color(0xFF89939E),
+    danger = Color(0xFFFB7185),
+    toggleOff = Color(0xFF30353B),
+    isDark = true,
 )
 
 val morningGlowColors = ThemeColors(
-    background   = Color(0xFFFFF5EE),
-    surface      = Color(0xFFFFF0E6),
-    card         = Color(0xFFFEEBD8),
-    border       = Color(0x12000000),
-    primary      = Color(0xFFFF7043),
-    onPrimary    = Color(0xFFFFFFFF),
-    primaryVariant = Color(0xFFE64A19),
-    secondary    = Color(0xFFFFADB0),
-    textPrimary  = Color(0xFF3D2314),
-    textSecondary= Color(0x8C3D2314),
-    textTertiary = Color(0x4D3D2314),
-    danger       = Color(0xFFE53935),
-    toggleOff    = Color(0xFFDBBCA8),
-    isDark       = false,
-)
-
-val nightNeonColors = ThemeColors(
-    background   = Color(0xFF050A1A),
-    surface      = Color(0xFF0A1128),
-    card         = Color(0xFF0F1A3A),
-    border       = Color(0x1A00FFC6),
-    primary      = Color(0xFF00FFC6),
-    onPrimary    = Color(0xFF00231D),
-    primaryVariant = Color(0xFF00CCA0),
-    secondary    = Color(0xFF9D4EDD),
-    textPrimary  = Color(0xFFE0F0FF),
-    textSecondary= Color(0xCC7090C0),
-    textTertiary = Color(0x80405080),
-    danger       = Color(0xFFFF3860),
-    toggleOff    = Color(0xFF1A2A50),
-    isDark       = true,
+    background = Color(0xFFFBF7F2),
+    surface = Color(0xFFF5EEE7),
+    card = Color(0xFFFFFFFF),
+    border = Color(0xFFD8CDC4),
+    primary = Color(0xFF8E4B32),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryVariant = Color(0xFFB96A4C),
+    secondary = Color(0xFF9E7D67),
+    textPrimary = Color(0xFF2F211A),
+    textSecondary = Color(0xFF6E5B50),
+    textTertiary = Color(0xFF93847B),
+    danger = Color(0xFFB94D44),
+    toggleOff = Color(0xFFD8CDC4),
+    isDark = false,
 )
 
 val forestMistColors = ThemeColors(
-    background   = Color(0xFFF0ECE3),
-    surface      = Color(0xFFE8E4DB),
-    card         = Color(0xFFDDD9D0),
-    border       = Color(0x122D3B35),
-    primary      = Color(0xFF5C8A6A),
-    onPrimary    = Color(0xFFFFFFFF),
-    primaryVariant = Color(0xFF3D6B50),
-    secondary    = Color(0xFF8BADB3),
-    textPrimary  = Color(0xFF2D3B35),
-    textSecondary= Color(0x8C2D3B35),
-    textTertiary = Color(0x4D2D3B35),
-    danger       = Color(0xFFC0634A),
-    toggleOff    = Color(0xFFC0BCB3),
-    isDark       = false,
+    background = Color(0xFFF3F1EA),
+    surface = Color(0xFFECE8DF),
+    card = Color(0xFFFFFFFF),
+    border = Color(0xFFD0CCC2),
+    primary = Color(0xFF3F654D),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryVariant = Color(0xFF5F7E68),
+    secondary = Color(0xFF6F8179),
+    textPrimary = Color(0xFF2D3B35),
+    textSecondary = Color(0xFF65736B),
+    textTertiary = Color(0xFF8D968F),
+    danger = Color(0xFFB25D4D),
+    toggleOff = Color(0xFFD0CCC2),
+    isDark = false,
 )
 
 val glassmorphismColors = ThemeColors(
-    background   = Color(0xFF0B1326),
-    surface      = Color(0x1AFFFFFF),
-    card         = Color(0x29FFFFFF),
-    border       = Color(0x33FFFFFF),
-    primary      = Color(0xFFFFFFFF),
-    onPrimary    = Color(0xFF2F3131),
-    primaryVariant = Color(0xFFE2E2E2),
-    secondary    = Color(0xFFADC9EB),
-    textPrimary  = Color(0xFFFFFFFF),
-    textSecondary= Color(0xFFDAE2FD),
-    textTertiary = Color(0xFFC4C7C8),
-    danger       = Color(0xFFFFB4AB),
-    toggleOff    = Color(0x29FFFFFF),
-    isDark       = true,
+    background = Color(0xFFFBF9F6),
+    surface = Color(0xFFF5F3F0),
+    card = Color(0xFFFFFFFF),
+    border = Color(0xFFC5C6CA),
+    primary = Color(0xFF1A1C1E),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryVariant = Color(0xFF454749),
+    secondary = Color(0xFFB8422E),
+    textPrimary = Color(0xFF1B1C1A),
+    textSecondary = Color(0xFF595F65),
+    textTertiary = Color(0xFF75777A),
+    danger = Color(0xFFBA1A1A),
+    toggleOff = Color(0xFFE4E2DF),
+    isDark = false,
 )
 
 val retroFlipColors = ThemeColors(
-    background   = Color(0xFF1C1410),
-    surface      = Color(0xFF2A1F17),
-    card         = Color(0xFF352920),
-    border       = Color(0x1AC8A96E),
-    primary      = Color(0xFFC8A96E),
-    onPrimary    = Color(0xFF1C1410),
-    primaryVariant = Color(0xFFA07840),
-    secondary    = Color(0xFF8B6040),
-    textPrimary  = Color(0xFFF5E6CC),
-    textSecondary= Color(0x8CF5E6CC),
-    textTertiary = Color(0x4DF5E6CC),
-    danger       = Color(0xFFCC4422),
-    toggleOff    = Color(0xFF4A3020),
-    isDark       = true,
-)
-
-val focusBlueColors = ThemeColors(
-    background   = Color(0xFF0F1B2D),
-    surface      = Color(0xFF1A2742),
-    card         = Color(0xFF2D3748),
-    border       = Color(0x1A63B3ED),
-    primary      = Color(0xFF63B3ED),
-    onPrimary    = Color(0xFF081321),
-    primaryVariant = Color(0xFF4299E1),
-    secondary    = Color(0xFF4299E1),
-    textPrimary  = Color(0xFFEBF8FF),
-    textSecondary= Color(0xB390CDF4),
-    textTertiary = Color(0x804A7FA0),
-    danger       = Color(0xFFFC8181),
-    toggleOff    = Color(0xFF2D4060),
-    isDark       = true,
+    background = Color(0xFF17130F),
+    surface = Color(0xFF211B15),
+    card = Color(0xFF2A231C),
+    border = Color(0xFF4A3C2F),
+    primary = Color(0xFFE8D8BE),
+    onPrimary = Color(0xFF221A12),
+    primaryVariant = Color(0xFFC8AE87),
+    secondary = Color(0xFFB99A70),
+    textPrimary = Color(0xFFF0E6D4),
+    textSecondary = Color(0xFFC7B8A1),
+    textTertiary = Color(0xFF95856F),
+    danger = Color(0xFFD17B64),
+    toggleOff = Color(0xFF3A3028),
+    isDark = true,
 )
 
 val creamJournalColors = ThemeColors(
-    background   = Color(0xFFFBF7F0),
-    surface      = Color(0xFFF5EFE0),
-    card         = Color(0xFFEEE5D0),
-    border       = Color(0x124A3728),
-    primary      = Color(0xFFC9956C),
-    onPrimary    = Color(0xFFFFFFFF),
-    primaryVariant = Color(0xFFA87050),
-    secondary    = Color(0xFFF2C4CE),
-    textPrimary  = Color(0xFF4A3728),
-    textSecondary= Color(0x8C4A3728),
-    textTertiary = Color(0x4D4A3728),
-    danger       = Color(0xFFE07070),
-    toggleOff    = Color(0xFFD5C5B5),
-    isDark       = false,
+    background = Color(0xFFFBF7F0),
+    surface = Color(0xFFF5EFE0),
+    card = Color(0xFFFFFFFF),
+    border = Color(0xFFD8CABB),
+    primary = Color(0xFF8B5E40),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryVariant = Color(0xFFA77A58),
+    secondary = Color(0xFF9A7C65),
+    textPrimary = Color(0xFF4A3728),
+    textSecondary = Color(0xFF765F4B),
+    textTertiary = Color(0xFF9A8B7D),
+    danger = Color(0xFFB45C52),
+    toggleOff = Color(0xFFD8CABB),
+    isDark = false,
 )
 
 val starryUniverseColors = ThemeColors(
-    background   = Color(0xFF0B0C1E),
-    surface      = Color(0xFF111228),
-    card         = Color(0xFF1A1B35),
-    border       = Color(0x1A7B9FE8),
-    primary      = Color(0xFF7B9FE8),
-    onPrimary    = Color(0xFF081029),
-    primaryVariant = Color(0xFF5A7ED0),
-    secondary    = Color(0xFF6C5CE7),
-    textPrimary  = Color(0xFFE8EEFF),
-    textSecondary= Color(0xBF8090CC),
-    textTertiary = Color(0x80505080),
-    danger       = Color(0xFFFF6B6B),
-    toggleOff    = Color(0xFF252545),
-    isDark       = true,
+    background = Color(0xFF11131B),
+    surface = Color(0xFF181B25),
+    card = Color(0xFF212430),
+    border = Color(0xFF383D4B),
+    primary = Color(0xFFDDE2F0),
+    onPrimary = Color(0xFF081029),
+    primaryVariant = Color(0xFFADB6CE),
+    secondary = Color(0xFFA9B2CC),
+    textPrimary = Color(0xFFE8EEFF),
+    textSecondary = Color(0xFFB9C0D4),
+    textTertiary = Color(0xFF858CA3),
+    danger = Color(0xFFE18A7F),
+    toggleOff = Color(0xFF303442),
+    isDark = true,
 )
 
 val candyJellyColors = ThemeColors(
-    background   = Color(0xFFFFFFFF),
-    surface      = Color(0xFFF8F4FF),
-    card         = Color(0xFFF0ECFC),
-    border       = Color(0x122D2D40),
-    primary      = Color(0xFFFF6B6B),
-    onPrimary    = Color(0xFFFFFFFF),
-    primaryVariant = Color(0xFFFF4444),
-    secondary    = Color(0xFF4ECDC4),
-    textPrimary  = Color(0xFF2D2D40),
-    textSecondary= Color(0x8C2D2D40),
-    textTertiary = Color(0x4D2D2D40),
-    danger       = Color(0xFFFF4455),
-    toggleOff    = Color(0xFFE0DCF0),
-    isDark       = false,
+    background = Color(0xFFFBF8FA),
+    surface = Color(0xFFF4EEF2),
+    card = Color(0xFFFFFFFF),
+    border = Color(0xFFD8CDD4),
+    primary = Color(0xFF8C4F5C),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryVariant = Color(0xFFA96F7B),
+    secondary = Color(0xFF846E78),
+    textPrimary = Color(0xFF2D2D40),
+    textSecondary = Color(0xFF636071),
+    textTertiary = Color(0xFF8F8994),
+    danger = Color(0xFFB94D5A),
+    toggleOff = Color(0xFFD8CDD4),
+    isDark = false,
 )
 
 val materialYouColors = ThemeColors(
-    background   = Color(0xFFFFFBFE),
-    surface      = Color(0xFFF3EDF7),
-    card         = Color(0xFFECE6F0),
-    border       = Color(0x126750A4),
-    primary      = Color(0xFF6750A4),
-    onPrimary    = Color(0xFFFFFFFF),
-    primaryVariant = Color(0xFF4F378B),
-    secondary    = Color(0xFF625B71),
-    textPrimary  = Color(0xFF1C1B1F),
-    textSecondary= Color(0x8C1C1B1F),
-    textTertiary = Color(0x4D1C1B1F),
-    danger       = Color(0xFFB3261E),
-    toggleOff    = Color(0xFFE7E0EC),
-    isDark       = false,
+    background = Color(0xFFFFFBFE),
+    surface = Color(0xFFF3EDF7),
+    card = Color(0xFFFFFFFF),
+    border = Color(0xFFD0CAD6),
+    primary = Color(0xFF5E536F),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryVariant = Color(0xFF7A6E89),
+    secondary = Color(0xFF6E6775),
+    textPrimary = Color(0xFF1C1B1F),
+    textSecondary = Color(0xFF625B66),
+    textTertiary = Color(0xFF8E8791),
+    danger = Color(0xFFB3261E),
+    toggleOff = Color(0xFFE7E0EC),
+    isDark = false,
 )
 
-/** 依 AppTheme 取得對應色彩集 */
-fun AppTheme.colors(): ThemeColors = when (this) {
-    AppTheme.MINIMALIST      -> minimalistColors
-    AppTheme.MORNING_GLOW    -> morningGlowColors
-    AppTheme.NIGHT_NEON      -> nightNeonColors
-    AppTheme.FOREST_MIST     -> forestMistColors
-    AppTheme.GLASSMORPHISM   -> glassmorphismColors
-    AppTheme.RETRO_FLIP      -> retroFlipColors
-    AppTheme.FOCUS_BLUE      -> focusBlueColors
-    AppTheme.CREAM_JOURNAL   -> creamJournalColors
-    AppTheme.STARRY_UNIVERSE -> starryUniverseColors
-    AppTheme.CANDY_JELLY     -> candyJellyColors
-    AppTheme.MATERIAL_YOU    -> materialYouColors
+/** Gets the canonical palette for a selectable theme or retained legacy ID. */
+fun AppTheme.colors(): ThemeColors = when (toSupportedTheme()) {
+    AppTheme.FOCUS_BLUE -> focusBlueColors
+    AppTheme.MINIMALIST -> minimalistColors
+    else -> error("Unsupported canonical theme")
 }
 
-/** 主題代表色（色票顯示用：背景、卡片、主色、次色） */
+/** WCAG contrast ratio for two opaque sRGB colors. */
+fun contrastRatio(foreground: Color, background: Color): Double {
+    fun linear(channel: Float): Double = channel.toDouble().let {
+        if (it <= 0.03928) it / 12.92 else ((it + 0.055) / 1.055).pow(2.4)
+    }
+
+    fun luminance(color: Color): Double =
+        0.2126 * linear(color.red) + 0.7152 * linear(color.green) + 0.0722 * linear(color.blue)
+
+    val foregroundLuminance = luminance(foreground)
+    val backgroundLuminance = luminance(background)
+    return (max(foregroundLuminance, backgroundLuminance) + 0.05) /
+        (min(foregroundLuminance, backgroundLuminance) + 0.05)
+}
+
+/** Theme representative colors for a settings swatch. */
 fun AppTheme.swatchColors(): List<Color> {
-    val c = colors()
-    return listOf(c.background, c.card, c.primary, c.secondary)
+    val colors = colors()
+    return listOf(colors.background, colors.card, colors.primary, colors.secondary)
 }

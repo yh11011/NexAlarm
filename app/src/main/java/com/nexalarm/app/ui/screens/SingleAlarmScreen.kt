@@ -3,6 +3,8 @@ package com.nexalarm.app.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +40,7 @@ fun SingleAlarmScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "單次",
+                    text = S.single,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Normal,
                     color = TextPrimary,
@@ -60,7 +62,7 @@ fun SingleAlarmScreen(
 
             // Alarm list
             if (singleAlarms.isEmpty()) {
-                EmptyState(emoji = "🔔", title = "尚無單次鬧鐘", subtitle = "點擊 + 新增")
+                EmptyState(emoji = "🔔", title = S.noSingleAlarms, subtitle = S.tapPlusToAdd)
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
@@ -89,7 +91,7 @@ fun SingleAlarmScreen(
             containerColor = PrimaryBlue,
             shape = androidx.compose.foundation.shape.CircleShape
         ) {
-            Text("+", fontSize = 24.sp, color = TextOnPrimary)
+            Icon(Icons.Default.Add, contentDescription = S.newAlarm, tint = TextOnPrimary)
         }
     }
 }
@@ -102,7 +104,13 @@ fun EmptyState(emoji: String, title: String, subtitle: String) {
             .padding(32.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .nexGlassSurface(24.dp, elevated = true)
+                .padding(horizontal = 28.dp, vertical = 30.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
                 text = emoji,
                 fontSize = 52.sp,
