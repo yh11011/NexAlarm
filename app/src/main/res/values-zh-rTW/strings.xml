@@ -3,5 +3,11 @@
     <string name="app_name">Nex Alarm</string>
     <string name="meeting_mode">會議模式</string>
     <string name="open_nex_alarm">開啟 Nex Alarm</string>
-    <string name="widget_description">數字時鐘小工具，可快速查看時間並開啟 Nex Alarm。</string>
+    <string name="widget_description">透明時鐘小工具，顯示日期與示意天氣。</string>
+    <string name="widget_weather_sunny">晴朗天氣示意</string>
+    <string name="widget_weather_placeholder_temperature">26°</string>
+    <string name="widget_style_classic">經典時鐘</string>
+    <string name="widget_style_vertical">垂直時鐘</string>
+    <string name="widget_style_weather">天氣時鐘</string>
+    <string name="widget_style_date">日期時鐘</string>
 </resources>

@@ -1,11 +1,12 @@
+import com.android.build.api.variant.BuildConfigField
+
 plugins {
     alias(libs.plugins.android.app)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
-    kotlin("plugin.serialization") version "2.1.0"
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -25,9 +26,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // BuildConfig properties for runtime environment detection
-        buildConfigField("boolean", "IS_PRODUCTION", "false")
-        buildConfigField("String", "BUILD_TIMESTAMP", "\"${System.currentTimeMillis()}\"")
     }
 
     compileOptions {
@@ -35,9 +33,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    // Built-in Kotlin in AGP 9.0+ handles Kotlin compilation automatically.
+    // jvmTarget is inherited from compileOptions.targetCompatibility by default.
 
     buildFeatures {
         compose = true
@@ -55,7 +52,6 @@ android {
         debug {
             isDebuggable = true
             // Debug build: no obfuscation, include symbols for crash logs
-            buildConfigField("boolean", "IS_PRODUCTION", "false")
             configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
                 // Debug build 不需要上傳 mapping file（沒有混淆）
                 mappingFileUploadEnabled = false
@@ -69,14 +65,36 @@ android {
                 "proguard-rules.pro"
             )
             isDebuggable = false
-            buildConfigField("boolean", "IS_PRODUCTION", "true")
         }
     }
 
     // Room schema 匯出路徑（用於追蹤資料庫遷移歷史）
-    // 暫時禁用以解決 Kotlin 2.1.0 與 Room 2.8.4 的序列化相容性問題
     ksp {
-        // arg("room.schemaLocation", "$projectDir/schemas")
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val buildConfigFields = checkNotNull(variant.buildConfigFields) {
+            "BuildConfig generation must remain enabled for every variant."
+        }
+        buildConfigFields.put(
+            "IS_PRODUCTION",
+            BuildConfigField(
+                type = "boolean",
+                value = (variant.buildType == "release").toString(),
+                comment = "Whether this is the production release build.",
+            ),
+        )
+        buildConfigFields.put(
+            "BUILD_TIMESTAMP",
+            BuildConfigField(
+                type = "String",
+                value = "\"${System.currentTimeMillis()}\"",
+                comment = "Build configuration timestamp.",
+            ),
+        )
     }
 }
 

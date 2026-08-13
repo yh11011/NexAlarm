@@ -11,6 +11,7 @@ import com.nexalarm.app.util.CrashReportingManager
 import com.nexalarm.app.util.FeatureFlags
 import com.nexalarm.app.util.NotificationHelper
 import com.nexalarm.app.worker.AlarmSyncWorker
+import com.nexalarm.app.widget.WidgetPreviewPublisher
 import java.util.concurrent.TimeUnit
 
 /**
@@ -61,6 +62,9 @@ class NexAlarmApp : Application() {
         // 初始化功能標誌
         val settings = SettingsManager(this)
         FeatureFlags.isPremium = settings.isPremium
+
+        // Android 15+ can use generated RemoteViews in the system widget picker.
+        WidgetPreviewPublisher.publishAll(this)
 
         // 排程背景同步（每 15 分鐘，Android WorkManager 最小間隔）
         schedulePeriodicSync()

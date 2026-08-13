@@ -135,17 +135,56 @@
             </intent-filter>
         </receiver>
 
-        <!-- 桌面時鐘小工具 -->
+        <!-- 桌面時鐘小工具：經典水平 -->
         <receiver
             android:name=".widget.ClockWidgetProvider"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/widget_style_classic">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/clock_widget_info" />
+        </receiver>
+
+        <!-- 桌面時鐘小工具：垂直堆疊 -->
+        <receiver
+            android:name=".widget.VerticalClockWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_style_vertical">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_vertical_info" />
+        </receiver>
+
+        <!-- 桌面時鐘小工具：天氣導向 -->
+        <receiver
+            android:name=".widget.WeatherClockWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_style_weather">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_weather_info" />
+        </receiver>
+
+        <!-- 桌面時鐘小工具：日期導向 -->
+        <receiver
+            android:name=".widget.DateClockWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_style_date">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_date_info" />
         </receiver>
 
     </application>

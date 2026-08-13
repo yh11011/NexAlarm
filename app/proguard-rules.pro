@@ -136,9 +136,8 @@
 
 # ============ Debug ============
 
-# Log configuration (useful for debugging ProGuard issues)
-# Enable mapping file generation for Crashlytics de-obfuscation
--printmapping mapping.txt
+# Log configuration (useful for debugging R8 issues). AGP writes the standard
+# mapping file under app/build/outputs/mapping/<variant>/mapping.txt.
 # Uncomment to see detailed ProGuard logs (if needed for debugging)
 # -printconfiguration configuration.txt
 # -printseeds seeds.txt
