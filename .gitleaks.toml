@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+# Firebase Android API keys identify the public client and are shipped in the APK.
+# They are not server credentials, but must still be restricted by package name and
+# signing certificate in Google Cloud/Firebase. Private keys and service-account
+# credentials are not allowlisted.
+[[allowlists]]
+description = "Firebase Android client configuration"
+paths = ['''^app/google-services\.json$''']

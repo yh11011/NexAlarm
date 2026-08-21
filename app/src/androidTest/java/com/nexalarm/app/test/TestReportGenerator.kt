@@ -222,7 +222,7 @@ class TestReportGenerator(
         }
         appendLine("  • Force-stop 屬於系統設計限制，不列入成功率統計")
         appendLine("  • setAlarmClock() 會 bypass Doze，報告已標註使用的 API")
-        appendLine("  • 電池優化開啟時 setExactAndAllowWhileIdle 有最短 9 分鐘間隔")
+        appendLine("  • 缺少 exact-alarm access 時會使用 setAndAllowWhileIdle，結果應標記為非精確路徑")
         appendLine()
         appendLine("╚═══════════════════════════════════════════════════════════╝")
     }
@@ -245,4 +245,3 @@ class TestReportGenerator(
         return kotlin.math.sqrt(variance)
     }
 }
-
