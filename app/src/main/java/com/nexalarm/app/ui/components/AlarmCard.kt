@@ -20,12 +20,13 @@ fun AlarmCard(
     alarm: AlarmEntity,
     folder: FolderEntity?,
     onClick: () -> Unit,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    showToggle: Boolean = true,
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .nexGlassSurface(20.dp, elevated = alarm.isEnabled)
+            .nexGlassSurface(NexCornerRadius.card, elevated = alarm.isEnabled)
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
@@ -79,10 +80,12 @@ fun AlarmCard(
                     )
                 }
             }
-            NexToggle(
-                checked = alarm.isEnabled,
-                onCheckedChange = { onToggle() }
-            )
+            if (showToggle) {
+                NexToggle(
+                    checked = alarm.isEnabled,
+                    onCheckedChange = { onToggle() }
+                )
+            }
         }
     }
 }

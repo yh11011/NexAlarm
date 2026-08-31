@@ -62,6 +62,16 @@ interface AlarmDao {
     @Query("SELECT COUNT(*) FROM alarms WHERE folderId = :folderId AND is_deleted = 0")
     suspend fun getAlarmCountByFolder(folderId: Long): Int
 
+    @Query("UPDATE alarms SET folderId = NULL, updatedAt = :updatedAt WHERE folderId = :folderId")
+    suspend fun clearFolder(folderId: Long, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE alarms SET isEnabled = :enabled, updatedAt = :updatedAt WHERE folderId = :folderId AND is_deleted = 0")
+    suspend fun setFolderAlarmsEnabled(
+        folderId: Long,
+        enabled: Boolean,
+        updatedAt: Long = System.currentTimeMillis(),
+    )
+
     @Query("SELECT COUNT(*) FROM alarms WHERE is_deleted = 0")
     suspend fun getTotalAlarmCount(): Int
 

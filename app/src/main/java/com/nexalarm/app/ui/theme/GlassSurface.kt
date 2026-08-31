@@ -26,14 +26,10 @@ fun NexBackground(
 }
 
 fun Modifier.nexGlassSurface(
-    cornerRadius: Dp = 16.dp,
+    cornerRadius: Dp = NexCornerRadius.card,
     elevated: Boolean = false
 ): Modifier {
-    val refinedRadius = when {
-        cornerRadius.value >= 32f -> cornerRadius
-        else -> minOf(cornerRadius, 8.dp)
-    }
-    val shape = RoundedCornerShape(refinedRadius)
+    val shape = RoundedCornerShape(cornerRadius)
     val surfaceColor = if (elevated) DarkCard else DarkSurface
     return clip(shape)
         .background(surfaceColor, shape)

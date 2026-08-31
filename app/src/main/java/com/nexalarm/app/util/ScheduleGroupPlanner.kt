@@ -3,7 +3,7 @@ package com.nexalarm.app.util
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.model.FolderEntity
 
-/** Keeps a group switch from overwriting an alarm's personal enabled choice. */
+/** A schedule group is the single source of truth for all member alarms. */
 sealed interface ScheduleCommand {
     data class Schedule(val alarm: AlarmEntity) : ScheduleCommand
     data class Cancel(val alarm: AlarmEntity) : ScheduleCommand
@@ -12,7 +12,7 @@ sealed interface ScheduleCommand {
 object ScheduleGroupPlanner {
     fun plan(alarms: List<AlarmEntity>, groupEnabled: Boolean): List<ScheduleCommand> =
         if (groupEnabled) {
-            alarms.filter { it.isEnabled }.map(ScheduleCommand::Schedule)
+            alarms.map { alarm -> ScheduleCommand.Schedule(alarm.copy(isEnabled = true)) }
         } else {
             alarms.map(ScheduleCommand::Cancel)
         }
@@ -23,7 +23,11 @@ object ScheduleGroupPlanner {
     ): List<AlarmEntity> {
         val groupState = groups.associate { it.id to it.isEnabled }
         return alarms.filter { alarm ->
-            alarm.isEnabled && (alarm.folderId == null || groupState[alarm.folderId] ?: true)
+            if (alarm.folderId == null) {
+                alarm.isEnabled
+            } else {
+                groupState[alarm.folderId] ?: false
+            }
         }
     }
 }

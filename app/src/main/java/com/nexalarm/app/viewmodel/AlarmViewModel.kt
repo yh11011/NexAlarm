@@ -89,7 +89,10 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     fun saveAlarm(alarm: AlarmEntity) {
         // 確保每次儲存都更新 updatedAt
         val now = System.currentTimeMillis()
-        val alarmWithTime = alarm.copy(updatedAt = now)
+        val alarmWithTime = alarm.copy(
+            isEnabled = if (alarm.folderId != null) true else alarm.isEnabled,
+            updatedAt = now,
+        )
         viewModelScope.launch {
             // 同資料夾相同時間衝突檢查（新增與編輯均適用）
             if (repository.hasTimeConflict(alarmWithTime)) {
@@ -218,6 +221,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
             ?.let { database.folderDao().getFolderById(it)?.isEnabled ?: true }
             ?: true
 
-        if (alarm.isEnabled && groupIsActive) scheduler.schedule(alarm) else scheduler.cancel(alarm)
+        val shouldSchedule = if (alarm.folderId != null) groupIsActive else alarm.isEnabled
+        if (shouldSchedule) scheduler.schedule(alarm.copy(isEnabled = true)) else scheduler.cancel(alarm)
     }
 }

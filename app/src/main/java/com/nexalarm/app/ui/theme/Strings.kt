@@ -99,6 +99,24 @@ object S {
     val newFolder: String get() = if (isAppEnglish) "New schedule group" else "新增行程群組"
     val customFolders: String get() = if (isAppEnglish) "Schedule groups" else "行程群組"
     val emptyFolder: String get() = if (isAppEnglish) "This schedule group has no alarms" else "此行程群組尚無鬧鐘"
+    val deleteFolder: String get() = if (isAppEnglish) "Delete schedule group" else "刪除行程群組"
+    val duplicateFolder: String get() = if (isAppEnglish) "Duplicate schedule group" else "複製行程群組"
+    val folderActions: String get() = if (isAppEnglish) "Schedule group actions" else "行程群組操作"
+    fun folderCopyName(name: String, suffix: Int? = null): String = if (isAppEnglish) {
+        if (suffix == null) "$name copy" else "$name copy $suffix"
+    } else {
+        if (suffix == null) "$name 副本" else "$name 副本 $suffix"
+    }
+    val duplicateFolderAlarmLimit: String get() = if (isAppEnglish) {
+        "There is not enough alarm quota to duplicate this schedule group."
+    } else {
+        "剩餘鬧鐘額度不足，無法複製此行程群組。"
+    }
+    fun deleteFolderMessage(name: String, alarmCount: Int): String = if (isAppEnglish) {
+        "Delete \"$name\" and its $alarmCount alarms permanently?"
+    } else {
+        "確定要永久刪除「$name」及其中 $alarmCount 個鬧鐘嗎？"
+    }
     val folderLimitReached: String get() = if (isAppEnglish) "Folder limit reached. Upgrade to Premium for unlimited folders." else "資料夾已達上限，升級付費版可建立無限資料夾"
     fun alarmCount(count: Int): String = if (isAppEnglish) "$count alarms" else "$count 個鬧鐘"
     fun folderQuota(used: Int, max: Int): String =

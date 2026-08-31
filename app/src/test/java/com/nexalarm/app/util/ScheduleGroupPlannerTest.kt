@@ -8,7 +8,7 @@ import org.junit.Test
 class ScheduleGroupPlannerTest {
 
     @Test
-    fun `disabling a schedule group cancels every member without changing its personal enabled setting`() {
+    fun `disabling a schedule group cancels every member`() {
         val alarms = listOf(
             alarm(id = 1, isEnabled = true),
             alarm(id = 2, isEnabled = false),
@@ -25,17 +25,30 @@ class ScheduleGroupPlannerTest {
             ),
             commands
         )
-        assertEquals(listOf(true, false, true), alarms.map { it.isEnabled })
     }
 
     @Test
-    fun `enabling a schedule group schedules only members that are personally enabled`() {
+    fun `enabling a schedule group schedules every member as enabled`() {
         val active = alarm(id = 1, isEnabled = true)
         val paused = alarm(id = 2, isEnabled = false)
 
         val commands = ScheduleGroupPlanner.plan(listOf(active, paused), groupEnabled = true)
 
-        assertEquals(listOf(ScheduleCommand.Schedule(active)), commands)
+        assertEquals(
+            listOf(
+                ScheduleCommand.Schedule(active),
+                ScheduleCommand.Schedule(paused.copy(isEnabled = true)),
+            ),
+            commands,
+        )
+    }
+
+    @Test
+    fun `active group member does not depend on stale personal enabled state`() {
+        val member = alarm(id = 4, isEnabled = false)
+        val group = FolderEntity(id = 99, name = "Shift", isEnabled = true)
+
+        assertEquals(listOf(member), ScheduleGroupPlanner.activeAlarms(listOf(member), listOf(group)))
     }
 
     @Test

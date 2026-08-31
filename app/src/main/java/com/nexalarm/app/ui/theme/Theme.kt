@@ -71,12 +71,19 @@ private val NexTypography = Typography(
     )
 )
 
+object NexCornerRadius {
+    val compact = 12.dp
+    val control = 16.dp
+    val card = 24.dp
+    val panel = 28.dp
+}
+
 private val NexShapes = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),
-    small = RoundedCornerShape(4.dp),
-    medium = RoundedCornerShape(6.dp),
-    large = RoundedCornerShape(8.dp),
-    extraLarge = RoundedCornerShape(8.dp)
+    extraSmall = RoundedCornerShape(NexCornerRadius.compact),
+    small = RoundedCornerShape(NexCornerRadius.compact),
+    medium = RoundedCornerShape(NexCornerRadius.control),
+    large = RoundedCornerShape(NexCornerRadius.card),
+    extraLarge = RoundedCornerShape(NexCornerRadius.panel)
 )
 
 @Composable

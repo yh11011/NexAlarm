@@ -28,7 +28,6 @@ fun FolderDetailScreen(
     onToggleFolder: () -> Unit,
     onAddAlarm: () -> Unit,
     onAlarmClick: (AlarmEntity) -> Unit,
-    onAlarmToggle: (AlarmEntity) -> Unit
 ) {
     if (folder == null) return
 
@@ -62,7 +61,8 @@ fun FolderDetailScreen(
                             alarm = alarm,
                             folder = null,
                             onClick = { onAlarmClick(alarm) },
-                            onToggle = { onAlarmToggle(alarm) }
+                            onToggle = {},
+                            showToggle = false,
                         )
                     }
                     item { Spacer(modifier = Modifier.height(90.dp)) }
@@ -82,4 +82,5 @@ fun FolderDetailScreen(
             Icon(Icons.Default.Add, contentDescription = S.newAlarm, tint = TextOnPrimary)
         }
     }
+
 }

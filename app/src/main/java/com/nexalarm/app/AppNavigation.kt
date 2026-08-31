@@ -315,6 +315,8 @@ fun NexAlarmMainContent(
                                     alarmCountMap = alarmCountMap,
                                     onAddFolder = { name, color, emoji -> folderViewModel.addFolder(name, color, emoji) },
                                     onToggleFolder = { id -> folderViewModel.toggleFolder(id) },
+                                    onDuplicateFolder = { folder -> folderViewModel.duplicateFolder(folder) },
+                                    onDeleteFolder = { folder -> folderViewModel.deleteFolder(folder) },
                                     onFolderClick = { folder -> navController.navigate("folder_detail/${folder.id}") },
                                     showAddDialog = showFolderDialog,
                                     onAddDialogDismiss = { showFolderDialog = false },
@@ -442,7 +444,6 @@ fun NexAlarmMainContent(
                             },
                             onAddAlarm = { navController.navigate("alarm_edit/-1?folderId=${folderId}") },
                             onAlarmClick = { alarm -> navController.navigate("alarm_edit/${alarm.id}") },
-                            onAlarmToggle = { alarm -> alarmViewModel.toggleAlarm(alarm) }
                         )
                     }
                 }

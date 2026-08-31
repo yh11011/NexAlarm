@@ -3,6 +3,8 @@ package com.nexalarm.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +41,8 @@ fun FolderManageScreen(
     alarmCountMap: Map<Long, Int>,
     onAddFolder: (String, String, String) -> Unit,
     onToggleFolder: (Long) -> Unit,
+    onDuplicateFolder: (FolderEntity) -> Unit,
+    onDeleteFolder: (FolderEntity) -> Unit,
     onFolderClick: (FolderEntity) -> Unit,
     showAddDialog: Boolean,
     onAddDialogDismiss: () -> Unit,
@@ -44,6 +50,8 @@ fun FolderManageScreen(
 ) {
     val openMenu = LocalMenuAction.current
     val userFolders = folders.filter { !it.isSystem }
+    var folderToDelete by remember { mutableStateOf<FolderEntity?>(null) }
+    var folderForActions by remember { mutableStateOf<FolderEntity?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         NexTopBar(title = S.folders, onMenuClick = openMenu)
@@ -78,6 +86,7 @@ fun FolderManageScreen(
                     folder = folder,
                     alarmCount = count,
                     onToggle = { onToggleFolder(folder.id) },
+                    onLongClick = { folderForActions = folder },
                     onClick = { onFolderClick(folder) }
                 )
             }
@@ -87,13 +96,13 @@ fun FolderManageScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .nexGlassSurface(20.dp)
+                        .nexGlassSurface(NexCornerRadius.card)
                         .border(
                             width = 1.5.dp,
                             color = DarkBorder,
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(NexCornerRadius.card)
                         )
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(NexCornerRadius.card))
                         .clickable { onAddFolderClick() }
                         .padding(horizontal = 18.dp, vertical = 16.dp)
                 ) {
@@ -141,20 +150,80 @@ fun FolderManageScreen(
             onAddDialogDismiss()
         }
     )
+
+    folderForActions?.let { folder ->
+        AlertDialog(
+            onDismissRequest = { folderForActions = null },
+            title = { Text(S.folderActions) },
+            text = {
+                Column {
+                    TextButton(
+                        onClick = {
+                            folderForActions = null
+                            onDuplicateFolder(folder)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(S.duplicateFolder)
+                    }
+                    TextButton(
+                        onClick = {
+                            folderForActions = null
+                            folderToDelete = folder
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = DangerRed)
+                        Spacer(Modifier.width(8.dp))
+                        Text(S.deleteFolder, color = DangerRed)
+                    }
+                }
+            },
+            confirmButton = {},
+        )
+    }
+
+    folderToDelete?.let { folder ->
+        val alarmCount = alarmCountMap[folder.id] ?: 0
+        AlertDialog(
+            onDismissRequest = { folderToDelete = null },
+            title = { Text(S.deleteFolder) },
+            text = { Text(S.deleteFolderMessage(folder.name, alarmCount)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteFolder(folder)
+                        folderToDelete = null
+                    }
+                ) {
+                    Text(S.deleteFolder, color = DangerRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { folderToDelete = null }) {
+                    Text(S.cancel)
+                }
+            }
+        )
+    }
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun FolderListCard(
     folder: FolderEntity,
     alarmCount: Int,
     onToggle: () -> Unit,
+    onLongClick: () -> Unit,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .nexGlassSurface(20.dp, elevated = folder.isEnabled)
-            .clickable(onClick = onClick)
+            .nexGlassSurface(NexCornerRadius.card, elevated = folder.isEnabled)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 18.dp, vertical = 16.dp)
     ) {
         Row(
@@ -165,7 +234,7 @@ private fun FolderListCard(
             Box(
                 modifier = Modifier
                     .size(42.dp)
-                    .background(AccentDim, RoundedCornerShape(12.dp)),
+                    .background(AccentDim, RoundedCornerShape(NexCornerRadius.compact)),
                 contentAlignment = Alignment.Center
             ) {
                 ScheduleGroupIcon(

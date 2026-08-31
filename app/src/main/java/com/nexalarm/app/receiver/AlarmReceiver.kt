@@ -217,6 +217,10 @@ class AlarmReceiver : BroadcastReceiver() {
         }
 
         when {
+            alarm.folderId != null -> {
+                scheduler.schedule(alarm.copy(isEnabled = true))
+                Log.d("AlarmReceiver", "Rescheduled schedule-group alarm ${alarm.id}")
+            }
             alarm.isRecurring -> {
                 scheduler.schedule(alarm)
                 Log.d("AlarmReceiver", "Rescheduled recurring alarm ${alarm.id}")

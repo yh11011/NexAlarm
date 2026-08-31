@@ -61,14 +61,17 @@ private fun AlarmEditContent(
     var hour by remember { mutableIntStateOf(alarm?.hour ?: now.get(Calendar.HOUR_OF_DAY)) }
     var minute by remember { mutableIntStateOf(alarm?.minute ?: now.get(Calendar.MINUTE)) }
     var title by remember { mutableStateOf(alarm?.title ?: "") }
-    var isRecurring by remember { mutableStateOf(alarm?.isRecurring ?: false) }
-    var repeatDays by remember { mutableStateOf(alarm?.repeatDays ?: emptyList()) }
+    val startsInGroup = alarm?.folderId != null || defaultFolderId != null
+    var isRecurring by remember { mutableStateOf(alarm?.isRecurring ?: startsInGroup) }
+    var repeatDays by remember {
+        mutableStateOf(alarm?.repeatDays ?: if (startsInGroup) (1..7).toList() else emptyList())
+    }
     var selectedFolderId by remember { mutableStateOf(alarm?.folderId ?: defaultFolderId) }
     var vibrateOnly by remember { mutableStateOf(alarm?.vibrateOnly ?: false) }
     var snoozeEnabled by remember { mutableStateOf(alarm?.snoozeEnabled ?: true) }
     var snoozeDelay by remember { mutableIntStateOf(alarm?.snoozeDelay ?: 10) }
     var maxSnoozeCount by remember { mutableIntStateOf(alarm?.maxSnoozeCount ?: 3) }
-    var keepAfterRinging by remember { mutableStateOf(alarm?.keepAfterRinging ?: false) }
+    var keepAfterRinging by remember { mutableStateOf(alarm?.keepAfterRinging ?: startsInGroup) }
     var ringtoneUri by remember { mutableStateOf(alarm?.ringtoneUri ?: "") }
     var showFolderPicker by remember { mutableStateOf(false) }
     var showSnoozeDelayMenu by remember { mutableStateOf(false) }
@@ -126,8 +129,8 @@ private fun AlarmEditContent(
                             hour = hour,
                             minute = minute,
                             title = title,
-                            isEnabled = alarm?.isEnabled ?: true,
-                            isRecurring = isRecurring,
+                            isEnabled = if (selectedFolderId != null) true else alarm?.isEnabled ?: true,
+                            isRecurring = if (selectedFolderId != null) true else isRecurring,
                             repeatDays = if (isRecurring) repeatDays else emptyList(),
                             folderId = selectedFolderId,
                             vibrateOnly = vibrateOnly,
@@ -135,7 +138,7 @@ private fun AlarmEditContent(
                             ringtoneUri = ringtoneUri,
                             snoozeDelay = snoozeDelay,
                             maxSnoozeCount = maxSnoozeCount,
-                            keepAfterRinging = keepAfterRinging,
+                            keepAfterRinging = if (selectedFolderId != null) true else keepAfterRinging,
                             snoozeEnabled = snoozeEnabled,
                             createdAt = alarm?.createdAt ?: System.currentTimeMillis(),
                             clientId = alarm?.clientId ?: java.util.UUID.randomUUID().toString(),
