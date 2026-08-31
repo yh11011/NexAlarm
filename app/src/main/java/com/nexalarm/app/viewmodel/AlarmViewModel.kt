@@ -3,12 +3,12 @@
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexalarm.app.data.AlarmSyncRepository
 import com.nexalarm.app.data.database.NexAlarmDatabase
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.data.repository.AlarmRepository
 import com.nexalarm.app.util.AlarmScheduler
+import com.nexalarm.app.util.AlarmSyncHelper
 import com.nexalarm.app.util.FeatureFlags
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,45 +31,11 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     private val scheduler = AlarmScheduler(application)
     private val settings = SettingsManager(application)
 
-    /** 有操作時立即觸發與伺服器同步（僅在已登入時執行） */
-    private fun triggerSync() {
-        val token = settings.authToken ?: return
-        viewModelScope.launch {
-            // getAllAlarmsList() 包含軟刪除（is_deleted=true）的鬧鐘，
-            // 同步時會帶 is_deleted:true 送至伺服器；伺服器確認後 applyServerAlarms 會硬刪
-            val localAlarms = alarmDao.getAllAlarmsList()
-            AlarmSyncRepository.sync(token, localAlarms)
-                .onSuccess { serverAlarms ->
-                    applyServerAlarms(serverAlarms)
-                }
-                .onFailure { e ->
-                    // Token 過期（401）：自動清除登入狀態，下次操作或開啟帳號頁時提示重新登入
-                    if (e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true) {
-                        settings.clearAuth()
-                    }
-                }
-        }
-    }
+    // 使用 AlarmSyncHelper 處理雲端同步邏輯
+    private val syncHelper = AlarmSyncHelper(viewModelScope, settings, alarmDao, scheduler)
 
-    private suspend fun applyServerAlarms(serverAlarms: List<com.nexalarm.app.data.ServerAlarm>) {
-        for (serverAlarm in serverAlarms) {
-            val existing = alarmDao.getByClientId(serverAlarm.clientId)
-            if (serverAlarm.isDeleted) {
-                if (existing != null) { scheduler.cancel(existing); alarmDao.delete(existing) }
-            } else if (serverAlarm.updatedAt > (existing?.updatedAt ?: 0L)) {
-                val newAlarm = AlarmSyncRepository.jsonToAlarm(
-                    serverAlarm.data, serverAlarm.clientId, serverAlarm.updatedAt, existing?.id ?: 0L
-                )
-                if (existing == null) {
-                    val newId = alarmDao.insert(newAlarm)
-                    if (newAlarm.isEnabled) scheduler.schedule(newAlarm.copy(id = newId))
-                } else {
-                    alarmDao.update(newAlarm)
-                    if (newAlarm.isEnabled) scheduler.schedule(newAlarm) else scheduler.cancel(newAlarm)
-                }
-            }
-        }
-    }
+    /** 有操作時立即觸發與伺服器同步（僅在已登入時執行） */
+    private fun triggerSync() = syncHelper.triggerSync()
 
     /** 新增鬧鐘超過免費版上限時觸發（UI 可收集並顯示升級提示） */
     private val _alarmLimitError = MutableSharedFlow<Unit>()
@@ -123,7 +89,10 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     fun saveAlarm(alarm: AlarmEntity) {
         // 確保每次儲存都更新 updatedAt
         val now = System.currentTimeMillis()
-        val alarmWithTime = alarm.copy(updatedAt = now)
+        val alarmWithTime = alarm.copy(
+            isEnabled = if (alarm.folderId != null) true else alarm.isEnabled,
+            updatedAt = now,
+        )
         viewModelScope.launch {
             // 同資料夾相同時間衝突檢查（新增與編輯均適用）
             if (repository.hasTimeConflict(alarmWithTime)) {
@@ -139,10 +108,10 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 // 使用 insertOrUpdate 防止相同鬧鐘重複新增（依 hour+minute+title+folderId+repeatDays 去重）
                 val newId = repository.insertOrUpdate(alarmWithTime)
-                scheduler.schedule(alarmWithTime.copy(id = newId))
+                scheduleIfGroupActive(alarmWithTime.copy(id = newId))
             } else {
                 alarmDao.update(alarmWithTime)
-                scheduler.schedule(alarmWithTime)
+                scheduleIfGroupActive(alarmWithTime)
             }
             triggerSync()
         }
@@ -156,7 +125,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         val updated = alarm.copy(isEnabled = !alarm.isEnabled, updatedAt = System.currentTimeMillis())
         viewModelScope.launch {
             alarmDao.update(updated)
-            if (updated.isEnabled) scheduler.schedule(updated) else scheduler.cancel(updated)
+            scheduleIfGroupActive(updated)
             triggerSync()
         }
     }
@@ -242,8 +211,17 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
         val updated = alarm.copy(updatedAt = System.currentTimeMillis())
         viewModelScope.launch {
             alarmDao.update(updated)
-            if (updated.isEnabled) scheduler.schedule(updated) else scheduler.cancel(updated)
+            scheduleIfGroupActive(updated)
             triggerSync()
         }
+    }
+
+    private suspend fun scheduleIfGroupActive(alarm: AlarmEntity) {
+        val groupIsActive = alarm.folderId
+            ?.let { database.folderDao().getFolderById(it)?.isEnabled ?: true }
+            ?: true
+
+        val shouldSchedule = if (alarm.folderId != null) groupIsActive else alarm.isEnabled
+        if (shouldSchedule) scheduler.schedule(alarm.copy(isEnabled = true)) else scheduler.cancel(alarm)
     }
 }

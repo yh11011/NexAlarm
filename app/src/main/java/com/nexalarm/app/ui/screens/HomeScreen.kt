@@ -3,10 +3,11 @@ package com.nexalarm.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,52 +17,42 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.model.AlarmEntity
+import com.nexalarm.app.data.model.FolderEntity
+import com.nexalarm.app.ui.components.NexIconBadge
+import com.nexalarm.app.ui.components.NexMetricCard
+import com.nexalarm.app.ui.components.NexTopBar
 import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.util.AlarmScheduler
 import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import com.nexalarm.app.ui.components.AlarmReliabilityCard
+import java.util.Locale
+import com.nexalarm.app.util.AlarmReliabilityChecker
+import com.nexalarm.app.util.TestAlarmScheduler
+import com.nexalarm.app.util.ScheduleGroupPlanner
 
 @Composable
 fun HomeScreen(
     alarms: List<AlarmEntity>,
+    groups: List<FolderEntity>,
     onGoToAlarms: () -> Unit
 ) {
     val openMenu = LocalMenuAction.current
     val context = LocalContext.current
     val scheduler = AlarmScheduler(context)
 
-    val enabledAlarms = alarms.filter { it.isEnabled }
+    val enabledAlarms = ScheduleGroupPlanner.activeAlarms(alarms, groups)
     val nextAlarm = enabledAlarms.minByOrNull { scheduler.getNextTriggerTime(it) }
     val timeUntil = nextAlarm?.let { scheduler.getTimeUntilText(it, isAppEnglish) } ?: ""
+    val reliabilityState = AlarmReliabilityChecker.evaluate(context)
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 10.dp)
-        ) {
-            IconButton(
-                onClick = openMenu,
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
-                Icon(
-                    Icons.Default.Menu,
-                    contentDescription = S.menu,
-                    tint = TextPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = S.home,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
+        NexTopBar(title = S.home, onMenuClick = openMenu)
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -71,8 +62,8 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(DarkSurface, RoundedCornerShape(20.dp))
-                    .padding(horizontal = 20.dp, vertical = 20.dp)
+                    .nexGlassSurface(24.dp, elevated = true)
+                    .padding(horizontal = 22.dp, vertical = 22.dp)
             ) {
                 Column {
                     Text(
@@ -84,11 +75,11 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     if (nextAlarm != null) {
                         Text(
-                            text = String.format("%02d:%02d", nextAlarm.hour, nextAlarm.minute),
-                            fontSize = 48.sp,
-                            fontWeight = FontWeight.Light,
+                            text = String.format(Locale.getDefault(), "%02d:%02d", nextAlarm.hour, nextAlarm.minute),
+                            fontSize = 52.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = TextPrimary,
-                            letterSpacing = (-1).sp
+                            letterSpacing = 0.sp
                         )
                         if (nextAlarm.title.isNotBlank()) {
                             Spacer(modifier = Modifier.height(2.dp))
@@ -116,20 +107,29 @@ fun HomeScreen(
                 }
             }
 
+            AlarmReliabilityCard(
+                state = reliabilityState,
+                onTestAlarm = {
+                    TestAlarmScheduler.schedule(context)
+                    Toast.makeText(context, S.testAlarmScheduled, Toast.LENGTH_LONG).show()
+                }
+            )
+
             // 統計列
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard(
+                NexMetricCard(
                     label = S.alarm,
                     value = alarms.size.toString(),
                     modifier = Modifier.weight(1f)
                 )
-                StatCard(
+                NexMetricCard(
                     label = S.homeActiveCount(enabledAlarms.size),
                     value = enabledAlarms.size.toString(),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    elevated = true
                 )
             }
 
@@ -137,7 +137,7 @@ fun HomeScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .background(AccentDim)
                     .clickable(onClick = onGoToAlarms)
                     .padding(horizontal = 20.dp, vertical = 16.dp),
@@ -147,11 +147,11 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Alarm,
+                    NexIconBadge(
+                        icon = Icons.Default.Alarm,
                         contentDescription = null,
-                        tint = PrimaryBlue,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(34.dp),
+                        selected = false
                     )
                     Text(
                         text = S.goToAlarms,
@@ -161,21 +161,8 @@ fun HomeScreen(
                     )
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .background(DarkSurface, RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp)
-    ) {
-        Column {
-            Text(text = value, fontSize = 28.sp, fontWeight = FontWeight.Light, color = TextPrimary)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(text = label, fontSize = 12.sp, color = TextSecondary)
+            Spacer(modifier = Modifier.height(90.dp))
         }
     }
 }

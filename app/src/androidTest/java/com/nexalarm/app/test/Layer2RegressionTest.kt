@@ -4,10 +4,12 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Build
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import com.nexalarm.app.util.AlarmTestHook
 import org.junit.After
@@ -263,7 +265,7 @@ class Layer2RegressionTest {
         Thread.sleep(2000)
 
         // 驗證: 透過 UI Automator 檢查資料夾是否存在
-        val folderExists = device.hasObject(text = "TestFolder")
+        val folderExists = device.hasObject(By.text("TestFolder"))
         Log.d(TAG, "資料夾是否存在: $folderExists")
 
         results.add(AlarmTestResult(
@@ -292,7 +294,7 @@ class Layer2RegressionTest {
         var allProtected = true
 
         for (folderName in systemFolders) {
-            val deleteButton = device.hasObject(text = folderName)
+            val deleteButton = device.hasObject(By.text(folderName))
             Log.d(TAG, "系統資料夾 '$folderName': ${if (deleteButton) "存在" else "不存在"}")
         }
 
@@ -521,7 +523,7 @@ class Layer2RegressionTest {
         // 驗證 Drawer open/close
         device.pressMenu()
         Thread.sleep(1000)
-        val drawerOpen = device.hasObject(text = "Home") || device.hasObject(text = "設定")
+        val drawerOpen = device.hasObject(By.text("Home")) || device.hasObject(By.text("設定"))
         device.pressBack()
         Thread.sleep(500)
 
@@ -589,7 +591,7 @@ class Layer2RegressionTest {
             Thread.sleep(1000)
 
             // 驗證: 全螢幕應已關閉
-            val dismissed = !device.hasObject(textContains = "鬧鐘")
+            val dismissed = !device.hasObject(By.textContains("鬧鐘"))
             Log.d(TAG, "全螢幕是否已關閉: $dismissed")
 
             val result = buildResult(testCase, testCase, 1, scheduledTime, data, "swipe_dismiss")

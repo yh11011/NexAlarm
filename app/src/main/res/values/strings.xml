@@ -1,5 +1,12 @@
 <resources>
     <string name="app_name">Nex Alarm</string>
     <string name="meeting_mode">Meeting Mode</string>
-    <string name="meeting_mode_on">Meeting mode is on</string>
+    <string name="open_nex_alarm">Open Nex Alarm</string>
+    <string name="widget_description">Transparent clock widget with date and weather placeholder.</string>
+    <string name="widget_weather_sunny">Sunny weather placeholder</string>
+    <string name="widget_weather_placeholder_temperature">26°</string>
+    <string name="widget_style_classic">Classic Clock</string>
+    <string name="widget_style_vertical">Vertical Clock</string>
+    <string name="widget_style_weather">Weather Clock</string>
+    <string name="widget_style_date">Date Clock</string>
 </resources>

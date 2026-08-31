@@ -3,6 +3,8 @@ package com.nexalarm.app.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +40,7 @@ fun RepeatAlarmScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "多次",
+                    text = S.repeat,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Normal,
                     color = TextPrimary,
@@ -60,7 +62,7 @@ fun RepeatAlarmScreen(
 
             // Alarm list
             if (repeatAlarms.isEmpty()) {
-                EmptyState(emoji = "🔁", title = "尚無重複鬧鐘", subtitle = "點擊 + 新增")
+                EmptyState(emoji = "🔁", title = S.noRepeatAlarms, subtitle = S.tapPlusToAdd)
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
@@ -89,7 +91,7 @@ fun RepeatAlarmScreen(
             containerColor = PrimaryBlue,
             shape = androidx.compose.foundation.shape.CircleShape
         ) {
-            Text("+", fontSize = 24.sp, color = TextPrimary)
+            Icon(Icons.Default.Add, contentDescription = S.newAlarm, tint = TextOnPrimary)
         }
     }
 }

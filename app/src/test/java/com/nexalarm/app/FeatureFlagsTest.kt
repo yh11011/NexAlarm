@@ -40,7 +40,39 @@ class FeatureFlagsTest {
     }
 
     @Test
+    fun `free user can create alarm below limit`() {
+        assertTrue(FeatureFlags.canCreateAlarm(FeatureFlags.FREE_ALARM_LIMIT - 1))
+    }
+
+    @Test
+    fun `free user cannot create alarm at limit`() {
+        assertFalse(FeatureFlags.canCreateAlarm(FeatureFlags.FREE_ALARM_LIMIT))
+    }
+
+    @Test
+    fun `free user cannot create alarm above limit`() {
+        assertFalse(FeatureFlags.canCreateAlarm(FeatureFlags.FREE_ALARM_LIMIT + 5))
+    }
+
+    @Test
+    fun `premium user can create alarm at limit`() {
+        FeatureFlags.isPremium = true
+        assertTrue(FeatureFlags.canCreateAlarm(FeatureFlags.FREE_ALARM_LIMIT))
+    }
+
+    @Test
+    fun `premium user can create alarm well above limit`() {
+        FeatureFlags.isPremium = true
+        assertTrue(FeatureFlags.canCreateAlarm(FeatureFlags.FREE_ALARM_LIMIT + 100))
+    }
+
+    @Test
     fun `free tier limit is positive`() {
         assertTrue(FeatureFlags.FREE_FOLDER_LIMIT > 0)
+    }
+
+    @Test
+    fun `alarm limit is positive`() {
+        assertTrue(FeatureFlags.FREE_ALARM_LIMIT > 0)
     }
 }

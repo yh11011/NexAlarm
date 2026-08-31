@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:contentDescription="@string/open_nex_alarm"
+    android:focusable="true"
+    android:clickable="true">
+
+    <TextClock
+        android:id="@+id/widget_text_clock"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:format12Hour="hh:mm"
+        android:format24Hour="HH:mm"
+        android:textColor="@android:color/white"
+        android:textSize="44sp"
+        android:fontFamily="sans-serif-medium"
+        android:shadowColor="#66000000"
+        android:shadowDx="1"
+        android:shadowDy="2"
+        android:shadowRadius="3" />
+
+    <LinearLayout
+        android:id="@+id/widget_details"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:layout_marginStart="8dp">
+
+        <ImageView
+            android:id="@+id/widget_weather_icon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="@string/widget_weather_sunny"
+            android:src="@drawable/ic_widget_weather_sunny" />
+
+        <TextView
+            android:id="@+id/widget_weather_temperature"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_weather_placeholder_temperature"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-medium"
+            android:shadowColor="#66000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2" />
+    </LinearLayout>
+
+</LinearLayout>

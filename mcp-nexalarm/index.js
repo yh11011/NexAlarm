@@ -1,5 +1,5 @@
 /**
- * Claude Desktop (stdio) 入口
+ * MCP stdio entry point
  */
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./nexalarm-server.js";

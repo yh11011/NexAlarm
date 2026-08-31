@@ -2,19 +2,28 @@ package com.nexalarm.app.data
 
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 
+/**
+ * 設定管理器
+ *
+ * 注意：EncryptedSharedPreferences 被 AndroidX 標記為 deprecated，
+ * 但這是目前官方推薦的使用方式。未來 AndroidX 可能會推出新的加密儲存 API。
+ * 當前實作使用 MasterKey.AES256_GCM 方案，提供足夠的安全性保護。
+ */
 class SettingsManager(context: Context) {
     // 一般設定（非敏感，使用普通 SharedPreferences）
     private val prefs = context.getSharedPreferences("nexalarm_settings", Context.MODE_PRIVATE)
 
     // 敏感認證資料（使用 EncryptedSharedPreferences，AES256 加密）
     private val securePrefs = runCatching {
-        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
         EncryptedSharedPreferences.create(
-            "nexalarm_auth_secure",
-            masterKeyAlias,
             context,
+            "nexalarm_auth_secure",
+            masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
@@ -44,6 +53,11 @@ class SettingsManager(context: Context) {
             if (value != null) prefs.edit().putString("time_zone_id", value).apply()
             else prefs.edit().remove("time_zone_id").apply()
         }
+
+    // 會議模式：開啟時所有鬆鐘只震動，不響鈴
+    var isMeetingMode: Boolean
+        get() = prefs.getBoolean("meeting_mode", false)
+        set(value) = prefs.edit().putBoolean("meeting_mode", value).apply()
 
     var isPremium: Boolean
         get() = prefs.getBoolean("is_premium", false)

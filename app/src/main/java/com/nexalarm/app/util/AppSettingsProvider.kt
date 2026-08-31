@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import com.nexalarm.app.data.SettingsManager
 import com.nexalarm.app.ui.theme.AppTheme
 import com.nexalarm.app.ui.theme.colors
+import com.nexalarm.app.ui.theme.toSupportedTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,10 +41,12 @@ object AppSettingsProvider {
      */
     fun init(context: Context) {
         settingsManager = SettingsManager(context)
-        // 從 SharedPreferences 載入初始值
-        isDarkThemeMutableState.value = settingsManager.isDarkMode
+        // 舊主題 ID 會正規化成支援的模式；深淺狀態必須跟隨正規化後的色票。
+        val supportedTheme = AppTheme.fromId(settingsManager.themeId).toSupportedTheme()
+        settingsManager.isDarkMode = supportedTheme.colors().isDark
+        currentThemeMutableState.value = supportedTheme
+        isDarkThemeMutableState.value = supportedTheme.colors().isDark
         isAppEnglishMutableState.value = settingsManager.isEnglish
-        currentThemeMutableState.value = AppTheme.fromId(settingsManager.themeId)
     }
 
     /**
@@ -98,20 +101,23 @@ object AppSettingsProvider {
      */
     /** 設定主題，同時更新 Compose State 和 SharedPreferences */
     fun setTheme(theme: AppTheme) {
+        val supportedTheme = theme.toSupportedTheme()
         if (::settingsManager.isInitialized) {
-            settingsManager.themeId = theme.id
+            settingsManager.themeId = supportedTheme.id
             // 同步深色模式標誌（給非主題感知的系統元件使用）
-            settingsManager.isDarkMode = theme.colors().isDark
+            settingsManager.isDarkMode = supportedTheme.colors().isDark
         }
-        currentThemeMutableState.value = theme
-        isDarkThemeMutableState.value = theme.colors().isDark
+        currentThemeMutableState.value = supportedTheme
+        isDarkThemeMutableState.value = supportedTheme.colors().isDark
     }
 
     fun syncFromSharedPreferences() {
         if (::settingsManager.isInitialized) {
-            isDarkThemeMutableState.value = settingsManager.isDarkMode
+            val supportedTheme = AppTheme.fromId(settingsManager.themeId).toSupportedTheme()
+            settingsManager.isDarkMode = supportedTheme.colors().isDark
+            currentThemeMutableState.value = supportedTheme
+            isDarkThemeMutableState.value = supportedTheme.colors().isDark
             isAppEnglishMutableState.value = settingsManager.isEnglish
-            currentThemeMutableState.value = AppTheme.fromId(settingsManager.themeId)
         }
     }
 }

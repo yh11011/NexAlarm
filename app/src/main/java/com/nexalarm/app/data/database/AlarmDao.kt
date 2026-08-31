@@ -19,6 +19,9 @@ interface AlarmDao {
     @Query("SELECT * FROM alarms WHERE folderId = :folderId AND is_deleted = 0 ORDER BY hour, minute")
     fun getAlarmsByFolder(folderId: Long): Flow<List<AlarmEntity>>
 
+    @Query("SELECT * FROM alarms WHERE folderId = :folderId AND is_deleted = 0 ORDER BY hour, minute")
+    suspend fun getAlarmsByFolderList(folderId: Long): List<AlarmEntity>
+
     @Query("SELECT * FROM alarms WHERE id = :id")
     suspend fun getAlarmById(id: Long): AlarmEntity?
 
@@ -59,11 +62,21 @@ interface AlarmDao {
     @Query("SELECT COUNT(*) FROM alarms WHERE folderId = :folderId AND is_deleted = 0")
     suspend fun getAlarmCountByFolder(folderId: Long): Int
 
+    @Query("UPDATE alarms SET folderId = NULL, updatedAt = :updatedAt WHERE folderId = :folderId")
+    suspend fun clearFolder(folderId: Long, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE alarms SET isEnabled = :enabled, updatedAt = :updatedAt WHERE folderId = :folderId AND is_deleted = 0")
+    suspend fun setFolderAlarmsEnabled(
+        folderId: Long,
+        enabled: Boolean,
+        updatedAt: Long = System.currentTimeMillis(),
+    )
+
     @Query("SELECT COUNT(*) FROM alarms WHERE is_deleted = 0")
     suspend fun getTotalAlarmCount(): Int
 
     // 同一資料夾內是否已有相同時間的鬧鐘（排除自身）
     // 顯式處理 folderId null：Room 的 IS + bound parameter 行為依驅動版本不穩定
-    @Query("SELECT * FROM alarms WHERE hour = :hour AND minute = :minute AND id != :excludeId AND ((:folderId IS NULL AND folderId IS NULL) OR folderId = :folderId) LIMIT 1")
+    @Query("SELECT * FROM alarms WHERE hour = :hour AND minute = :minute AND id != :excludeId AND is_deleted = 0 AND ((:folderId IS NULL AND folderId IS NULL) OR folderId = :folderId) LIMIT 1")
     suspend fun findTimeConflict(hour: Int, minute: Int, folderId: Long?, excludeId: Long): AlarmEntity?
 }

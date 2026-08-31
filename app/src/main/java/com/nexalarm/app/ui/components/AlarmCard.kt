@@ -7,53 +7,62 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexalarm.app.data.model.AlarmEntity
 import com.nexalarm.app.data.model.FolderEntity
 import com.nexalarm.app.ui.theme.*
+import java.util.Locale
 @Composable
 fun AlarmCard(
     alarm: AlarmEntity,
     folder: FolderEntity?,
     onClick: () -> Unit,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    showToggle: Boolean = true,
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkSurface, RoundedCornerShape(18.dp))
+            .nexGlassSurface(NexCornerRadius.card, elevated = alarm.isEnabled)
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = String.format("%02d:%02d", alarm.hour, alarm.minute),
-                    fontSize = 52.sp,
-                    fontWeight = FontWeight.Light,
+                    text = String.format(Locale.getDefault(), "%02d:%02d", alarm.hour, alarm.minute),
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.Medium,
                     color = if (alarm.isEnabled) TextPrimary else TextSecondary,
-                    letterSpacing = (-2).sp,
+                    letterSpacing = 0.sp,
                     lineHeight = 52.sp
                 )
-                Spacer(modifier = Modifier.height(5.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text(
-                        text = alarm.title.ifBlank { "鬧鐘" },
+                        text = alarm.title.ifBlank { S.alarmDefaultTitle },
                         fontSize = 13.sp,
-                        color = TextSecondary
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     if (folder != null) {
-                        Spacer(modifier = Modifier.width(4.dp))
                         Box(
                             modifier = Modifier
-                                .background(AccentDim, RoundedCornerShape(20.dp))
-                                .padding(horizontal = 8.dp, vertical = 1.dp)
+                                .background(AccentDim, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Text(
                                 text = folder.name,
@@ -64,25 +73,29 @@ fun AlarmCard(
                         }
                     }
                     Text(
-                        text = " · " + formatRepeatDays(alarm),
+                        text = formatRepeatDays(alarm),
                         fontSize = 13.sp,
-                        color = TextSecondary
+                        color = TextTertiary,
+                        maxLines = 1
                     )
                 }
             }
-            NexToggle(
-                checked = alarm.isEnabled,
-                onCheckedChange = { onToggle() }
-            )
+            if (showToggle) {
+                NexToggle(
+                    checked = alarm.isEnabled,
+                    onCheckedChange = { onToggle() }
+                )
+            }
         }
     }
 }
 fun formatRepeatDays(alarm: AlarmEntity): String {
     val days = alarm.repeatDays
-    if (days.isEmpty()) return "單次"
-    if (days.sorted() == listOf(1, 2, 3, 4, 5, 6, 7)) return "每天"
-    if (days.sorted() == listOf(1, 2, 3, 4, 5)) return "平日"
-    if (days.sorted() == listOf(6, 7)) return "週末"
-    val labels = listOf("", "週一", "週二", "週三", "週四", "週五", "週六", "週日")
-    return days.sorted().joinToString("、") { labels.getOrElse(it) { "?" } }
+    if (days.isEmpty()) return S.once
+    val sortedDays = days.sorted()
+    if (sortedDays == listOf(1, 2, 3, 4, 5, 6, 7)) return S.everyDay
+    if (sortedDays == listOf(1, 2, 3, 4, 5)) return S.weekdays
+    if (sortedDays == listOf(6, 7)) return S.weekend
+    val separator = if (isAppEnglish) ", " else "、"
+    return sortedDays.joinToString(separator) { S.weekdayName(it) }
 }

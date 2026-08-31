@@ -36,6 +36,8 @@ NexAlarm 是一個功能完整的現代 Android 鬧鐘應用程式，採用 Kotl
 
 ## 開發命令
 
+### 構建與測試
+
 ```bash
 # Debug 構建
 ./gradlew assembleDebug
@@ -59,6 +61,13 @@ NexAlarm 是一個功能完整的現代 Android 鬧鐘應用程式，採用 Kotl
 ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.nexalarm.app.test.AlarmReliabilityTest
 ```
 
+### 測試工具啟動
+
+```bash
+# 啟動 Mobile MCP 測試工具（推薦用於即時互動測試）
+powershell -ExecutionPolicy Bypass -File .\start-mobile-mcp.ps1
+```
+
 ### ADB Deep Link 測試
 
 ```bash
@@ -67,6 +76,37 @@ adb shell am start -a android.intent.action.VIEW -d "nexalarm://add?time=0700&ti
 adb shell am start -a android.intent.action.VIEW -d "nexalarm://delete?id=1"
 adb shell am start -a android.intent.action.VIEW -d "nexalarm://toggle_folder?name=Study"
 ```
+
+### ADB 快捷測試指令
+
+```bash
+# 安裝測試 APK（更快執行）
+./gradlew installDebug installDebugAndroidTest
+
+# 執行全部測試
+adb shell am instrument -w -r -e class com.nexalarm.app.test.AlarmReliabilityTest com.nexalarm.app.test/androidx.test.runner.AndroidJUnitRunner
+
+# 執行單一場景（以勿擾模式為例）
+adb shell am instrument -w -r -e class com.nexalarm.app.test.AlarmReliabilityTest#test09_DoNotDisturbMode com.nexalarm.app.test/androidx.test.runner.AndroidJUnitRunner
+
+# 擷取測試報告
+adb pull /sdcard/Android/data/com.nexalarm.app/files/alarm_test_results.csv .
+adb pull /sdcard/Android/data/com.nexalarm.app/files/alarm_test_report.txt .
+```
+
+## 版本管理規範
+
+`app/build.gradle.kts` 中的版本管理：
+
+```kotlin
+// Version management: Update both versionCode and versionName together
+// versionCode must be incremented for each release (integer, monotonic increase)
+// versionName should follow Semantic Versioning: MAJOR.MINOR.PATCH[-SUFFIX]
+versionCode = 2
+versionName = "1.1.0"
+```
+
+**規則**：每次發布新版本時，必須同時更新 `versionCode`（單調遞增整數）和 `versionName`（遵循 Semantic Versioning）。
 
 ## 架構設計
 
@@ -212,7 +252,7 @@ var isDarkTheme: Boolean
 
 ### Firebase 設定
 
-Firebase Crashlytics 需要 `app/google-services.json`（從 Firebase Console 下載）。缺少此檔案時 Release build 會失敗。詳見 `FIREBASE_SETUP.md`。
+Firebase Crashlytics 需要 `app/google-services.json`（從 Firebase Console 下載）。缺少此檔案時 Release build 會失敗。詳細配置步驟參見 `FIREBASE_SETUP.md`。
 
 ### 後端 API
 
@@ -231,6 +271,13 @@ Firebase Crashlytics 需要 `app/google-services.json`（從 Firebase Console �
 
 `TESTING.md` 包含 14 個自動化測試場景（Doze、省電模式、DND、process kill 等），詳細說明執行方式與三層驗證標準（Level 0/1/2）。
 
+**常用測試場景**：
+- 基本鬆鐘：`test01_ScreenOn_BasicAlarm`
+- 螢幕關閉：`test02_ScreenOff`
+- Doze 模式：`test04_SyntheticDoze`（僅真機）
+- Process kill：`test06_ProcessKill`
+- 勿擾模式：`test09_DoNotDisturbMode`
+
 ## CI/CD
 
 `.github/workflows/` 含三個 workflow：
@@ -240,9 +287,21 @@ Firebase Crashlytics 需要 `app/google-services.json`（從 Firebase Console �
 
 ## 權限需求
 
-- `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM`：精確鬧鐘（API 31+ 需使用者手動開啟）
-- `POST_NOTIFICATIONS`：鬧鐘通知（API 33+ 需執行期請求）
+- `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM`：精確鬆鐘（API 31+ 需使用者手動開啟）
+- `POST_NOTIFICATIONS`：鬆鐘通知（API 33+ 需執行期請求）
 - `USE_FULL_SCREEN_INTENT`：鎖定螢幕顯示
-- `WAKE_LOCK`：鬧鐘響鈴期間保持裝置喚醒
+- `WAKE_LOCK`：鬆鐘響鈴期間保持裝置喚醒
 - `RECEIVE_BOOT_COMPLETED`：重新開機後重新排程
 - `VIBRATE`、`FOREGROUND_SERVICE`
+
+## 上線前檢查
+
+發布前請參考 `LAUNCH_READINESS_CHECKLIST.md` 確認已知阻塞項目和品質檢查清單。
+
+## 相關文件
+
+- `README.md`：專案概述和基本說明
+- `TESTING.md`：鬆鐘可靠性測試詳細指南
+- `FIREBASE_SETUP.md`：Firebase Crashlytics 配置步驟
+- `LAUNCH_READINESS_CHECKLIST.md`：上線準備度檢查
+- `MOBILE_MCP_AUTOSTART.md`：Mobile MCP 測試工具啟動說明

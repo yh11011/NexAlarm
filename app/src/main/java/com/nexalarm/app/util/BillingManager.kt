@@ -147,7 +147,12 @@ class BillingManager(private val context: Context) {
                             purchase.purchaseState == Purchase.PurchaseState.PURCHASED
                 }
                 _hasPlayStorePurchase.value = hasPremium
-                setPremiumStatus(hasPremium)
+                setPremiumStatus(
+                    PremiumStatusPolicy.resolveAfterPlayStoreQuery(
+                        currentIsPremium = _isPremium.value,
+                        hasPlayStorePurchase = hasPremium
+                    )
+                )
                 Log.d(TAG, "查詢現有購買：isPremium=$hasPremium")
             }
         }
@@ -194,10 +199,50 @@ class BillingManager(private val context: Context) {
     /** 優惠碼兌換成功後呼叫，直接啟用 premium（不經過 Google Play） */
     fun activatePremiumFromPromo() = setPremiumStatus(true)
 
+    /**
+     * 以帳號資料同步 Premium 狀態。
+     * 若使用者已有 Google Play 有效購買，不因伺服器回傳 false 而降級。
+     */
+    fun syncPremiumStatusFromAccount(accountIsPremium: Boolean) {
+        setPremiumStatus(
+            PremiumStatusPolicy.resolveFromAccountSync(
+                accountIsPremium = accountIsPremium,
+                hasPlayStorePurchase = _hasPlayStorePurchase.value
+            )
+        )
+    }
+
     /** 手動停用 premium（優惠碼版本，不影響 Play Store 購買紀錄） */
-    fun deactivatePremium() = setPremiumStatus(false)
+    fun deactivatePremium() {
+        setPremiumStatus(
+            PremiumStatusPolicy.resolveAfterManualDeactivate(
+                hasPlayStorePurchase = _hasPlayStorePurchase.value
+            )
+        )
+    }
 
     fun release() {
         billingClient.endConnection()
+    }
+}
+
+internal object PremiumStatusPolicy {
+
+    fun resolveAfterPlayStoreQuery(
+        currentIsPremium: Boolean,
+        hasPlayStorePurchase: Boolean
+    ): Boolean {
+        return currentIsPremium || hasPlayStorePurchase
+    }
+
+    fun resolveFromAccountSync(
+        accountIsPremium: Boolean,
+        hasPlayStorePurchase: Boolean
+    ): Boolean {
+        return accountIsPremium || hasPlayStorePurchase
+    }
+
+    fun resolveAfterManualDeactivate(hasPlayStorePurchase: Boolean): Boolean {
+        return hasPlayStorePurchase
     }
 }

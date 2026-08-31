@@ -1,8 +1,12 @@
-from PIL import Image
 import os
+import sys
+from PIL import Image
 
-src = r'C:/Users/user/.claude/image-cache/f27aa9bf-fb23-490c-8866-0d6de58d539f/1.png'
-base = r'C:/Users/user/desktop/work/project/NexAlarm'
+if len(sys.argv) < 2:
+    raise SystemExit('Usage: python gen_icons.py <source-image> [project-root]')
+
+src = sys.argv[1]
+base = sys.argv[2] if len(sys.argv) >= 3 else os.path.dirname(os.path.abspath(__file__))
 
 img = Image.open(src).convert('RGBA')
 

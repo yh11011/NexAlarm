@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:contentDescription="@string/open_nex_alarm"
+    android:focusable="true"
+    android:clickable="true">
+
+    <TextClock
+        android:id="@+id/widget_text_clock_hour"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:format12Hour="hh"
+        android:format24Hour="HH"
+        android:textColor="@android:color/white"
+        android:textSize="56sp"
+        android:fontFamily="sans-serif-medium"
+        android:includeFontPadding="false"
+        android:shadowColor="#66000000"
+        android:shadowDx="1"
+        android:shadowDy="2"
+        android:shadowRadius="3" />
+
+    <TextClock
+        android:id="@+id/widget_text_clock_minute"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-8dp"
+        android:format12Hour="mm"
+        android:format24Hour="mm"
+        android:textColor="@android:color/white"
+        android:textSize="56sp"
+        android:fontFamily="sans-serif-medium"
+        android:includeFontPadding="false"
+        android:shadowColor="#66000000"
+        android:shadowDx="1"
+        android:shadowDy="2"
+        android:shadowRadius="3" />
+
+    <TextClock
+        android:id="@+id/widget_date_clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:format12Hour="MMM d, EEE"
+        android:format24Hour="MMM d, EEE"
+        android:textColor="@android:color/white"
+        android:textSize="14sp"
+        android:fontFamily="sans-serif-medium"
+        android:alpha="0.88"
+        android:shadowColor="#66000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2" />
+
+    <TextView
+        android:id="@+id/widget_weather_temperature"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_weather_placeholder_temperature"
+        android:textColor="@android:color/white"
+        android:textSize="14sp"
+        android:fontFamily="sans-serif-medium"
+        android:alpha="0.88"
+        android:shadowColor="#66000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="2" />
+
+</LinearLayout>

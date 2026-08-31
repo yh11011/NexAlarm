@@ -6,10 +6,12 @@ A fully functional Android alarm application built with modern Android architect
 
 | Component | Technology |
 |-----------|-----------|
-| Language | Kotlin 2.1.0 |
+| Language | Kotlin 2.2.10 |
+| Android Gradle Plugin | 9.3.1 |
+| Gradle | 9.7.0 |
 | UI | Jetpack Compose (Material 3) |
 | Architecture | MVVM (ViewModel + Repository + Room) |
-| Database | Room 2.6.1 |
+| Database | Room 2.8.4 |
 | Min SDK | 26 (Android 8.0) |
 | Target SDK | 35 |
 | Package | `com.nexalarm.app` |

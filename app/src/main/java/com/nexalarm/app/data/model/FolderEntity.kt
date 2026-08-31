@@ -11,5 +11,5 @@ data class FolderEntity(
     val isEnabled: Boolean = true,
     val color: String = "#1A73E8",
     val isSystem: Boolean = false,
-    val emoji: String = "📁"
+    val emoji: String = "calendar"
 )

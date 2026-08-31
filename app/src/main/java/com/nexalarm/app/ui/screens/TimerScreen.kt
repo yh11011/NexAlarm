@@ -23,7 +23,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -42,11 +41,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.nexalarm.app.ui.components.NexTopBar
 import com.nexalarm.app.ui.components.WheelPicker
 import com.nexalarm.app.ui.theme.*
 import com.nexalarm.app.viewmodel.TimerViewModel
 import kotlin.math.cos
 import kotlin.math.sin
+import java.util.Locale
 
 @Composable
 fun TimerScreen(
@@ -68,31 +69,7 @@ fun TimerScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 10.dp)
-        ) {
-            IconButton(
-                onClick = openMenu,
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
-                Icon(
-                    Icons.Default.Menu,
-                    contentDescription = S.menu,
-                    tint = TextPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = S.timer,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
+        NexTopBar(title = S.timer, onMenuClick = openMenu)
 
         // 設定畫面 ↔ 計時畫面：縮放 + 淡入淡出切換動畫
         AnimatedContent(
@@ -213,8 +190,7 @@ private fun TimerSetupContent(
                     listOf(1 to 60, 5 to 300, 10 to 600, 30 to 1800, 60 to 3600).forEach { (mins, seconds) ->
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(DarkSurface)
+                                .nexGlassSurface(20.dp)
                                 .clickable { onPresetSelected(seconds) }
                                 .padding(horizontal = 16.dp, vertical = 7.dp)
                         ) {
@@ -243,15 +219,15 @@ private fun TimerSetupContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(PrimaryBlue)
                     .clickable { onStart(selectedHour, selectedMinute, selectedSecond) },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = S.start,
-                    tint = PrimaryBlue,
+                    tint = TextOnPrimary,
                     modifier = Modifier.size(30.dp)
                 )
             }
@@ -292,71 +268,78 @@ private fun TimerRunningContent(
         ) {
             Box(
                 modifier = Modifier
-                    .size(280.dp)
-                    .drawBehind {
-                        val strokeWidth = 6.dp.toPx()
-                        // 圓環半徑（留出 stroke 寬度的空間避免裁切）
-                        val ringRadius = size.minDimension / 2f - strokeWidth / 2f - 4.dp.toPx()
-                        val topLeft = Offset(center.x - ringRadius, center.y - ringRadius)
-                        val ringSize = Size(ringRadius * 2f, ringRadius * 2f)
+                    .size(312.dp)
+                    .nexGlassSurface(156.dp, elevated = true),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(280.dp)
+                        .drawBehind {
+                            val strokeWidth = 6.dp.toPx()
+                            // 圓環半徑（留出 stroke 寬度的空間避免裁切）
+                            val ringRadius = size.minDimension / 2f - strokeWidth / 2f - 4.dp.toPx()
+                            val topLeft = Offset(center.x - ringRadius, center.y - ringRadius)
+                            val ringSize = Size(ringRadius * 2f, ringRadius * 2f)
 
-                        // 背景灰色圓環（完整 360°）
-                        drawArc(
-                            color = DarkSurface,
-                            startAngle = -90f,
-                            sweepAngle = 360f,
-                            useCenter = false,
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-                            topLeft = topLeft,
-                            size = ringSize
-                        )
-
-                        // 藍色進度弧（從頂部順時針，隨時間減少）
-                        val sweepAngle = 360f * animatedProgress
-                        if (sweepAngle > 0f) {
+                            // 背景灰色圓環（完整 360°）
                             drawArc(
-                                color = ringColor,
+                                color = DarkSurface,
                                 startAngle = -90f,
-                                sweepAngle = sweepAngle,
+                                sweepAngle = 360f,
                                 useCenter = false,
                                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
                                 topLeft = topLeft,
                                 size = ringSize
                             )
 
-                            // 圓點：位於進度弧末端，隨剩餘時間滑動
-                            val dotAngleRad = Math.toRadians(-90.0 + 360.0 * animatedProgress)
-                            val dotX = center.x + ringRadius * cos(dotAngleRad).toFloat()
-                            val dotY = center.y + ringRadius * sin(dotAngleRad).toFloat()
-                            drawCircle(
-                                color = ringColor,
-                                radius = strokeWidth / 2f + 2.dp.toPx(),
-                                center = Offset(dotX, dotY)
-                            )
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = if (!isRunning && !isFinished) Modifier.clickable { showEditDialog = true } else Modifier
-                ) {
-                    Text(
-                        text = formatTimer(remainingSec),
-                        fontSize = 52.sp,
-                        fontWeight = FontWeight.Light,
-                        color = TextPrimary,
-                        letterSpacing = (-2).sp
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = when {
-                            isFinished -> S.timeUp
-                            else -> formatTotalDuration(totalSec)
+                            // 藍色進度弧（從頂部順時針，隨時間減少）
+                            val sweepAngle = 360f * animatedProgress
+                            if (sweepAngle > 0f) {
+                                drawArc(
+                                    color = ringColor,
+                                    startAngle = -90f,
+                                    sweepAngle = sweepAngle,
+                                    useCenter = false,
+                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                                    topLeft = topLeft,
+                                    size = ringSize
+                                )
+
+                                // 圓點：位於進度弧末端，隨剩餘時間滑動
+                                val dotAngleRad = Math.toRadians(-90.0 + 360.0 * animatedProgress)
+                                val dotX = center.x + ringRadius * cos(dotAngleRad).toFloat()
+                                val dotY = center.y + ringRadius * sin(dotAngleRad).toFloat()
+                                drawCircle(
+                                    color = ringColor,
+                                    radius = strokeWidth / 2f + 2.dp.toPx(),
+                                    center = Offset(dotX, dotY)
+                                )
+                            }
                         },
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = if (!isRunning && !isFinished) Modifier.clickable { showEditDialog = true } else Modifier
+                    ) {
+                        Text(
+                            text = formatTimer(remainingSec),
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary,
+                            letterSpacing = 0.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = when {
+                                isFinished -> S.timeUp
+                                else -> formatTotalDuration(totalSec)
+                            },
+                            fontSize = 13.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
             }
         }
@@ -371,8 +354,7 @@ private fun TimerRunningContent(
             ) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(DarkSurface)
+                        .nexGlassSurface(20.dp)
                         .clickable { onAddOneMinute() }
                         .padding(horizontal = 24.dp, vertical = 8.dp)
                 ) {
@@ -392,8 +374,7 @@ private fun TimerRunningContent(
             Box(
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurface)
+                    .nexGlassSurface(36.dp)
                     .clickable { onReset() },
                 contentAlignment = Alignment.Center
             ) {
@@ -408,14 +389,14 @@ private fun TimerRunningContent(
                 modifier = Modifier
                     .size(72.dp)
                     .clip(CircleShape)
-                    .background(DarkSurface)
+                    .background(PrimaryBlue)
                     .clickable { onToggle() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (isRunning) S.pause else S.start,
-                    tint = PrimaryBlue,
+                    tint = TextOnPrimary,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -523,7 +504,7 @@ private fun formatTimer(totalSeconds: Int): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
-    return "%02d:%02d:%02d".format(hours, minutes, seconds)
+    return String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
 }
 
 private fun formatTotalDuration(totalSeconds: Int): String = S.totalDuration(totalSeconds)
@@ -542,14 +523,9 @@ private fun playTimerFinishAlert(context: Context) {
     } catch (_: Exception) { }
 
     try {
-        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(
-                VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300), -1)
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(longArrayOf(0, 300, 200, 300), -1)
-        }
+        val vibrator = context.getSystemService(Vibrator::class.java) ?: return
+        vibrator.vibrate(
+            VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300), -1)
+        )
     } catch (_: Exception) { }
 }

@@ -6,7 +6,7 @@
 powershell -ExecutionPolicy Bypass -File .\start-mobile-mcp.ps1
 ```
 
-或將此指令加入 Copilot CLI 啟動流程。
+或將此指令加入 MCP client 啟動流程。
 
 ---
 

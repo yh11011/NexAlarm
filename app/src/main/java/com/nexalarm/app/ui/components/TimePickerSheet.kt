@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import com.nexalarm.app.ui.theme.*
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @Composable
 fun TimePickerSheet(
@@ -72,7 +73,7 @@ fun TimePickerSheet(
                 modifier = Modifier
                     .width(36.dp)
                     .height(4.dp)
-                    .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(2.dp))
+                    .background(DarkBorder, RoundedCornerShape(2.dp))
                     .align(Alignment.CenterHorizontally)
             )
 
@@ -132,7 +133,7 @@ fun TimePickerSheet(
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrimaryBlue,
-                    contentColor = Color.White
+                    contentColor = TextOnPrimary
                 )
             ) {
                 Text("確認", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
@@ -269,7 +270,7 @@ fun WheelPicker(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = String.format("%02d", item),
+                            text = String.format(Locale.getDefault(), "%02d", item),
                             fontSize = fontSize,
                             fontWeight = fontWeight,
                             color = TextPrimary.copy(alpha = textAlpha)
@@ -287,11 +288,11 @@ fun WheelPicker(
                 ) {
                     HorizontalDivider(
                         modifier = Modifier.align(Alignment.TopStart),
-                        color = Color.White.copy(alpha = 0.12f)
+                        color = DarkBorder
                     )
                     HorizontalDivider(
                         modifier = Modifier.align(Alignment.BottomStart),
-                        color = Color.White.copy(alpha = 0.12f)
+                        color = DarkBorder
                     )
                 }
             }

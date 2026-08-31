@@ -39,6 +39,7 @@ class BootReceiver : BroadcastReceiver() {
     private suspend fun rescheduleAlarms(context: Context) {
         val database = NexAlarmDatabase.getDatabase(context)
         val alarmDao = database.alarmDao()
+        val folderDao = database.folderDao()
         val scheduler = AlarmScheduler(context)
 
         // 取得所有啟用的鬧鐘
@@ -47,7 +48,9 @@ class BootReceiver : BroadcastReceiver() {
         Log.d("BootReceiver", "Found ${enabledAlarms.size} enabled alarms")
 
         // 重新排程每一個鬧鐘
-        enabledAlarms.forEach { alarm ->
+        enabledAlarms.filter { alarm ->
+            alarm.folderId?.let { folderDao.getFolderById(it)?.isEnabled ?: true } ?: true
+        }.forEach { alarm ->
             scheduler.schedule(alarm)
             Log.d("BootReceiver", "Rescheduled alarm: ${alarm.id} - ${alarm.title}")
         }

@@ -1,10 +1,12 @@
+import com.android.build.api.variant.BuildConfigField
+
 plugins {
     alias(libs.plugins.android.app)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
-    id("com.google.gms.google-services") version "4.4.1"
-    id("com.google.firebase.crashlytics") version "3.0.3"
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -24,9 +26,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // BuildConfig properties for runtime environment detection
-        buildConfigField("boolean", "IS_PRODUCTION", "false")
-        buildConfigField("String", "BUILD_TIMESTAMP", "\"${System.currentTimeMillis()}\"")
     }
 
     compileOptions {
@@ -34,9 +33,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    // Built-in Kotlin in AGP 9.0+ handles Kotlin compilation automatically.
+    // jvmTarget is inherited from compileOptions.targetCompatibility by default.
 
     buildFeatures {
         compose = true
@@ -54,7 +52,6 @@ android {
         debug {
             isDebuggable = true
             // Debug build: no obfuscation, include symbols for crash logs
-            buildConfigField("boolean", "IS_PRODUCTION", "false")
             configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
                 // Debug build 不需要上傳 mapping file（沒有混淆）
                 mappingFileUploadEnabled = false
@@ -68,13 +65,36 @@ android {
                 "proguard-rules.pro"
             )
             isDebuggable = false
-            buildConfigField("boolean", "IS_PRODUCTION", "true")
         }
     }
 
     // Room schema 匯出路徑（用於追蹤資料庫遷移歷史）
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val buildConfigFields = checkNotNull(variant.buildConfigFields) {
+            "BuildConfig generation must remain enabled for every variant."
+        }
+        buildConfigFields.put(
+            "IS_PRODUCTION",
+            BuildConfigField(
+                type = "boolean",
+                value = (variant.buildType == "release").toString(),
+                comment = "Whether this is the production release build.",
+            ),
+        )
+        buildConfigFields.put(
+            "BUILD_TIMESTAMP",
+            BuildConfigField(
+                type = "String",
+                value = "\"${System.currentTimeMillis()}\"",
+                comment = "Build configuration timestamp.",
+            ),
+        )
     }
 }
 
@@ -102,12 +122,12 @@ dependencies {
 
     // Firebase Crashlytics for remote crash reporting (free tier)
     // Initialize via google-services.json (obtained from Firebase Console)
-    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
-    implementation("com.google.firebase:firebase-crashlytics-ktx")
-    implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
 
     // LeakCanary for memory leak detection (debug only)
-    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+    debugImplementation(libs.leakcanary.android)
 
     // 加密儲存（保護 JWT token）
     implementation(libs.security.crypto)
@@ -118,8 +138,12 @@ dependencies {
     // 背景同步（WorkManager）
     implementation(libs.work.runtime)
 
+    // kotlinx.serialization for Room schema compatibility
+    implementation(libs.kotlinx.serialization.json)
+
     // Unit tests (JVM — no device needed)
     testImplementation(libs.junit)
+    testImplementation(libs.json)
 
     // Instrumented tests (require a connected device or emulator)
     androidTestImplementation(libs.androidx.test.junit)

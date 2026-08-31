@@ -25,7 +25,12 @@ class AlarmRepository(private val alarmDao: AlarmDao) {
             alarm.folderId, converter.fromList(alarm.repeatDays)
         )
         return if (existing != null) {
-            val updated = alarm.copy(id = existing.id)
+            val updated = alarm.copy(
+                id = existing.id,
+                clientId = existing.clientId,
+                createdAt = existing.createdAt,
+                isDeleted = false
+            )
             alarmDao.update(updated)
             existing.id
         } else {
