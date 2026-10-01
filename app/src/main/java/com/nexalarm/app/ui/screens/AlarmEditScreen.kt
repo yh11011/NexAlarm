@@ -38,6 +38,7 @@ fun AlarmEditScreen(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun AlarmEditContent(
     alarm: AlarmEntity?,
     isEditing: Boolean,
@@ -50,6 +51,9 @@ private fun AlarmEditContent(
     val now = remember { Calendar.getInstance() }
     var hour by remember { mutableIntStateOf(alarm?.hour ?: now.get(Calendar.HOUR_OF_DAY)) }
     var minute by remember { mutableIntStateOf(alarm?.minute ?: now.get(Calendar.MINUTE)) }
+    var scheduledDate by remember { mutableStateOf(alarm?.scheduledDate) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var dateError by remember { mutableStateOf(false) }
     var title by remember { mutableStateOf(alarm?.title ?: "") }
     var isRecurring by remember { mutableStateOf(alarm?.isRecurring ?: false) }
     var repeatDays by remember { mutableStateOf(alarm?.repeatDays ?: emptyList()) }
@@ -67,6 +71,27 @@ private fun AlarmEditContent(
     val isFolderMode = selectedFolderId != null
     // 選單只顯示非系統資料夾
     val userFolders = remember(folders) { folders.filter { !it.isSystem } }
+
+    if (showDatePicker) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = scheduledDate?.let {
+            java.time.LocalDate.parse(it).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        })
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let {
+                        scheduledDate = java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+                        repeatDays = emptyList()
+                        isRecurring = false
+                        dateError = false
+                    }
+                    showDatePicker = false
+                }, enabled = state.selectedDateMillis != null) { Text(S.confirm) }
+            },
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(S.cancel) } }
+        ) { DatePicker(state = state) }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -92,13 +117,16 @@ private fun AlarmEditContent(
                     modifier = Modifier.weight(1f)
                 )
                 TextButton(onClick = {
-                    onSave(
-                        AlarmEntity(
+                    val candidate = AlarmEntity(
                             id = alarm?.id ?: 0,
+                            clientId = alarm?.clientId ?: java.util.UUID.randomUUID().toString(),
                             hour = hour,
                             minute = minute,
                             title = title,
-                            isEnabled = true,
+                            isEnabled = alarm?.isEnabled ?: true,
+                            scheduledDate = scheduledDate,
+                            timePolicy = alarm?.timePolicy ?: "device_local",
+                            ringtoneUri = alarm?.ringtoneUri ?: "",
                             // 資料夾模式：不支援重複日，強制為單次
                             isRecurring = if (isFolderMode) false else isRecurring,
                             repeatDays = if (isFolderMode) emptyList() else (if (isRecurring) repeatDays else emptyList()),
@@ -112,7 +140,12 @@ private fun AlarmEditContent(
                             snoozeEnabled = snoozeEnabled,
                             createdAt = alarm?.createdAt ?: System.currentTimeMillis()
                         )
-                    )
+                    if (candidate.isEnabled && com.nexalarm.app.util.AlarmTimeCalculator.nextTrigger(candidate) <= System.currentTimeMillis()) {
+                        dateError = true
+                    } else {
+                        dateError = false
+                        onSave(candidate)
+                    }
                 }) {
                     Text(S.save, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
                 }
@@ -248,6 +281,11 @@ private fun AlarmEditContent(
                 // 重複日選擇（資料夾模式下隱藏）
                 if (!isFolderMode) {
                     Spacer(modifier = Modifier.height(14.dp))
+                    EditRow(S.alarmDate, scheduledDate ?: S.nextOccurrence, true) { showDatePicker = true }
+                    if (scheduledDate != null) {
+                        TextButton(onClick = { scheduledDate = null; dateError = false }) { Text(S.clearDate) }
+                    }
+                    if (dateError) Text(S.datePassed, color = DangerRed, modifier = Modifier.padding(horizontal = 16.dp))
                     EditLabel(S.repeatDaysLabel)
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -262,6 +300,7 @@ private fun AlarmEditContent(
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(if (sel) AccentDim else DarkSurface)
                                     .clickable {
+                                        scheduledDate = null
                                         repeatDays = if (day in repeatDays) repeatDays - day else repeatDays + day
                                         isRecurring = repeatDays.isNotEmpty()
                                     }

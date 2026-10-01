@@ -10,6 +10,8 @@ import androidx.room.TypeConverters
 data class AlarmEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val scheduledDate: String? = null,
+    @androidx.room.ColumnInfo(defaultValue = "'device_local'") val timePolicy: String = "device_local",
     val hour: Int,
     val minute: Int,
     val title: String = "",

@@ -291,6 +291,7 @@ fun NexAlarmMainContent(
                                 if (user.isPremium && !com.nexalarm.app.util.FeatureFlags.isPremium) {
                                     billingManager.activatePremiumFromPromo()
                                 }
+                                com.nexalarm.app.data.AiDeviceRepository.enqueue(context)
                                 authTick++ // 觸發帳號狀態重組
                                 if (isOnboarding) {
                                     navController.navigate("tabs") {

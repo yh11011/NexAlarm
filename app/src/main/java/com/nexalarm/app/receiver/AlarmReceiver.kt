@@ -165,6 +165,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val token = SettingsManager(context).authToken
 
         if (!alarm.isRecurring && !alarm.keepAfterRinging) {
+            AlarmScheduler(context).cancel(alarm)
             repo.deleteById(alarm.id)
             Log.d("AlarmReceiver", "Deleted one-time alarm ${alarm.id}")
             // 同步軟刪除到雲端
@@ -177,6 +178,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 )
             }
         } else if (!alarm.isRecurring) {
+            AlarmScheduler(context).cancel(alarm)
             repo.setEnabled(alarm.id, false)
             Log.d("AlarmReceiver", "Disabled one-time alarm ${alarm.id} (keepAfterRinging)")
             // 同步停用狀態到雲端
@@ -187,6 +189,7 @@ class AlarmReceiver : BroadcastReceiver() {
             AlarmScheduler(context).schedule(alarm)
             Log.d("AlarmReceiver", "Rescheduled recurring alarm ${alarm.id}")
         }
+        com.nexalarm.app.data.AiDeviceRepository.enqueue(context)
     }
 
     // ── Snooze count helpers ──────────────────────────────────────────────────

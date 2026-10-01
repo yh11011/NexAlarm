@@ -1,0 +1,72 @@
+name: Bug report
+description: Report a reproducible NexAlarm problem, especially alarm-delivery behavior.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: NexAlarm version
+      placeholder: v1.1.0-beta.1 or commit SHA
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and OEM
+      placeholder: Pixel 7 / Google
+    validations:
+      required: true
+  - type: dropdown
+    id: battery
+    attributes:
+      label: Battery optimization for NexAlarm
+      options: [Allowed/optimized, Unrestricted/not optimized, Unknown]
+    validations:
+      required: true
+  - type: dropdown
+    id: exact
+    attributes:
+      label: Exact alarm access
+      options: [Allowed, Not allowed, Not applicable/unknown]
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Include alarm time, recurrence, screen/lock/Doze/DND state, and whether the app process was killed.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include observed time and delay when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove tokens, account data, alarm contents, and other personal information.
+      render: shell
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed credentials and personal data from this report.
+          required: true

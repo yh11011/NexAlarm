@@ -50,12 +50,14 @@ object AlarmSyncRepository {
                 })
             }
 
-            val body = JSONObject().apply { put("alarms", alarmsArray) }
-            val resp = ApiClient.post(SYNC_URL, body, token)
-
-            if (resp.code !in 200..299) {
-                throw Exception("HTTP ${resp.code}${if (resp.body.isNotBlank()) ": ${resp.body}" else ""}")
+            val batches = SyncBatchPolicy.group(List(alarmsArray.length()) { alarmsArray.getJSONObject(it).toString() })
+            var response: ApiClient.Response? = null
+            for (batch in batches) {
+                val body = JSONObject().put("alarms", JSONArray(batch.map { JSONObject(it) })).put("capabilities", 2)
+                response = ApiClient.post(SYNC_URL, body, token)
+                if (response.code !in 200..299) throw Exception("HTTP ${response.code}")
             }
+            val resp = response!!
 
             val arr = JSONObject(resp.body).getJSONArray("alarms")
             (0 until arr.length()).map { i ->
@@ -72,6 +74,9 @@ object AlarmSyncRepository {
 
     /** 將 AlarmEntity 轉為 JSON（同步到伺服器的格式） */
     fun alarmToJson(alarm: AlarmEntity): JSONObject = JSONObject().apply {
+        put("scheduledDate", alarm.scheduledDate ?: JSONObject.NULL)
+        put("timePolicy", alarm.timePolicy)
+        put("ringtoneUri", alarm.ringtoneUri)
         put("title",            alarm.title)
         put("hour",             alarm.hour)
         put("minute",           alarm.minute)
@@ -97,6 +102,9 @@ object AlarmSyncRepository {
 
         return AlarmEntity(
             id              = localId,
+            scheduledDate = if (json.isNull("scheduledDate")) null else json.optString("scheduledDate").takeIf { it.isNotBlank() },
+            timePolicy = json.optString("timePolicy", "device_local"),
+            ringtoneUri = json.optString("ringtoneUri", ""),
             clientId        = clientId,
             updatedAt       = updatedAt,
             title           = json.optString("title", ""),

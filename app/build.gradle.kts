@@ -19,8 +19,8 @@ android {
         // Version management: Update both versionCode and versionName together
         // versionCode must be incremented for each release (integer, monotonic increase)
         // versionName should follow Semantic Versioning: MAJOR.MINOR.PATCH[-SUFFIX]
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = System.getenv("NEXALARM_VERSION_CODE")?.toIntOrNull() ?: 3
+        versionName = System.getenv("NEXALARM_VERSION_NAME") ?: "1.1.0-beta.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -72,6 +72,8 @@ android {
         }
     }
 
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+
     // Room schema 匯出路徑（用於追蹤資料庫遷移歷史）
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
@@ -105,6 +107,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
     implementation("com.google.firebase:firebase-crashlytics-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-messaging")
 
     // LeakCanary for memory leak detection (debug only)
     debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
@@ -127,4 +130,5 @@ dependencies {
     androidTestImplementation(libs.androidx.test.rules)
     androidTestImplementation(libs.uiautomator)
     androidTestImplementation(libs.coroutines.test)
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
 }

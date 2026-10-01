@@ -26,6 +26,7 @@ class BootReceiver : BroadcastReceiver() {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     rescheduleAlarms(context)
+                    com.nexalarm.app.data.AiDeviceRepository.enqueue(context)
                 } finally {
                     pendingResult.finish()
                 }
@@ -48,7 +49,7 @@ class BootReceiver : BroadcastReceiver() {
 
         // 重新排程每一個鬧鐘
         enabledAlarms.forEach { alarm ->
-            scheduler.schedule(alarm)
+            runCatching { scheduler.schedule(alarm) }
             Log.d("BootReceiver", "Rescheduled alarm: ${alarm.id} - ${alarm.title}")
         }
     }
@@ -56,6 +57,9 @@ class BootReceiver : BroadcastReceiver() {
     private companion object {
         val SUPPORTED_BOOT_ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            Intent.ACTION_TIME_CHANGED,
             "android.intent.action.QUICKBOOT_POWERON"
         )
     }

@@ -150,5 +150,5 @@ app/src/main/java/com/nexalarm/app/util/
 - Doze 測試僅在真機上可靠，模擬器行為可能不準確
 - Force-stop 屬於系統設計限制，不列入成功率統計
 - `setAlarmClock()` 會 bypass Doze
-- 電池優化開啟時 `setExactAndAllowWhileIdle` 有最短 9 分鐘間隔
+- Android 12+ 缺少 exact-alarm access 時，應用會降級使用非精確的 `setAndAllowWhileIdle()`；此路徑不可承諾準時觸發
 - Firebase Crashlytics 需要有效的 `google-services.json` 才能正常初始化

@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose a focused improvement and its Android/reliability tradeoffs.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or engineering problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reliability
+    attributes:
+      label: Reliability and permission impact
+      description: Note effects on exact alarms, battery, DND, reboot, background work, privacy, or permissions.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

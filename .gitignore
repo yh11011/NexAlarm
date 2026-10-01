@@ -32,6 +32,18 @@ local.properties
 # Log files
 *.log
 
+# Local databases and ad-hoc reliability output
+*.db
+/alarm_test_*.csv
+/alarm_test_*.json
+/scripts/alarm_test_*.csv
+/scripts/alarm_test_*.json
+test-results/
+
+# Local signing material and decoded CI files
+*.pem
+*.p12
+
 # Signing files
 *.jks
 *.keystore
@@ -81,4 +93,3 @@ lint/tmp/
 node_modules/
 **/node_modules/
 mcp-nexalarm/node_modules/
-

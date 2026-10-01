@@ -14,6 +14,7 @@ import java.util.*
  * 負責使用 AlarmManager 設定精確的鬧鐘觸發時間
  */
 class AlarmScheduler(private val context: Context) {
+    data class ScheduleResult(val status: String, val triggerAt: Long? = null, val reason: String? = null)
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
@@ -21,15 +22,30 @@ class AlarmScheduler(private val context: Context) {
      * 排程鬧鐘
      * @param alarm 鬧鐘實體
      */
-    fun schedule(alarm: AlarmEntity) {
+    private val ledger = com.nexalarm.app.data.ScheduleLedger(context)
+
+    fun schedule(alarm: AlarmEntity): ScheduleResult {
+        return try {
+            scheduleInternal(alarm).also { ledger.record(alarm, it) }
+        } catch (e: Exception) {
+            ledger.record(alarm, ScheduleResult("failed", reason = "Android scheduler rejected the alarm"))
+            throw e
+        }
+    }
+
+    private fun scheduleInternal(alarm: AlarmEntity): ScheduleResult {
         // 如果鬧鐘未啟用，取消排程
         if (!alarm.isEnabled) {
             cancel(alarm)
-            return
+            return ScheduleResult("cancelled")
         }
 
         // 計算下次觸發時間
         val triggerTime = calculateNextTriggerTime(alarm)
+        if (triggerTime <= System.currentTimeMillis()) {
+            cancel(alarm)
+            return ScheduleResult("failed", reason = "Requested date/time has passed")
+        }
 
         // 建立 PendingIntent
         val intent = Intent(context, AlarmReceiver::class.java).apply {
@@ -77,6 +93,7 @@ class AlarmScheduler(private val context: Context) {
         android.util.Log.i("NexAlarmTest",
             "SCHEDULED|id=${alarm.id}|title=${alarm.title}" +
             "|triggerMs=$triggerTime|api=$apiUsed|ts=${System.currentTimeMillis()}")
+        return ScheduleResult(if (apiUsed == "setAlarmClock") "scheduled" else "fallback", triggerTime)
     }
 
     /**
@@ -95,6 +112,7 @@ class AlarmScheduler(private val context: Context) {
 
         alarmManager.cancel(pendingIntent)
         pendingIntent.cancel()
+        ledger.record(alarm, ScheduleResult("cancelled"))
 
         android.util.Log.d("AlarmScheduler", "Cancelled alarm ${alarm.id}")
         // [NexAlarmTest] 事件 2/4：鬧鐘已從 AlarmManager 移除
@@ -106,6 +124,16 @@ class AlarmScheduler(private val context: Context) {
      * 排程貪睡鬧鐘
      */
     fun scheduleSnooze(alarm: AlarmEntity, snoozeMinutes: Int) {
+        try {
+            val trigger = scheduleSnoozeInternal(alarm, snoozeMinutes)
+            ledger.record(alarm, ScheduleResult(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) "fallback" else "scheduled", trigger))
+        } catch (e: Exception) {
+            ledger.record(alarm, ScheduleResult("failed", reason = "Android scheduler rejected snooze"))
+            throw e
+        }
+    }
+
+    private fun scheduleSnoozeInternal(alarm: AlarmEntity, snoozeMinutes: Int): Long {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
             // 無精確權限：fallback 到非精確鬧鐘
             val triggerFallback = System.currentTimeMillis() + snoozeMinutes * 60 * 1000L
@@ -121,7 +149,7 @@ class AlarmScheduler(private val context: Context) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerFallback, piFallback)
-            return
+            return triggerFallback
         }
 
         val triggerTime = System.currentTimeMillis() + snoozeMinutes * 60 * 1000L
@@ -154,76 +182,14 @@ class AlarmScheduler(private val context: Context) {
 
         android.util.Log.d("AlarmScheduler",
             "Snoozed alarm ${alarm.id} for $snoozeMinutes min, fires at ${Date(triggerTime)}")
+        return triggerTime
     }
 
     /**
      * 計算下次觸發時間
      */
     private fun calculateNextTriggerTime(alarm: AlarmEntity): Long {
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, alarm.hour)
-            set(Calendar.MINUTE, alarm.minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        val now = System.currentTimeMillis()
-
-        // 如果是重複鬧鐘
-        if (alarm.isRecurring && alarm.repeatDays.isNotEmpty()) {
-            // 找出下一個應該觸發的日期
-            val currentDayOfWeek = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
-            val sortedDays = alarm.repeatDays.sorted()
-
-            // 轉換：我們的格式 1=週一，Calendar 格式 1=週日
-            val targetDays = sortedDays.map {
-                when (it) {
-                    7 -> Calendar.SUNDAY
-                    else -> it + 1
-                }
-            }
-
-            // 尋找下一個觸發日
-            var found = false
-
-            for (i in 0..7) {
-                val checkDay = (currentDayOfWeek + i - 1) % 7 + 1
-                if (targetDays.contains(checkDay)) {
-                    val tempCal = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, alarm.hour)
-                        set(Calendar.MINUTE, alarm.minute)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                        add(Calendar.DAY_OF_MONTH, i)
-                    }
-
-                    // 如果是今天，檢查時間是否已過
-                    if (i == 0 && tempCal.timeInMillis <= now) {
-                        continue
-                    }
-
-                    calendar.timeInMillis = tempCal.timeInMillis
-                    found = true
-                    break
-                }
-            }
-
-            if (!found) {
-                // 找第一個重複日
-                val firstDay = targetDays.first()
-                val daysToAdd = (firstDay - currentDayOfWeek + 7) % 7
-                val adjustedDays = if (daysToAdd == 0) 7 else daysToAdd
-                calendar.add(Calendar.DAY_OF_MONTH, adjustedDays)
-            }
-        } else {
-            // 單次鬧鐘
-            // 如果時間已過，設定為明天
-            if (calendar.timeInMillis <= now) {
-                calendar.add(Calendar.DAY_OF_MONTH, 1)
-            }
-        }
-
-        return calendar.timeInMillis
+        return AlarmTimeCalculator.nextTrigger(alarm)
     }
 
     /**
