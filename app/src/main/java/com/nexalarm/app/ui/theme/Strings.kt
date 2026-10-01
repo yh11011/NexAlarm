@@ -1,6 +1,44 @@
 package com.nexalarm.app.ui.theme
 
 object S {
+    val syncStatus get() = if (isAppEnglish) "Phone synchronization" else "手機同步狀態"
+    val syncNow get() = if (isAppEnglish) "Sync now" else "立即同步"
+    val lastSync get() = if (isAppEnglish) "Last successful sync" else "上次成功同步"
+    val notConfirmed get() = if (isAppEnglish) "Not confirmed" else "尚未確認"
+    val appUpdates get() = if (isAppEnglish) "App updates" else "App 更新"
+    val currentVersion get() = if (isAppEnglish) "Installed version" else "目前版本"
+    val latestVersion get() = if (isAppEnglish) "Latest version" else "最新版本"
+    val checkUpdates get() = if (isAppEnglish) "Check for updates" else "檢查更新"
+    val downloadUpdate get() = if (isAppEnglish) "Download update" else "下載更新"
+    val installUpdate get() = if (isAppEnglish) "Continue installation" else "繼續安裝"
+    val downloadSource get() = if (isAppEnglish) "Official download source" else "官方下載來源"
+    val releaseNotes get() = if (isAppEnglish) "Release notes" else "更新說明"
+    fun syncPhase(phase: String): String = when (phase) {
+        "queued" -> if (isAppEnglish) "Waiting for network/background execution" else "等待網路與背景執行"
+        "syncing" -> if (isAppEnglish) "Registering this phone" else "正在註冊手機"
+        "registered" -> if (isAppEnglish) "Phone registered; syncing alarms and reports" else "手機已註冊，正在同步鬧鐘與回報"
+        "success" -> if (isAppEnglish) "Phone and alarm status synchronized" else "手機與鬧鐘狀態已同步"
+        "login_required" -> if (isAppEnglish) "Login expired; sign in again" else "登入已失效，請重新登入"
+        "premium_required" -> if (isAppEnglish) "Cloud synchronization requires account Premium" else "帳號需要 Premium 才能使用雲端同步"
+        "registration_conflict" -> if (isAppEnglish) "Phone registration conflicts; sign out and sign in again" else "手機註冊衝突，請登出再登入"
+        "network_error" -> if (isAppEnglish) "Sync failed; check the network and retry" else "同步失敗，請檢查網路並重試"
+        else -> if (isAppEnglish) "No synchronization confirmed; sign in and sync" else "尚未確認同步，請登入並立即同步"
+    }
+    fun updatePhase(phase: String): String = when (phase) {
+        "checking" -> if (isAppEnglish) "Checking updates…" else "正在檢查更新…"
+        "available" -> if (isAppEnglish) "A compatible update is available" else "有可相容安裝的更新"
+        "current" -> if (isAppEnglish) "No newer published version" else "目前沒有較新的已發佈版本"
+        "unavailable" -> if (isAppEnglish) "No verified beta APK published yet" else "尚未發佈具完整驗證資訊的 Beta APK"
+        "incompatible" -> if (isAppEnglish) "Update incompatible with this installation; keep your app and data" else "新版與目前安裝不相容，請保留現有 App 與資料"
+        "downloading" -> if (isAppEnglish) "Downloading and verifying APK…" else "正在下載並驗證 APK…"
+        "ready" -> if (isAppEnglish) "APK verified; confirm installation in Android" else "APK 已驗證，請在 Android 確認安裝"
+        "permission_required" -> if (isAppEnglish) "Allow this app as an installation source, then continue installation" else "允許此 App 安裝來源後，請點「繼續安裝」"
+        "download_failed" -> if (isAppEnglish) "Download or verification failed; retry" else "下載或驗證失敗，請重試"
+        "install_failed" -> if (isAppEnglish) "Installation could not start; retry or check device restrictions" else "無法開啟安裝，請重試或檢查裝置限制"
+        "check_failed" -> if (isAppEnglish) "Unable to check updates; try again later" else "無法檢查更新，請稍後重試"
+        else -> if (isAppEnglish) "Check for an update or view the official download source" else "檢查是否有新版，或查看官方下載來源"
+    }
+
     // Navigation & Screen titles
     val home: String get() = if (isAppEnglish) "Home" else "首頁"
     val alarm: String get() = if (isAppEnglish) "Alarm" else "鬧鐘"

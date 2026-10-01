@@ -13,7 +13,7 @@ For ChatGPT, use the supported custom MCP/Plugins flow with OAuth when Developer
 
 ## Tools and delivery
 
-- `list_alarms`: full `client_id`, alarm data and registered phones' current local clocks.
+- `list_alarms`: full `client_id`, all cloud alarms (including phone-created alarms), current versions, device count, per-phone exact/fallback/unconfirmed counts and local clocks. Each alarm includes device reports and their timestamps. Enabled is not evidence of scheduling.
 - `create_alarm`: hour/minute, optional `date` (`YYYY-MM-DD`) OR `repeat_days` (Mon=1…Sun=7), title and snooze/vibration settings. Include a unique `idempotency_key` and reuse it on retries.
 - `update_alarm`: `client_id`, `changes` object and idempotency key. Unspecified fields survive; `date:null` clears a date.
 - `delete_alarm`: client ID and idempotency key.
@@ -42,3 +42,9 @@ User verification: connect both Codex and ChatGPT with a test Premium account, c
 ## Current verification limits
 
 No connected Android device, Tabbit browser launcher or Firebase server sending credentials were available during implementation. Real FCM delivery, Doze behavior, UI screenshots and account-level Codex/ChatGPT OAuth interaction require that environment. Protocol/OAuth behavior is tested in isolation; these limits must not be represented as completed end-to-end verification.
+
+## Phone diagnostics and updates
+
+Settings shows account, installed version, last successful synchronization, registration/sync errors and Sync now. New installations register automatically after login/on start; cloud entitlement is decided by the server, not cached local billing state. AlarmScheduler durably records successful scheduling/cancellation, fallback and failures in a dedicated private preferences ledger (Room schema stays 9). Worker uploads version-bound reports in batches; expired/missing/outdated evidence never counts as exact scheduled. AI receipts remain separate. Android WorkManager timing and future ringing are not guaranteed by a report.
+
+Settings → App updates checks the public beta metadata endpoint, downloads a newer compatible APK, verifies package/version/minSdk/checksum/signer and opens Android installation confirmation. Users must allow this installation source the first time. The official source is GitHub Releases. The historical v1.0.0-beta Debug APK uses a different certificate from the current local debug build, so it cannot be overwritten with the current APK. Never uninstall to bypass this; recover the original key or agree on a data-preserving migration separately. There is currently no published release with verified update metadata, and release signing secrets are absent. Missing signing material does not justify publishing debug/unsigned APKs as verified updates.

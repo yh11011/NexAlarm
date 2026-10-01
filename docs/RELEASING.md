@@ -20,3 +20,9 @@ Never commit the keystore or print these values. Keep an offline backup and docu
 5. Install the attached APK on a clean device and an upgrade-path device before promoting the release from draft if manual approval is configured.
 
 If signing secrets are absent or verification fails, the workflow must fail; an unsigned APK is only a CI artifact and must not be attached as a public download.
+
+## In-app updates
+
+The workflow publishes `update.json` alongside the signed APK and checksum. `scripts/release_metadata.py` extracts the actual package/version/minSdk and signing digest after signature verification. The existing auth service exposes `/api/v1/app/releases/latest?channel=beta`, accepting only complete metadata from this repository's signed beta release naming pattern. Historical Debug APKs are excluded. The app also checks the archive and its installed signing identity before invoking Android's installer. If no verified release exists, it shows that state and the official source without downloading a historical build.
+
+Keep release version codes increasing and preserve the signing key. The local 1.1.0-beta.2 debug build uses a different certificate from the historical GitHub 1.0.0 APK; confirm the device's installed certificate before attempting an upgrade. Missing original signing material blocks compatible release delivery, not development of the update UI. Do not publish a new release until signing secrets and device validation are available.

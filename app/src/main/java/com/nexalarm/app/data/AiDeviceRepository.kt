@@ -16,9 +16,13 @@ object AiDeviceRepository {
     val syncMutex = Mutex()
 
     fun enqueue(context: Context) {
-        val request = OneTimeWorkRequestBuilder<AlarmSyncWorker>()
+        val builder = OneTimeWorkRequestBuilder<AlarmSyncWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST).build()
+        // Older Android requires a foreground notification for expedited work.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+        }
+        val request = builder.build()
         WorkManager.getInstance(context).enqueueUniqueWork("ai_alarm_sync", ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 
@@ -39,18 +43,40 @@ object AiDeviceRepository {
         return id
     }
 
+    suspend fun uploadSchedules(context: Context, token: String, settings: SettingsManager) {
+        val dao = com.nexalarm.app.data.database.NexAlarmDatabase.getDatabase(context).alarmDao()
+        val ledger = ScheduleLedger(context)
+        val scheduler = com.nexalarm.app.util.AlarmScheduler(context)
+        val alarms = dao.getAllAlarmsList()
+        for (alarm in alarms) {
+            if (settings.authToken != token) return
+            // Initialize evidence for installations predating the ledger without resetting snooze.
+            if (ledger.current(alarm) == null) {
+                runCatching { if (alarm.isDeleted || !alarm.isEnabled) scheduler.cancel(alarm) else scheduler.schedule(alarm) }
+            }
+        }
+        for (chunk in alarms.chunked(20)) {
+            if (settings.authToken != token) return
+            val body = JSONObject().put("alarms", org.json.JSONArray(chunk.map { ledger.report(it) }))
+            val result = ApiClient.post("$BASE/devices/${deviceId(context, settings)}/schedule-status", body, token)
+            if (result.code !in 200..299) throw SyncFailure(result.code)
+        }
+    }
+
     suspend fun sync(context: Context, token: String, settings: SettingsManager): Int {
         val prefs = context.getSharedPreferences("ai_device", Context.MODE_PRIVATE)
         val id = deviceId(context, settings)
         val registration = JSONObject().put("device_id", id).put("name", "${Build.MANUFACTURER} ${Build.MODEL}")
             .put("fcm_token", prefs.getString("fcm_token", ""))
             .put("timezone", ZoneId.systemDefault().id).put("capabilities", 2)
+            .put("app_version", com.nexalarm.app.BuildConfig.VERSION_NAME).put("app_version_code", com.nexalarm.app.BuildConfig.VERSION_CODE)
         val registered = ApiClient.post("$BASE/devices/register", registration, token)
         // A downgraded account may still acknowledge already-queued operations.
-        if (registered.code !in 200..299 && registered.code != 403) error("Device registration failed: ${registered.code}")
+        if (registered.code !in 200..299 && registered.code != 403) throw SyncFailure(registered.code)
+        SyncDiagnostics.save(context, if (registered.code == 403) "premium_required" else "registered")
         val pending = ApiClient.get("$BASE/devices/$id/pending", token)
-        if (pending.code == 404 && registered.code == 403) return 0
-        check(pending.code in 200..299) { "Pending operation fetch failed: ${pending.code}" }
+        if (pending.code == 404 && registered.code == 403) return -1
+        if (pending.code !in 200..299) throw SyncFailure(pending.code)
         val operations = JSONObject(pending.body).getJSONArray("operations")
         val applier = AlarmSyncApplier(context)
         var applied = 0
@@ -76,9 +102,9 @@ object AiDeviceRepository {
                     .also { check(prefs.edit().putString(cacheKey, it.toString()).commit()) }
             }
             val ack = ApiClient.post("$BASE/devices/$id/receipt", receipt, token)
-            check(ack.code in 200..299) { "Receipt failed: ${ack.code}" }
+            if (ack.code !in 200..299) throw SyncFailure(ack.code)
             prefs.edit().remove(cacheKey).commit()
         }
-        return applied
+        return if (registered.code == 403) -1 else applied
     }
 }

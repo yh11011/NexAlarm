@@ -101,6 +101,7 @@ jobs:
             "$unsigned_apk"
           "$apksigner_path" verify --verbose --print-certs "$signed_apk"
           sha256sum "$signed_apk" > "${signed_apk}.sha256"
+          python3 scripts/release_metadata.py "$signed_apk" "$apksigner_path" "$(dirname "$apksigner_path")/aapt" update.json
 
       - name: Create release notes
         shell: bash
@@ -134,6 +135,7 @@ jobs:
           gh release create "$RELEASE_TAG" \
             "NexAlarm-${RELEASE_TAG}.apk" \
             "NexAlarm-${RELEASE_TAG}.apk.sha256" \
+            update.json \
             --repo "$GITHUB_REPOSITORY" \
             --title "NexAlarm ${RELEASE_TAG#v}" \
             --notes-file release-notes.md \

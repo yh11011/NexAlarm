@@ -50,12 +50,14 @@ object AlarmSyncRepository {
                 })
             }
 
-            val body = JSONObject().apply { put("alarms", alarmsArray); put("capabilities", 2) }
-            val resp = ApiClient.post(SYNC_URL, body, token)
-
-            if (resp.code !in 200..299) {
-                throw Exception("HTTP ${resp.code}${if (resp.body.isNotBlank()) ": ${resp.body}" else ""}")
+            val batches = SyncBatchPolicy.group(List(alarmsArray.length()) { alarmsArray.getJSONObject(it).toString() })
+            var response: ApiClient.Response? = null
+            for (batch in batches) {
+                val body = JSONObject().put("alarms", JSONArray(batch.map { JSONObject(it) })).put("capabilities", 2)
+                response = ApiClient.post(SYNC_URL, body, token)
+                if (response.code !in 200..299) throw Exception("HTTP ${response.code}")
             }
+            val resp = response!!
 
             val arr = JSONObject(resp.body).getJSONArray("alarms")
             (0 until arr.length()).map { i ->

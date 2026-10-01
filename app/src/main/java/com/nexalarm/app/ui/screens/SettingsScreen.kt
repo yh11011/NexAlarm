@@ -108,6 +108,11 @@ fun SettingsScreen() {
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        SyncStatusCard()
+        Spacer(modifier = Modifier.height(12.dp))
+        AppUpdateCard()
+        Spacer(modifier = Modifier.height(12.dp))
+
         // AI Integration
         if (premium) AiIntegrationCard(onClick = { showAiDialog = true })
     }

@@ -35,6 +35,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     /** 有操作時立即觸發與伺服器同步（僅在已登入時執行） */
     private fun triggerSync() {
         val token = settings.authToken ?: return
+        com.nexalarm.app.data.AiDeviceRepository.enqueue(getApplication())
         viewModelScope.launch {
             // getAllAlarmsList() 包含軟刪除（is_deleted=true）的鬧鐘，
             // 同步時會帶 is_deleted:true 送至伺服器；伺服器確認後 applyServerAlarms 會硬刪

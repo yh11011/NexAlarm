@@ -102,7 +102,7 @@ class SettingsManager(private val context: Context) {
                 ApiClient.post("${AiDeviceRepository.BASE}/devices/${item.getString("id")}/unregister",
                     org.json.JSONObject(), item.getString("token"))
             }.getOrNull()
-            if (result == null || result.code >= 500) remaining.put(item)
+            if (result == null || result.code == 429 || result.code >= 500) remaining.put(item)
         }
         securePrefs.edit().putString("device_unregistrations", remaining.toString()).commit()
     }
@@ -117,13 +117,12 @@ class SettingsManager(private val context: Context) {
             }
         }
         context.getSharedPreferences("ai_device", Context.MODE_PRIVATE).edit().remove("device_id").remove("owner").commit()
-        AiDeviceRepository.enqueue(context)
-
         securePrefs.edit()
             .remove("auth_token")
             .remove("auth_user_id")
             .remove("auth_username")
             .remove("auth_display_name")
-            .apply()
+            .commit()
+        AiDeviceRepository.enqueue(context)
     }
 }

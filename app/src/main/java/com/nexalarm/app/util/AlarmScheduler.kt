@@ -22,7 +22,18 @@ class AlarmScheduler(private val context: Context) {
      * 排程鬧鐘
      * @param alarm 鬧鐘實體
      */
+    private val ledger = com.nexalarm.app.data.ScheduleLedger(context)
+
     fun schedule(alarm: AlarmEntity): ScheduleResult {
+        return try {
+            scheduleInternal(alarm).also { ledger.record(alarm, it) }
+        } catch (e: Exception) {
+            ledger.record(alarm, ScheduleResult("failed", reason = "Android scheduler rejected the alarm"))
+            throw e
+        }
+    }
+
+    private fun scheduleInternal(alarm: AlarmEntity): ScheduleResult {
         // 如果鬧鐘未啟用，取消排程
         if (!alarm.isEnabled) {
             cancel(alarm)
@@ -101,6 +112,7 @@ class AlarmScheduler(private val context: Context) {
 
         alarmManager.cancel(pendingIntent)
         pendingIntent.cancel()
+        ledger.record(alarm, ScheduleResult("cancelled"))
 
         android.util.Log.d("AlarmScheduler", "Cancelled alarm ${alarm.id}")
         // [NexAlarmTest] 事件 2/4：鬧鐘已從 AlarmManager 移除
@@ -112,6 +124,16 @@ class AlarmScheduler(private val context: Context) {
      * 排程貪睡鬧鐘
      */
     fun scheduleSnooze(alarm: AlarmEntity, snoozeMinutes: Int) {
+        try {
+            val trigger = scheduleSnoozeInternal(alarm, snoozeMinutes)
+            ledger.record(alarm, ScheduleResult(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) "fallback" else "scheduled", trigger))
+        } catch (e: Exception) {
+            ledger.record(alarm, ScheduleResult("failed", reason = "Android scheduler rejected snooze"))
+            throw e
+        }
+    }
+
+    private fun scheduleSnoozeInternal(alarm: AlarmEntity, snoozeMinutes: Int): Long {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
             // 無精確權限：fallback 到非精確鬧鐘
             val triggerFallback = System.currentTimeMillis() + snoozeMinutes * 60 * 1000L
@@ -127,7 +149,7 @@ class AlarmScheduler(private val context: Context) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerFallback, piFallback)
-            return
+            return triggerFallback
         }
 
         val triggerTime = System.currentTimeMillis() + snoozeMinutes * 60 * 1000L
@@ -160,6 +182,7 @@ class AlarmScheduler(private val context: Context) {
 
         android.util.Log.d("AlarmScheduler",
             "Snoozed alarm ${alarm.id} for $snoozeMinutes min, fires at ${Date(triggerTime)}")
+        return triggerTime
     }
 
     /**

@@ -19,8 +19,8 @@ android {
         // Version management: Update both versionCode and versionName together
         // versionCode must be incremented for each release (integer, monotonic increase)
         // versionName should follow Semantic Versioning: MAJOR.MINOR.PATCH[-SUFFIX]
-        versionCode = System.getenv("NEXALARM_VERSION_CODE")?.toIntOrNull() ?: 2
-        versionName = System.getenv("NEXALARM_VERSION_NAME") ?: "1.1.0-beta.1"
+        versionCode = System.getenv("NEXALARM_VERSION_CODE")?.toIntOrNull() ?: 3
+        versionName = System.getenv("NEXALARM_VERSION_NAME") ?: "1.1.0-beta.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

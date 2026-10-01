@@ -44,7 +44,9 @@ Failures are classified as missed, late, silent, crashed, or system-delayed. The
 - One-time and weekday-recurring alarms with configurable snooze, volume, and vibration-only behavior.
 - Schedule groups/folders with group enable/disable and protected system groups.
 - Exact-alarm-aware scheduling with an explicit inexact fallback.
-- Reboot rescheduling for enabled alarms.
+- Reboot, app-upgrade and timezone-change rescheduling for enabled alarms.
+- Premium private MCP integration with cloud alarms, per-phone scheduling reports and synchronization diagnostics; see [connection and verification details](docs/mcp/README.md).
+- In-app beta update checks, verified downloads and Android installation confirmation; compatible signed release publication remains pending.
 - `nexalarm://` deep links for add, delete, and group-toggle automation.
 - Meeting Mode Quick Settings tile that changes today's alarms without changing system DND.
 - Timer, stopwatch, Traditional Chinese/English UI, light/dark themes, and selectable time zone.
@@ -52,7 +54,7 @@ Failures are classified as missed, late, silent, crashed, or system-delayed. The
 
 ## Architecture
 
-NexAlarm is a Kotlin/Jetpack Compose app using MVVM-style ViewModels and repositories, Room (schema version 8), `AlarmManager`, broadcast receivers, a foreground service, and WorkManager. See [Architecture](docs/ARCHITECTURE.md) for component boundaries and the alarm lifecycle.
+NexAlarm is a Kotlin/Jetpack Compose app using MVVM-style ViewModels and repositories, Room (schema version 9), `AlarmManager`, broadcast receivers, a foreground service, and WorkManager. See [Architecture](docs/ARCHITECTURE.md) for component boundaries and the alarm lifecycle.
 
 ## AI-assisted development
 
