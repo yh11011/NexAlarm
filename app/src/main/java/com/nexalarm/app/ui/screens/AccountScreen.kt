@@ -312,6 +312,7 @@ fun AccountScreen(
                         enabled = isPremium,
                         freeLimit = if (!isPremium) FeatureFlags.FREE_FOLDER_LIMIT else null
                     )
+                    FeatureRow(text = S.aiPremiumBenefit, enabled = isPremium)
                     FeatureRow(text = S.cloudBackupRestore, enabled = isPremium)
                     FeatureRow(text = S.prioritySupport, enabled = isPremium)
                 }

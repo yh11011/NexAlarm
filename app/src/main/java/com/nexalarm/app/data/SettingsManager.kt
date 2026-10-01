@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
 
-class SettingsManager(context: Context) {
+class SettingsManager(private val context: Context) {
     // 一般設定（非敏感，使用普通 SharedPreferences）
     private val prefs = context.getSharedPreferences("nexalarm_settings", Context.MODE_PRIVATE)
 
@@ -93,7 +93,32 @@ class SettingsManager(context: Context) {
             else securePrefs.edit().remove("auth_display_name").apply()
         }
 
+    suspend fun flushDeviceUnregistrations() {
+        val queue = org.json.JSONArray(securePrefs.getString("device_unregistrations", "[]"))
+        val remaining = org.json.JSONArray()
+        for (i in 0 until queue.length()) {
+            val item = queue.getJSONObject(i)
+            val result = runCatching {
+                ApiClient.post("${AiDeviceRepository.BASE}/devices/${item.getString("id")}/unregister",
+                    org.json.JSONObject(), item.getString("token"))
+            }.getOrNull()
+            if (result == null || result.code >= 500) remaining.put(item)
+        }
+        securePrefs.edit().putString("device_unregistrations", remaining.toString()).commit()
+    }
+
     fun clearAuth() {
+        val id = context.getSharedPreferences("ai_device", Context.MODE_PRIVATE).getString("device_id", null)
+        authToken?.let { token ->
+            if (id != null) {
+                val queue = org.json.JSONArray(securePrefs.getString("device_unregistrations", "[]"))
+                queue.put(org.json.JSONObject().put("id", id).put("token", token))
+                securePrefs.edit().putString("device_unregistrations", queue.toString()).commit()
+            }
+        }
+        context.getSharedPreferences("ai_device", Context.MODE_PRIVATE).edit().remove("device_id").remove("owner").commit()
+        AiDeviceRepository.enqueue(context)
+
         securePrefs.edit()
             .remove("auth_token")
             .remove("auth_user_id")

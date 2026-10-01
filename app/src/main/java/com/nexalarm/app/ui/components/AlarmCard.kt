@@ -78,6 +78,7 @@ fun AlarmCard(
     }
 }
 fun formatRepeatDays(alarm: AlarmEntity): String {
+    alarm.scheduledDate?.let { return it }
     val days = alarm.repeatDays
     if (days.isEmpty()) return "單次"
     if (days.sorted() == listOf(1, 2, 3, 4, 5, 6, 7)) return "每天"

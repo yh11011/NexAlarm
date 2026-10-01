@@ -1,38 +1,25 @@
 package com.nexalarm.app.ui.components
 
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import com.nexalarm.app.data.model.AlarmEntity
+import com.nexalarm.app.util.AlarmScheduler
+import com.nexalarm.app.ui.theme.isAppEnglish
 import kotlinx.coroutines.delay
 
 @Composable
 fun rememberCountdownText(alarms: List<AlarmEntity>): String {
+    val context = LocalContext.current
+    val scheduler = remember(context) { AlarmScheduler(context) }
     var tick by remember { mutableLongStateOf(0L) }
-
-    // 每 30 秒刷新一次倒數
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(30_000L)
-            tick++
-        }
+        while (true) { delay(30_000L); tick++ }
     }
-
-    return remember(alarms, tick) {
-        val now = java.util.Calendar.getInstance()
-        val nowMinutes = now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE)
-        val enabled = alarms.filter { it.isEnabled }
-        if (enabled.isEmpty()) return@remember ""
-
-        val nextMinutes = enabled.minOf { a ->
-            val alarmMin = a.hour * 60 + a.minute
-            val diff = alarmMin - nowMinutes
-            if (diff <= 0) diff + 1440 else diff
-        }
-        val h = nextMinutes / 60
-        val m = nextMinutes % 60
-        buildString {
-            if (h > 0) append("${h} 小時 ")
-            append("${m} 分鐘後響鈴")
-        }
+    val english = isAppEnglish
+    return remember(alarms, tick, english) {
+        val now = System.currentTimeMillis()
+        val next = alarms.filter { it.isEnabled }.filter { scheduler.getNextTriggerTime(it) > now }
+            .minByOrNull { scheduler.getNextTriggerTime(it) }
+        if (next == null) "" else scheduler.getTimeUntilText(next, english)
     }
 }
-

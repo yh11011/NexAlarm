@@ -72,6 +72,8 @@ android {
         }
     }
 
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+
     // Room schema 匯出路徑（用於追蹤資料庫遷移歷史）
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
@@ -105,6 +107,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
     implementation("com.google.firebase:firebase-crashlytics-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-messaging")
 
     // LeakCanary for memory leak detection (debug only)
     debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
@@ -127,4 +130,5 @@ dependencies {
     androidTestImplementation(libs.androidx.test.rules)
     androidTestImplementation(libs.uiautomator)
     androidTestImplementation(libs.coroutines.test)
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
 }

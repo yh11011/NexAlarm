@@ -49,6 +49,8 @@ fun SettingsScreen() {
     val settingsManager = remember { SettingsManager(context) }
     var showTimezoneDialog by remember { mutableStateOf(false) }
     var selectedTimezoneId by remember { mutableStateOf(settingsManager.timeZoneId) }
+    val billing = remember { (context.applicationContext as com.nexalarm.app.NexAlarmApp).billingManager }
+    val premium by billing.isPremium.collectAsState()
     var showAiDialog by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -107,11 +109,11 @@ fun SettingsScreen() {
         Spacer(modifier = Modifier.height(12.dp))
 
         // AI Integration
-        AiIntegrationCard(onClick = { showAiDialog = true })
+        if (premium) AiIntegrationCard(onClick = { showAiDialog = true })
     }
 
-    if (showAiDialog) {
-        AiModelPickerDialog(
+    if (showAiDialog && premium) {
+        AiConnectionDialog(
             authToken = settingsManager.authToken,
             onDismiss = { showAiDialog = false },
             onOpenUrl = { url ->
@@ -404,177 +406,94 @@ private fun ThemeStyleCard(settingsManager: SettingsManager) {
     }
 }
 
-// ── AI Integration ──────────────────────────────────────────
-
-private data class AiModel(
-    val id: String,
-    val name: String,
-    @DrawableRes val logoRes: Int,
-)
-
-private val AI_MODELS = listOf(
-    AiModel("claude",     "Claude",     R.drawable.ai_claude),
-    AiModel("chatgpt",    "ChatGPT",    R.drawable.ai_chatgpt),
-    AiModel("gemini",     "Gemini",     R.drawable.ai_gemini),
-    AiModel("copilot",    "Copilot",    R.drawable.ai_copilot),
-    AiModel("grok",       "Grok",       R.drawable.ai_grok),
-    AiModel("cursor",     "Cursor",     R.drawable.ai_cursor),
-    AiModel("perplexity", "Perplexity", R.drawable.ai_perplexity),
-    AiModel("deepseek",   "DeepSeek",   R.drawable.ai_deepseek),
-    AiModel("kimi",       "Kimi",       R.drawable.ai_kimi),
-    AiModel("doubao",     "豆包",        R.drawable.ai_doubao),
-    AiModel("qwen",       "通義千問",    R.drawable.ai_qwen),
-    AiModel("wenxin",     "文心一言",    R.drawable.ai_wenxin),
-    AiModel("chatglm",    "智譜清言",    R.drawable.ai_chatglm),
-)
+// ── Premium AI connection ──────────────────────────────────────────
 
 @Composable
 private fun AiIntegrationCard(onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .background(DarkSurface, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            .background(DarkSurface, RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(S.aiIntegration, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(S.aiIntegrationDesc, fontSize = 13.sp, color = TextSecondary)
+            Text(S.aiIntegration, fontSize = 15.sp, color = TextPrimary)
+            Text(S.aiPremiumBenefit, fontSize = 13.sp, color = TextSecondary)
         }
-        Icon(
-            Icons.Default.KeyboardArrowRight,
-            contentDescription = null,
-            tint = TextSecondary,
-            modifier = Modifier.size(20.dp)
-        )
+        Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = TextSecondary)
     }
 }
 
 @Composable
-private fun AiModelPickerDialog(
-    authToken: String?,
-    onDismiss: () -> Unit,
-    onOpenUrl: (String) -> Unit
-) {
+private fun AiConnectionDialog(authToken: String?, onDismiss: () -> Unit, onOpenUrl: (String) -> Unit) {
     val scope = rememberCoroutineScope()
-    var openingModelId by remember { mutableStateOf<String?>(null) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
+    var data by remember { mutableStateOf<org.json.JSONObject?>(null) }
+    var error by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var refresh by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
+    LaunchedEffect(authToken, refresh) {
+        if (authToken == null) return@LaunchedEffect
+        busy = true
+        error = false
+        val result = runCatching {
+            val response = com.nexalarm.app.data.ApiClient.get("${com.nexalarm.app.data.AiDeviceRepository.BASE}/ai/connections", authToken)
+            check(response.code in 200..299)
+            org.json.JSONObject(response.body)
+        }
+        data = result.getOrNull()
+        error = result.isFailure
+        busy = false
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = DarkSurface,
-        title = {
-            Text(S.aiSelectModel, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-        },
+        title = { Text(S.aiIntegration) },
         text = {
-            Column {
-                Text(S.aiSelectHint, color = TextSecondary, fontSize = 13.sp)
-                Spacer(modifier = Modifier.height(16.dp))
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    modifier = Modifier.heightIn(max = 360.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(AI_MODELS) { model ->
-                        val isOpening = openingModelId == model.id
-                        Column(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(DarkCard)
-                                .clickable(enabled = authToken != null && openingModelId == null) {
-                                    errorMessage = null
-                                    openingModelId = model.id
-                                    scope.launch {
-                                        val result = AuthRepository.createAiSetupSession(
-                                            modelId = model.id,
-                                            token = authToken!!
-                                        )
-                                        openingModelId = null
-                                        result
-                                            .onSuccess { session -> onOpenUrl(session.launchUrl) }
-                                            .onFailure { error ->
-                                                errorMessage = error.message ?: S.aiSetupFailed
-                                            }
-                                    }
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(S.aiLocalTimeHint, fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
+                Text("https://login.nex11.me/mcp", fontSize = 12.sp)
+                if (authToken == null) Text(S.aiLoginRequired, color = DangerRed)
+                if (busy) CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                if (error) Text(S.aiSetupFailed, color = DangerRed)
+                TextButton(onClick = { onOpenUrl("https://login.nex11.me/mcp-connect") }) {
+                    Text(S.aiConnectionGuide)
+                }
+                Text(S.aiDeviceStatus, fontWeight = FontWeight.SemiBold)
+                val devices = data?.optJSONArray("devices")
+                if (devices == null || devices.length() == 0) Text(S.aiNoDevices, fontSize = 12.sp)
+                else for (i in 0 until devices.length()) {
+                    val device = devices.getJSONObject(i)
+                    Text("${device.getString("name")} · ${device.getString("timezone")}", fontSize = 12.sp)
+                }
+                val grants = data?.optJSONArray("connections")
+                if (grants == null || grants.length() == 0) Text(S.aiNoConnections, fontSize = 12.sp)
+                else for (i in 0 until grants.length()) {
+                    val grant = grants.getJSONObject(i)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(grant.getString("client_name"), modifier = Modifier.weight(1f), fontSize = 12.sp)
+                        TextButton(enabled = !busy, onClick = {
+                            scope.launch {
+                                busy = true
+                                val result = runCatching {
+                                    val response = com.nexalarm.app.data.ApiClient.post(
+                                        "${com.nexalarm.app.data.AiDeviceRepository.BASE}/ai/connections/revoke",
+                                        org.json.JSONObject().put("client_id", grant.getString("client_id")), authToken)
+                                    check(response.code in 200..299)
                                 }
-                                .padding(vertical = 12.dp, horizontal = 4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(36.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Image(
-                                    painter = painterResource(model.logoRes),
-                                    contentDescription = model.name,
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .then(
-                                            if (authToken == null || isOpening)
-                                                Modifier.alpha(0.4f)
-                                            else Modifier
-                                        )
-                                )
-                                if (isOpening) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
-                                        color = PrimaryBlue
-                                    )
-                                }
+                                error = result.isFailure
+                                busy = false
+                                if (result.isSuccess) refresh++
                             }
-                            Text(
-                                text = model.name,
-                                fontSize = 11.sp,
-                                color = if (authToken == null || isOpening) TextSecondary.copy(alpha = 0.4f) else TextSecondary,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2
-                            )
-                        }
+                        }) { Text(S.aiRevoke) }
                     }
                 }
-                if (authToken == null) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = S.aiLoginRequired,
-                        color = DangerRed,
-                        fontSize = 12.sp
-                    )
-                } else if (errorMessage != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = errorMessage!!,
-                        color = DangerRed,
-                        fontSize = 12.sp
-                    )
-                }
+                TextButton(enabled = !busy, onClick = {
+                    com.nexalarm.app.data.AiDeviceRepository.enqueue(context)
+                    refresh++
+                }) { Text(S.aiRefreshStatus) }
             }
         },
-        confirmButton = {
-            if (authToken == null) {
-                OutlinedButton(
-                    onClick = {
-                        errorMessage = null
-                        onOpenUrl("https://login.nex11.me/ai-setup")
-                    },
-                    enabled = openingModelId == null,
-                    border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.4f))
-                ) {
-                    Text(S.aiOpenLoginPage, color = TextSecondary)
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = openingModelId == null) {
-                Text(S.cancel, color = TextSecondary)
-            }
-        }
+        confirmButton = { TextButton(onClick = onDismiss) { Text(S.confirm) } }
     )
 }
 

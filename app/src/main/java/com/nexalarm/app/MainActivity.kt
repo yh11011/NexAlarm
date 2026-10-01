@@ -46,6 +46,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        com.nexalarm.app.data.AiDeviceRepository.refreshPushToken(applicationContext)
+        com.nexalarm.app.data.AiDeviceRepository.enqueue(applicationContext)
+    }
+
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)

@@ -29,7 +29,7 @@ fun HomeScreen(
     val context = LocalContext.current
     val scheduler = AlarmScheduler(context)
 
-    val enabledAlarms = alarms.filter { it.isEnabled }
+    val enabledAlarms = alarms.filter { it.isEnabled && scheduler.getNextTriggerTime(it) > System.currentTimeMillis() }
     val nextAlarm = enabledAlarms.minByOrNull { scheduler.getNextTriggerTime(it) }
     val timeUntil = nextAlarm?.let { scheduler.getTimeUntilText(it, isAppEnglish) } ?: ""
 

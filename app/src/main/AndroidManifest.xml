@@ -52,6 +52,9 @@
         <!-- ==================== Activities ==================== -->
 
         <!-- 主 Activity -->
+        <service android:name=".service.AiMessagingService" android:exported="false">
+            <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>
+        </service>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -131,6 +134,8 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>

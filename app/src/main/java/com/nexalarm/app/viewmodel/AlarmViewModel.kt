@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 
 /**
  * 鬧鐘 ViewModel
@@ -52,22 +53,9 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun applyServerAlarms(serverAlarms: List<com.nexalarm.app.data.ServerAlarm>) {
-        for (serverAlarm in serverAlarms) {
-            val existing = alarmDao.getByClientId(serverAlarm.clientId)
-            if (serverAlarm.isDeleted) {
-                if (existing != null) { scheduler.cancel(existing); alarmDao.delete(existing) }
-            } else if (serverAlarm.updatedAt > (existing?.updatedAt ?: 0L)) {
-                val newAlarm = AlarmSyncRepository.jsonToAlarm(
-                    serverAlarm.data, serverAlarm.clientId, serverAlarm.updatedAt, existing?.id ?: 0L
-                )
-                if (existing == null) {
-                    val newId = alarmDao.insert(newAlarm)
-                    if (newAlarm.isEnabled) scheduler.schedule(newAlarm.copy(id = newId))
-                } else {
-                    alarmDao.update(newAlarm)
-                    if (newAlarm.isEnabled) scheduler.schedule(newAlarm) else scheduler.cancel(newAlarm)
-                }
-            }
+        com.nexalarm.app.data.AiDeviceRepository.syncMutex.withLock {
+            val applier = com.nexalarm.app.data.AlarmSyncApplier(getApplication())
+            for (remote in serverAlarms) applier.apply(remote)
         }
     }
 
@@ -94,7 +82,7 @@ class AlarmViewModel(application: Application) : AndroidViewModel(application) {
     // 下一個要響的鬧鐘（StateFlow，自動隨 allAlarms 更新，UI 可直接 collectAsState）
     val nextAlarm: StateFlow<AlarmEntity?> = _allAlarms
         .map { alarms ->
-            alarms.filter { it.isEnabled }
+            alarms.filter { it.isEnabled && scheduler.getNextTriggerTime(it) > System.currentTimeMillis() }
                   .minByOrNull { scheduler.getNextTriggerTime(it) }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

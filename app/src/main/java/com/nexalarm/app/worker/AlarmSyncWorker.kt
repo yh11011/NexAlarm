@@ -1,77 +1,48 @@
 package com.nexalarm.app.worker
 
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.nexalarm.app.data.AlarmSyncRepository
-import com.nexalarm.app.data.SettingsManager
+import com.nexalarm.app.MainActivity
+import com.nexalarm.app.R
+import com.nexalarm.app.data.*
 import com.nexalarm.app.data.database.NexAlarmDatabase
-import com.nexalarm.app.util.AlarmScheduler
-import com.nexalarm.app.util.FeatureFlags
+import com.nexalarm.app.util.NotificationHelper
+import kotlinx.coroutines.sync.withLock
 
-/**
- * 背景同步 Worker：由 WorkManager 每 15 分鐘執行一次。
- * 只在使用者已登入時執行同步。
- */
-class AlarmSyncWorker(
-    context: Context,
-    params: WorkerParameters
-) : CoroutineWorker(context, params) {
-
-    override suspend fun doWork(): Result {
+class AlarmSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result = AiDeviceRepository.syncMutex.withLock {
         val settings = SettingsManager(applicationContext)
-        val token = settings.authToken ?: return Result.success() // 未登入，跳過
-        if (!FeatureFlags.isPremium) return Result.success() // 非 Premium，跳過（雲端同步為付費功能）
-
-        val db = NexAlarmDatabase.getDatabase(applicationContext)
-        val alarmDao = db.alarmDao()
-        val scheduler = AlarmScheduler(applicationContext)
-
-        val localAlarms = alarmDao.getAllAlarmsList()
-
-        val syncResult = AlarmSyncRepository.sync(token, localAlarms)
-
-        // 同步失敗時返回 retry，WorkManager 會自動重試（指數退避）
-        if (syncResult.isFailure) {
-            android.util.Log.w("AlarmSyncWorker", "同步失敗，排程重試：${syncResult.exceptionOrNull()?.message}")
-            return Result.retry()
-        }
-
-        syncResult.onSuccess { serverAlarms ->
-            for (serverAlarm in serverAlarms) {
-                val existing = alarmDao.getByClientId(serverAlarm.clientId)
-
-                if (serverAlarm.isDeleted) {
-                    // 伺服器標記刪除 → 本地刪除
-                    if (existing != null) {
-                        scheduler.cancel(existing)
-                        alarmDao.delete(existing)
-                    }
-                } else {
-                    val serverUpdatedAt = serverAlarm.updatedAt
-                    val localUpdatedAt = existing?.updatedAt ?: 0L
-
-                    if (serverUpdatedAt > localUpdatedAt) {
-                        // 伺服器版本較新 → 覆蓋本地
-                        val newAlarm = AlarmSyncRepository.jsonToAlarm(
-                            serverAlarm.data,
-                            serverAlarm.clientId,
-                            serverAlarm.updatedAt,
-                            localId = existing?.id ?: 0L
-                        )
-                        if (existing == null) {
-                            val newId = alarmDao.insert(newAlarm)
-                            if (newAlarm.isEnabled) scheduler.schedule(newAlarm.copy(id = newId))
-                        } else {
-                            alarmDao.update(newAlarm)
-                            if (newAlarm.isEnabled) scheduler.schedule(newAlarm)
-                            else scheduler.cancel(newAlarm)
-                        }
-                    }
-                }
+        try {
+            settings.flushDeviceUnregistrations()
+            val token = settings.authToken ?: return@withLock Result.success()
+            val applied = AiDeviceRepository.sync(applicationContext, token, settings)
+            if (applied > 0 && NotificationHelper.hasNotificationPermission(applicationContext)) {
+                val intent = PendingIntent.getActivity(applicationContext, 701,
+                    Intent(applicationContext, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+                val notification = NotificationCompat.Builder(applicationContext, NotificationHelper.CHANNEL_ID_REMINDER)
+                    .setSmallIcon(R.drawable.ic_alarm).setContentTitle(com.nexalarm.app.ui.theme.S.aiSyncTitle(settings.isEnglish))
+                    .setContentText(com.nexalarm.app.ui.theme.S.aiSyncBody(settings.isEnglish))
+                    .setContentIntent(intent).setAutoCancel(true).build()
+                (applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(701, notification)
             }
+            if (settings.authToken != token || !settings.isPremium) return@withLock Result.success()
+            val dao = NexAlarmDatabase.getDatabase(applicationContext).alarmDao()
+            val result = AlarmSyncRepository.sync(token, dao.getAllAlarmsList())
+            if (result.isFailure) return@withLock Result.retry()
+            val applier = AlarmSyncApplier(applicationContext)
+            for (remote in result.getOrThrow()) {
+                if (settings.authToken != token) break
+                applier.apply(remote)
+            }
+            Result.success()
+        } catch (_: Exception) {
+            // Tokens and API bodies are intentionally excluded from background logs.
+            Result.retry()
         }
-
-        return Result.success()
     }
 }

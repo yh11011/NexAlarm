@@ -24,7 +24,7 @@ class AlarmRepository(private val alarmDao: AlarmDao) {
             alarm.hour, alarm.minute, alarm.title,
             alarm.folderId, converter.fromList(alarm.repeatDays)
         )
-        return if (existing != null) {
+        return if (existing != null && existing.scheduledDate == alarm.scheduledDate) {
             val updated = alarm.copy(id = existing.id)
             alarmDao.update(updated)
             existing.id

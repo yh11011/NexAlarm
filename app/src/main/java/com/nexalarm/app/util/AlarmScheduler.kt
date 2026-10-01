@@ -14,6 +14,7 @@ import java.util.*
  * 負責使用 AlarmManager 設定精確的鬧鐘觸發時間
  */
 class AlarmScheduler(private val context: Context) {
+    data class ScheduleResult(val status: String, val triggerAt: Long? = null, val reason: String? = null)
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
@@ -21,15 +22,19 @@ class AlarmScheduler(private val context: Context) {
      * 排程鬧鐘
      * @param alarm 鬧鐘實體
      */
-    fun schedule(alarm: AlarmEntity) {
+    fun schedule(alarm: AlarmEntity): ScheduleResult {
         // 如果鬧鐘未啟用，取消排程
         if (!alarm.isEnabled) {
             cancel(alarm)
-            return
+            return ScheduleResult("cancelled")
         }
 
         // 計算下次觸發時間
         val triggerTime = calculateNextTriggerTime(alarm)
+        if (triggerTime <= System.currentTimeMillis()) {
+            cancel(alarm)
+            return ScheduleResult("failed", reason = "Requested date/time has passed")
+        }
 
         // 建立 PendingIntent
         val intent = Intent(context, AlarmReceiver::class.java).apply {
@@ -77,6 +82,7 @@ class AlarmScheduler(private val context: Context) {
         android.util.Log.i("NexAlarmTest",
             "SCHEDULED|id=${alarm.id}|title=${alarm.title}" +
             "|triggerMs=$triggerTime|api=$apiUsed|ts=${System.currentTimeMillis()}")
+        return ScheduleResult(if (apiUsed == "setAlarmClock") "scheduled" else "fallback", triggerTime)
     }
 
     /**
@@ -160,70 +166,7 @@ class AlarmScheduler(private val context: Context) {
      * 計算下次觸發時間
      */
     private fun calculateNextTriggerTime(alarm: AlarmEntity): Long {
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, alarm.hour)
-            set(Calendar.MINUTE, alarm.minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        val now = System.currentTimeMillis()
-
-        // 如果是重複鬧鐘
-        if (alarm.isRecurring && alarm.repeatDays.isNotEmpty()) {
-            // 找出下一個應該觸發的日期
-            val currentDayOfWeek = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
-            val sortedDays = alarm.repeatDays.sorted()
-
-            // 轉換：我們的格式 1=週一，Calendar 格式 1=週日
-            val targetDays = sortedDays.map {
-                when (it) {
-                    7 -> Calendar.SUNDAY
-                    else -> it + 1
-                }
-            }
-
-            // 尋找下一個觸發日
-            var found = false
-
-            for (i in 0..7) {
-                val checkDay = (currentDayOfWeek + i - 1) % 7 + 1
-                if (targetDays.contains(checkDay)) {
-                    val tempCal = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, alarm.hour)
-                        set(Calendar.MINUTE, alarm.minute)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                        add(Calendar.DAY_OF_MONTH, i)
-                    }
-
-                    // 如果是今天，檢查時間是否已過
-                    if (i == 0 && tempCal.timeInMillis <= now) {
-                        continue
-                    }
-
-                    calendar.timeInMillis = tempCal.timeInMillis
-                    found = true
-                    break
-                }
-            }
-
-            if (!found) {
-                // 找第一個重複日
-                val firstDay = targetDays.first()
-                val daysToAdd = (firstDay - currentDayOfWeek + 7) % 7
-                val adjustedDays = if (daysToAdd == 0) 7 else daysToAdd
-                calendar.add(Calendar.DAY_OF_MONTH, adjustedDays)
-            }
-        } else {
-            // 單次鬧鐘
-            // 如果時間已過，設定為明天
-            if (calendar.timeInMillis <= now) {
-                calendar.add(Calendar.DAY_OF_MONTH, 1)
-            }
-        }
-
-        return calendar.timeInMillis
+        return AlarmTimeCalculator.nextTrigger(alarm)
     }
 
     /**

@@ -9,6 +9,7 @@
 | 排程、喚醒與響鈴 | `app/src/main/java/com/nexalarm/app/util/AlarmScheduler.kt` | `app/src/main/java/com/nexalarm/app/receiver/AlarmReceiver.kt`、`app/src/main/java/com/nexalarm/app/receiver/BootReceiver.kt`、`app/src/main/java/com/nexalarm/app/service/AlarmService.kt` | TESTING.md |
 | Room 與遷移 | `app/src/main/java/com/nexalarm/app/data/database/NexAlarmDatabase.kt` | `app/src/main/java/com/nexalarm/app/data/model/AlarmEntity.kt`、`app/schemas` | migration 與保留資料測試 |
 | 語言、主題與設定 | `app/src/main/java/com/nexalarm/app/util/AppSettingsProvider.kt` | `app/src/main/java/com/nexalarm/app/ui/theme/Strings.kt`、`app/src/main/java/com/nexalarm/app/data/SettingsManager.kt` | Compose 與背景同步 |
+| AI／MCP 指令與手機回報 | `app/src/main/java/com/nexalarm/app/data/AiDeviceRepository.kt` | `app/src/main/java/com/nexalarm/app/service/AiMessagingService.kt`、`app/src/main/java/com/nexalarm/app/data/AlarmSyncApplier.kt`、`docs/mcp`；後端在相鄰 `auth` 專案 | mock 後端與裝置端到端測試 |
 | 帳號、同步及付費 | `app/src/main/java/com/nexalarm/app/data/AuthRepository.kt` | `app/src/main/java/com/nexalarm/app/data/AlarmSyncRepository.kt`、`app/src/main/java/com/nexalarm/app/util/BillingManager.kt`、`app/src/main/java/com/nexalarm/app/util/FeatureFlags.kt` | mock API／Billing |
 | 建置與發佈 | `app/build.gradle.kts` | `.github/workflows/ci.yml`、`.github/workflows/release.yml`、`TESTING.md` | ./gradlew test assembleDebug |
 | 介紹網站 | `website` | `README.md` | 公開頁面與素材 |
@@ -21,4 +22,5 @@ Android 交付 APK 與測試結果；release workflow 見 .github/workflows/rele
 
 每輪修改後核對並新增一筆，最多 20 筆，最新在前；純討論與唯讀查詢不新增。
 
+- 2026-10-01：新增 Premium 私人遠端 MCP 連接、FCM 指令接收與逐裝置回報；Room 升至 v9，支援指定日期與各手機當地時間。
 - 2026-09-29：核對功能入口、驗證與部署方式，建立精簡導航並統一 Codex 工作規則。
